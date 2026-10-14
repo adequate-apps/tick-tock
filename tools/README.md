@@ -9,7 +9,7 @@ jar staged under `robolectric-deps/`.
 |---|---|
 | `identity-scan.sh` | Refuses text that ties the repository to a machine, an account, an assistant or a private project. Modes: `--staged`, `--range A..B`, `--pre-push`, `--history`, `--tree`, `--text FILE`, `--branch NAME`. Rules come from `identity-rules.txt` plus the private denylist at `$TICKTOCK_DENYLIST` (default `~/.config/ticktock/denylist`), whose lines are never printed. Every commit in a range must carry the owner's noreply identity as author and committer. |
 | `install-hooks.sh` | Installs the pre-commit (staged diff) and pre-push (pushed ranges) scans and sets the commit identity. Run once per clone. |
-| `worktree.sh PATH BRANCH [START]` | Creates a task worktree, scans the branch name, sets the identity and installs the hooks. |
+| `worktree.sh PATH BRANCH [START]` | Creates a task worktree, scans the branch name, sets the identity and installs the hooks. Branch names start with a milestone, `m2/engine-MET-06-reanchor`; git refuses `m0/...` while the branch `m0` exists, so M0 task branches use `m0-<role>`. |
 | `verify.sh [--base REV] [--skip-h]` | The full local gate with one verdict: identity, source guards, U tier, N tier, H tier, lint, debug APK, manifest allowlist. About 20 s warm, a few minutes cold. |
 | `verify-selftest.sh` | Proves `verify.sh` goes red for the right reason on seven planted failures, after a green control run. Rebuilds the tree per case; about ten minutes. |
 | `prove-red.sh [--base REV] [--head REV]` | Copies the branch's test files onto the base commit in a scratch worktree and refuses the branch if they pass there. CI runs it on every PR. |
