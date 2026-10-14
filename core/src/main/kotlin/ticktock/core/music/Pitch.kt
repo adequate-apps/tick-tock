@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.core.music
 
+import kotlin.math.floor
+import kotlin.math.log2
+import kotlin.math.pow
+
 /**
  * MIDI pitch facts shared by every module. The detector window is declared here
  * once (spec 0.3) so a range, a histogram and a test can never disagree about
@@ -12,6 +16,44 @@ object Pitch {
 
     const val MIDI_A4 = 69
 
+    const val A4_DEFAULT_HZ = 440.0
+
+    /**
+     * The selectable concert-pitch reference (owner decision 16). 415 covers
+     * baroque pitch; 466 is the top that keeps every A4 within a semitone of
+     * 440, so a note name never flips between two references.
+     */
+    val A4_HZ: ClosedFloatingPointRange<Double> = 415.0..466.0
+
+    /** Equal-tempered frequency of a (possibly fractional) MIDI number against [a4Hz]. */
+    fun hzFromMidi(midi: Double, a4Hz: Double): Double = a4Hz * 2.0.pow((midi - MIDI_A4) / 12.0)
+
+    fun hzFromMidi(midi: Int, a4Hz: Double): Double = hzFromMidi(midi.toDouble(), a4Hz)
+
+    /** Fractional MIDI number of [hz] against [a4Hz]; NaN when [hz] is not a positive finite number. */
+    fun midiFromHz(hz: Double, a4Hz: Double): Double =
+        if (hz.isNaN() || hz <= 0.0 || hz.isInfinite()) Double.NaN else MIDI_A4 + 12.0 * log2(hz / a4Hz)
+
+    /**
+     * The nearest equal-tempered note to [hz] and the signed cents from it, or
+     * null when [hz] carries no reading (BND-05). An exact quarter-tone rounds
+     * to the upper note, so the cents are always in -50..50.
+     */
+    fun nearest(hz: Double, a4Hz: Double): NearestNote? {
+        val midi = midiFromHz(hz, a4Hz)
+        if (midi.isNaN()) return null
+        val note = floor(midi + 0.5).toInt()
+        return NearestNote(note, (midi - note) * 100.0)
+    }
+
+    /**
+     * Signed cents of [hz] from a given [midi] at [a4Hz]. The table re-derives
+     * stored readings through this when it shows them against a different A4
+     * than they were graded with (POL-23). A semitone is 100 cents by
+     * definition; the figure is a unit, never a threshold.
+     */
+    fun centsFrom(hz: Double, midi: Int, a4Hz: Double): Double = (midiFromHz(hz, a4Hz) - midi) * 100.0
+
     /** Spelling-neutral label such as "A#/Bb3" or "C4"; octave numbers follow C4 = 60. */
     fun label(midi: Int): String {
         val octave = midi / 12 - 1
@@ -22,6 +64,9 @@ object Pitch {
         "C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B",
     )
 }
+
+/** The note a frequency sits nearest to and how far off it is, in signed cents. */
+data class NearestNote(val midi: Int, val cents: Double)
 
 /**
  * Transposition is sounding minus written, in semitones, for every instrument
