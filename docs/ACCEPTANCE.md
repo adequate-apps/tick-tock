@@ -31,36 +31,36 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| POL-01 | first-reading latency | U | 2.0 | | open |
-| POL-02 | legato note-change latency | U | 2.0 | | open |
-| POL-03 | no long-memory vote | U | 2.0 | | open |
-| POL-04 | unknown mode | U | 2.0 | | open |
-| POL-05 | mode switch resets | U | 2.0 | | open |
-| POL-06 | attack edge | U | 2.0 | | open |
-| POL-07 | release edge | U | 2.0 | | open |
-| POL-08 | re-attack of the same note | U | 2.0 | | open |
-| POL-09 | time in hops | U | 2.0 | | open |
-| POL-10 | aperiodicity on every path | U | 2.0 | | open |
-| POL-11 | RMS gate | U | 2.0 | | open |
-| POL-12 | mic gain scope | U | 2.0 | | open |
-| POL-13 | detector window gate | U | 2.0 | | open |
-| POL-14 | leaps of any size are saved | U | 2.0 | | open |
-| POL-15 | one window per hop | U | 2.0 | | open |
-| POL-16 | oversized block | U | 2.0 | | open |
-| POL-17 | restart replaces the stream | U | 2.0 | | open |
-| POL-18 | counters visible | U | 2.0 | | open |
-| POL-19 | readings carry their A4 | U | 2.0 | | open |
-| POL-20 | A4 change discards stale readings | U | 2.0 | | open |
-| POL-21 | same-value change | U | 2.0 | | open |
-| POL-22 | new run on A4 change | U | 2.0 | | open |
-| POL-23 | table after an A4 change | U | 2.0 | | open |
-| POL-24 | bleed is excluded | N + U | 2.0 | | open |
-| POL-25 | an excluded hop keeps the player's note | N + U | 2.0 | | open |
-| POL-26 | duck on suspicion | N + U | 2.0 | | open |
-| POL-27 | unison is measured | N + U | 2.0 | | open |
-| POL-28 | pure leakage is never re-admitted | N + U | 2.0 | | open |
-| POL-29 | no duck, no re-admission | N + U | 2.0 | | open |
-| POL-30 | pipes are duck consumers | N + U | 2.0 | | open |
+| POL-01 | first-reading latency | U | 2.0 | DetectorPolicyTest `POL-01` | green |
+| POL-02 | legato note-change latency | U | 2.0 | DetectorPolicyTest `POL-02` | green |
+| POL-03 | no long-memory vote | U | 2.0 | DetectorPolicyTest `POL-03` | green |
+| POL-04 | unknown mode | U | 2.0 | ResponseModeTableTest `POL-04` (`ResponseMode.fromStored`; the prefs loader calls it in M3) | green |
+| POL-05 | mode switch resets | U | 2.0 | DetectorPolicyTest `POL-05` | green |
+| POL-06 | attack edge | U | 2.0 | DetectorPolicyTest `POL-06` | green |
+| POL-07 | release edge | U | 2.0 | DetectorPolicyTest `POL-07` (two tests: silence, note change) | green |
+| POL-08 | re-attack of the same note | U | 2.0 | DetectorPolicyTest `POL-08` | green |
+| POL-09 | time in hops | U | 2.0 | HopAnalyserTest `POL-09` (400 hops in bursts of 8 with 0–200 ms of fake-clock jitter) | green |
+| POL-10 | aperiodicity on every path | U | 2.0 | DetectorPolicyTest `POL-10` (two tests) + HopAnalyserTest `POL-10` (white noise on frames) | green |
+| POL-11 | RMS gate | U | 2.0 | DetectorPolicyTest `POL-11` | green |
+| POL-12 | mic gain scope | U | 2.0 | DetectorPolicyTest `POL-12` + HopAnalyserTest `POL-12` (the window reaches the estimator unscaled) | green |
+| POL-13 | detector window gate | U | 2.0 | DetectorPolicyTest `POL-13` | green |
+| POL-14 | leaps of any size are saved | U | 2.0 | DetectorPolicyTest `POL-14` (octave up, fifth down, sixth up) | green |
+| POL-15 | one window per hop | U | 2.0 | HopAnalyserTest `POL-15` | green |
+| POL-16 | oversized block | U | 2.0 | HopAnalyserTest `POL-16` (two tests: analyser, ring) | green |
+| POL-17 | restart replaces the stream | U | 2.0 | HopAnalyserTest `POL-17` (two tests) with FakeAudioInput | green |
+| POL-18 | counters visible | U | 2.0 | HopAnalyserTest `POL-18` (`AnalysisCounters`; the Diagnostics page reads them in M6) | green |
+| POL-19 | readings carry their A4 | U | 2.0 | DetectorA4Test `POL-19` | green |
+| POL-20 | A4 change discards stale readings | U | 2.0 | DetectorA4Test `POL-20` | green |
+| POL-21 | same-value change | U | 2.0 | DetectorA4Test `POL-21` | green |
+| POL-22 | new run on A4 change | U | 2.0 | DetectorA4Test `POL-22` (the reading stream is partitioned by generation; the run row itself opens under SES-02 in M3) | green |
+| POL-23 | table after an A4 change | U | 2.0 | DetectorA4Test `POL-23` (`Pitch.centsFrom` re-derives from stored Hz, and every reading carries its A4) | green |
+| POL-24 | bleed is excluded | N + U | 2.0 | U: BleedPolicyTest `POL-24` on scripted estimates; N fixtures land with the engine | open |
+| POL-25 | an excluded hop keeps the player's note | N + U | 2.0 | U: BleedPolicyTest `POL-25`; N fixtures land with the engine | open |
+| POL-26 | duck on suspicion | N + U | 2.0 | U: BleedPolicyTest `POL-26` (two tests); N fixtures land with the engine | open |
+| POL-27 | unison is measured | N + U | 2.0 | U: BleedPolicyTest `POL-27` (two tests); N fixtures land with the engine | open |
+| POL-28 | pure leakage is never re-admitted | N + U | 2.0 | U: BleedPolicyTest `POL-28`; N fixtures land with the engine | open |
+| POL-29 | no duck, no re-admission | N + U | 2.0 | U: BleedPolicyTest `POL-29`; N fixtures land with the engine | open |
+| POL-30 | pipes are duck consumers | N + U | 2.0 | U: BleedPolicyTest `POL-30`; N fixtures land with the engine | open |
 | POL-31 | render scope | H | 2.0 | | open |
 
 ## Colour bands and rounding
@@ -109,14 +109,14 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| HNT-01 | three different notes | U | 2.0 | | open |
-| HNT-02 | the window is playing time | U | 2.0 | | open |
-| HNT-03 | single-note cases never trigger it | U | 2.0 | | open |
-| HNT-04 | spread-out strays never trigger it | U | 2.0 | | open |
+| HNT-01 | three different notes | U | 2.0 | StrayCounterTest `HNT-01` | green |
+| HNT-02 | the window is playing time | U | 2.0 | StrayCounterTest `HNT-02` | green |
+| HNT-03 | single-note cases never trigger it | U | 2.0 | StrayCounterTest `HNT-03` | green |
+| HNT-04 | spread-out strays never trigger it | U | 2.0 | StrayCounterTest `HNT-04` | green |
 | HNT-05 | it offers the fix | U | v1.1 | | deferred |
 | HNT-06 | editing forgets covered strays | U | v1.1 | | deferred |
-| HNT-07 | scope | U | 2.0 | | open |
-| HNT-08 | cents keep showing | U | 2.0 | | open |
+| HNT-07 | scope | U | 2.0 | StrayCounterTest `HNT-07` | green |
+| HNT-08 | cents keep showing | U | 2.0 | StrayCounterTest `HNT-08` | green |
 
 ## Sessions and runs, history bounds and storage
 
@@ -247,7 +247,7 @@ revision document; the IDs are claimed here like any other.
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | ATK-01 | attack columns in note_hist | H | 2.0 | | open |
-| ATK-02 | one attack per attack edge, landing cents from the first settled reading | U, H | 2.0 | | open |
+| ATK-02 | one attack per attack edge, landing cents from the first settled reading | U, H | 2.0 | U: DetectorPolicyTest `ATK-02` (two tests: one `Attack` per attack edge carrying the landing cents of the confirming hops, and the first settled reading flagged `firstSettled`); H: the store counts them in M3 | open |
 | ATK-03 | held note versus sweep | H | 2.0 | | open |
 | ATK-04 | attacks shown beside readings | H | 2.0 | | open |
 
@@ -279,7 +279,7 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| A4W-01 | A4 steps 415 to 466 Hz (decision 16; the personal-config range and the sweep ends follow in M1) | U, H | 2.0 | | open |
+| A4W-01 | A4 steps 415 to 466 Hz (decision 16; the personal-config range and the sweep ends follow in M1) | U, H | 2.0 | U: PitchMathTest, DetectorA4Test and HopAnalyserTest `A4W-01`, PersonalConfigTest (415 and 466 accepted, 414.9 and 466.1 refused); H: the stepper in M4 | open |
 
 ### Ears first
 
@@ -322,7 +322,7 @@ revision document; the IDs are claimed here like any other.
 |---|---|---|---|---|---|
 | SRC-01 | source chosen by the UNPROCESSED property | H | 2.0 | | open |
 | SRC-02 | Diagnostics shows source and effects | H | 2.0 | | open |
-| SRC-03 | floors shift by the source offset | U | 2.0 | | open |
+| SRC-03 | floors shift by the source offset | U | 2.0 | ResponseModeTableTest `SRC-03` | green |
 
 ### Output stream mode
 
