@@ -83,6 +83,19 @@ UI copy describes what a thing is and what an action does. Status text is a plai
 names the device and what was refused. Empty states say what will appear and how to make it appear.
 No slogans, no marketing, no explanatory negatives.
 
+## The gate
+
+- A worktree's first command is `tools/install-hooks.sh` (or create it with
+  `tools/worktree.sh PATH BRANCH`): it installs the pre-commit and pre-push identity scans
+  and sets the commit identity.
+- `tools/verify.sh` is the full local gate and must be green before every PR: identity scan,
+  source guards, the U, N and H tiers, lint, the debug APK and the manifest allowlist, with
+  one verdict. `--skip-h` stops after the N tier for the inner loop.
+- `tools/prove-red.sh` shows the PR's tests fail on the base; its output goes in the PR body.
+- The render callback lives under `engine/src/main/cpp/render/`, where allocation, locks and
+  logging are refused. The band thresholds live in `CentsBand.kt` and nowhere else.
+- `tools/README.md` describes every script.
+
 ## Build and test commands
 
 ```sh

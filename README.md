@@ -53,6 +53,9 @@ The H tier runs Robolectric offline. Stage the android-all jar named in
 `tools/robolectric-deps/MANIFEST.sha256` into that directory and check it with `sha256sum -c`
 before running; a missing jar fails the run instead of downloading.
 
+`tools/verify.sh` runs every tier plus lint, the debug APK, the manifest allowlist and the
+identity scan, and prints one verdict; `tools/README.md` describes the gate scripts.
+
 `docs/ACCEPTANCE.md` lists every behaviour criterion with its tier and status.
 
 ## Icon
