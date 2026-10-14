@@ -67,43 +67,43 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| BND-01 | one rounding function | U | 2.0 | | open |
-| BND-02 | one band rule | U | 2.0 | | open |
-| BND-03 | colour agrees with digits | U | 2.0 | | open |
-| BND-04 | no other thresholds exist | U + source grep | 2.0 | | open |
-| BND-05 | no data | U | 2.0 | | open |
+| BND-01 | one rounding function | U | 2.0 | CentsBandTest `BND-01` | green |
+| BND-02 | one band rule | U | 2.0 | CentsBandTest `BND-02` | green |
+| BND-03 | colour agrees with digits | U | 2.0 | CentsBandTest `BND-03` | green |
+| BND-04 | no other thresholds exist | U + source grep | 2.0 | CentsBandTest `BND-04` (three tests) + `tools/verify.sh` sources stage, shared allowlist `tools/band-literal-allowlist.txt` | green |
+| BND-05 | no data | U | 2.0 | CentsBandTest `BND-05` | green |
 | BND-06 | whole cents only | U | 2.0 | | open |
 
 ## Instrument ranges and transpositions
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| RNG-01 | two tiers per key | U | 2.0 | | open |
+| RNG-01 | two tiers per key | U | 2.0 | RangeGoldenTest `RNG-01` | green |
 | RNG-02 | what each tier drives | U | 2.0 | | open |
-| RNG-03 | data source | U | 2.0 | | open |
-| RNG-04 | golden file | U | 2.0 | | open |
-| RNG-05 | policy test | U | 2.0 | | open |
-| RNG-06 | saxophones | U | 2.0 | | open |
-| RNG-07 | other saxophones | U | 2.0 | | open |
-| RNG-08 | corrected families | U | 2.0 | | open |
-| RNG-09 | mappings | U | 2.0 | | open |
-| RNG-10 | catch-all keys | U | 2.0 | | open |
+| RNG-03 | data source | U | 2.0 | RangeLayerDataTest (source hashes) + `tools/gen-ranges/check.sh` (byte-for-byte reproduction where the inputs are present) | green |
+| RNG-04 | golden file | U | 2.0 | RangeGoldenTest `RNG-04` | green |
+| RNG-05 | policy test | U | 2.0 | RangeGoldenTest `RNG-05`; the twenty decisions were drafted during M0 and await the owner's confirmation (see `tools/gen-ranges/README.md`) | green |
+| RNG-06 | saxophones | U | 2.0 | RangeGoldenTest `RNG-06` | green |
+| RNG-07 | other saxophones | U | 2.0 | RangeGoldenTest `RNG-07` | green |
+| RNG-08 | corrected families | U | 2.0 | RangeGoldenTest `RNG-08` | green |
+| RNG-09 | mappings | U | 2.0 | CatalogueTest `RNG-09` | green |
+| RNG-10 | catch-all keys | U | 2.0 | RangeResolverTest `RNG-10` | green |
 | RNG-11 | always show cents | U | 2.0 | | open |
 | RNG-12 | played out-of-range notes in the table | U | 2.0 | | open |
 | RNG-13 | narrowing a range | U | v1.1 | | deferred |
 | RNG-14 | instrument switch | U | 2.0 | | open |
-| RNG-15 | an override can only widen | U | v1.1 | | deferred |
+| RNG-15 | an override can only widen | U | v1.1 | RangeResolverTest `RNG-15` (the resolver rule landed with the layers; the editor ships in v1.1) | green |
 | RNG-16 | strict read before write | U | v1.1 | | deferred |
 | RNG-17 | save reports the truth | U | v1.1 | | deferred |
 | RNG-18 | envelope v2 | U | v1.1 | | deferred |
 | RNG-19 | editor input | U | v1.1 | | deferred |
 | RNG-20 | editor limits | U | v1.1 | | deferred |
 | RNG-21 | say where ranges come from | U | v1.1 | | deferred |
-| TRN-01 | the four the 1.x app has wrong | U | 2.0 | | open |
-| TRN-02 | end to end | U | 2.0 | | open |
+| TRN-01 | the four the 1.x app has wrong | U | 2.0 | CatalogueTest `TRN-01` | green |
+| TRN-02 | end to end | U | 2.0 | CatalogueTest `TRN-02` | green |
 | TRN-03 | migrating stored data | U | resolved: no 1.x migration | | closed |
-| TRN-04 | octave-clef convention | U | 2.0 | | open |
-| TRN-05 | sign convention is global | U | 2.0 | | open |
+| TRN-04 | octave-clef convention | U | 2.0 | CatalogueTest `TRN-04` | green |
+| TRN-05 | sign convention is global | U | 2.0 | CatalogueTest `TRN-05` | green |
 
 ## The wrong-instrument hint
 
