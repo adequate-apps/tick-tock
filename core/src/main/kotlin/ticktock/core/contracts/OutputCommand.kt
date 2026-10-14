@@ -13,10 +13,13 @@ enum class Voice { SINE, WARM, ROOT_FIFTH }
  * the round-trip test in the same change.
  */
 sealed interface OutputCommand {
-    /** Registers [tool] as wanting output; the first registration opens the stream (OUT-01). */
+    /**
+     * Registers [tool] as wanting output; the first registration calls
+     * [ForegroundOwner.onToolsStarted] and opens the stream (OUT-01, BGH-01).
+     */
     data class Register(val tool: OutputTool) : OutputCommand
 
-    /** Unregisters [tool]; the last unregistration closes the stream. */
+    /** Unregisters [tool]; the last unregistration closes the stream and calls [ForegroundOwner.onToolsStopped]. */
     data class Unregister(val tool: OutputTool) : OutputCommand
 
     /** Starts or retunes a voice in [slot] at [midi] with [voice] at linear [gain]. */

@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import ticktock.core.contracts.ForegroundOwner
+import ticktock.core.contracts.NoForegroundOwner
 import ticktock.core.contracts.OutputCommand
 import ticktock.core.contracts.OutputEvent
 import ticktock.core.contracts.OutputInfo
@@ -16,9 +18,10 @@ import ticktock.core.contracts.RouteClass
 /**
  * An [OutputPort] that records every command and lets a test play the engine:
  * open, unplug, change rate, fail, beat. It keeps a registry of tools so the
- * open/close rule (OUT-01) is observable without the real engine.
+ * open/close rule (OUT-01) and the [ForegroundOwner] hooks on its two
+ * transitions (BGH-01) are observable without the real engine.
  */
-class FakeOutputPort : OutputPort {
+class FakeOutputPort(private val foregroundOwner: ForegroundOwner = NoForegroundOwner) : OutputPort {
     val sent = mutableListOf<OutputCommand>()
     val registered = linkedSetOf<OutputTool>()
 
@@ -37,11 +40,18 @@ class FakeOutputPort : OutputPort {
             is OutputCommand.Register -> {
                 val wasEmpty = registered.isEmpty()
                 registered += cmd.tool
-                if (wasEmpty) open(DEFAULT_INFO)
+                if (wasEmpty) {
+                    // The owner's session brackets the stream: started before open.
+                    foregroundOwner.onToolsStarted()
+                    open(DEFAULT_INFO)
+                }
             }
             is OutputCommand.Unregister -> {
-                registered -= cmd.tool
-                if (registered.isEmpty()) close()
+                val wasRegistered = registered.remove(cmd.tool)
+                if (wasRegistered && registered.isEmpty()) {
+                    close()
+                    foregroundOwner.onToolsStopped()
+                }
             }
             is OutputCommand.VoiceOn,
             is OutputCommand.VoiceOff,
