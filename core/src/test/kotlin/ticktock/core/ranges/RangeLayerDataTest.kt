@@ -29,6 +29,12 @@ class RangeLayerDataTest {
     fun `bundled overlay parses and every entry has a reason`() {
         val overlay = OverlayRanges.bundled
         assertEquals(1, overlay.version)
+        // RNG-03: the layer names the source document it was generated from, so a
+        // regeneration can be checked against the same input.
+        assertEquals(64, overlay.sourceSha256.length)
+        assertTrue(overlay.sourceSha256.all { it in '0'..'9' || it in 'a'..'f' })
+        val raw = BaseRanges::class.java.getResourceAsStream(OverlayRanges.RESOURCE)!!.readBytes().decodeToString()
+        assertTrue("overlay names the generator", raw.contains("tools/gen-ranges/gen_overlay.py"))
         assertTrue(overlay.keyed.isNotEmpty())
         assertTrue(overlay.extended.isNotEmpty())
         (overlay.keyed.keys + overlay.extended.keys + overlay.decisions.keys).forEach { key ->
