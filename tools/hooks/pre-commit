@@ -1,0 +1,14 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Installed by tools/install-hooks.sh. Scans the staged diff before every
+# commit. The hook is a thin shim so that the scanner can evolve in the tree;
+# a worktree without the scanner refuses to commit rather than committing
+# unscanned.
+root=$(git rev-parse --show-toplevel) || exit 1
+scan="$root/tools/identity-scan.sh"
+if [ ! -x "$scan" ]; then
+    echo "pre-commit: $scan is missing; refusing to commit unscanned" >&2
+    exit 1
+fi
+exec "$scan" --staged
