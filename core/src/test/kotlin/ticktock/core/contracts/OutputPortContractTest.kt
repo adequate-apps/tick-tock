@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import ticktock.core.contracts.fakes.FakeForegroundOwner
 import ticktock.core.contracts.fakes.FakeOutputPort
 import ticktock.core.metro.Accent
 import ticktock.core.metro.ClickSound
@@ -22,6 +23,9 @@ class OutputPortContractTest {
         subdivision = 2,
         click = ClickSound.WOOD,
         gain = 0.8f,
+        // GAP-01's example, so the gap bars cross the port with everything else.
+        barsOn = 3,
+        barsOff = 1,
     )
 
     /** One instance of every command variant. Keep in step with OutputCommand. */
@@ -131,6 +135,59 @@ class OutputPortContractTest {
 
         assertEquals(emptyList<String>(), ParkReason.entries.map { it.name }.filter { "FOCUS" in it })
         assertEquals(emptyList<String>(), MuteReason.entries.map { it.name }.filter { "FOCUS" in it })
+    }
+
+    /**
+     * BGH-01: the registry's empty-to-one transition is the single place a
+     * background-playback service may start, and one-to-empty the place it
+     * stops. The owner's session brackets the stream: started before Opened,
+     * stopped after Closed. 2.0 wires a no-op; v1.1 wires the service.
+     */
+    @Test
+    fun `the foreground owner hears started on the first registration and stopped on the last`() = runTest {
+        val owner = FakeForegroundOwner()
+        val port = FakeOutputPort(owner)
+
+        port.send(OutputCommand.Register(OutputTool.METRONOME))
+        assertEquals(listOf("started"), owner.calls)
+        port.send(OutputCommand.Register(OutputTool.DRONE))
+        assertEquals(listOf("started"), owner.calls)
+
+        port.send(OutputCommand.Unregister(OutputTool.METRONOME))
+        assertEquals(listOf("started"), owner.calls)
+        port.send(OutputCommand.Unregister(OutputTool.DRONE))
+        assertEquals(listOf("started", "stopped"), owner.calls)
+
+        // Unregistering a tool that never registered is not a transition.
+        port.send(OutputCommand.Unregister(OutputTool.PITCH_PIPE))
+        assertEquals(listOf("started", "stopped"), owner.calls)
+    }
+
+    @Test
+    fun `the owner's session brackets the stream`() = runTest {
+        val trace = mutableListOf<String>()
+        lateinit var port: FakeOutputPort
+        val owner = object : ForegroundOwner {
+            override fun onToolsStarted() { trace += "started, stream open: ${port.info.value != null}" }
+            override fun onToolsStopped() { trace += "stopped, stream open: ${port.info.value != null}" }
+        }
+        port = FakeOutputPort(owner)
+
+        port.send(OutputCommand.Register(OutputTool.TEST_TONE))
+        port.send(OutputCommand.Unregister(OutputTool.TEST_TONE))
+
+        assertEquals(listOf("started, stream open: false", "stopped, stream open: false"), trace)
+    }
+
+    @Test
+    fun `without an owner the port behaves as before`() = runTest {
+        val port = FakeOutputPort()
+        port.send(OutputCommand.Register(OutputTool.DRONE))
+        port.send(OutputCommand.Unregister(OutputTool.DRONE))
+        assertEquals(
+            listOf(OutputEvent.Opened(FakeOutputPort.DEFAULT_INFO), OutputEvent.Closed),
+            port.emitted,
+        )
     }
 
     @Test
