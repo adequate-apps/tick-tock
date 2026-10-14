@@ -29,7 +29,7 @@ fun Pane(
             .background(GridlineColors.surface)
             .frame(GridlineColors.borderStrong),
     ) {
-        TitleBar(title = title, state = state)
+        TitleBar(title = title, state = state, tag = "pane-titlebar")
         Column(modifier = Modifier.fillMaxWidth().padding(GridlineSpacing.sp2), content = content)
     }
 }

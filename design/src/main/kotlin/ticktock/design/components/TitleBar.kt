@@ -19,12 +19,14 @@ import ticktock.design.GridlineType
 /**
  * The Active Blue strip that names a pane or the app. [state] sits at the
  * right edge and is always a short fact ("Listening", "Idle"), never a slogan.
+ * [tag] prefixes the test tags so nested strips stay distinguishable.
  */
 @Composable
 fun TitleBar(
     title: String,
     modifier: Modifier = Modifier,
     state: String? = null,
+    tag: String = "titlebar",
     trailing: @Composable () -> Unit = {},
 ) {
     Row(
@@ -33,14 +35,14 @@ fun TitleBar(
             .background(GridlineColors.active)
             .defaultMinSize(minHeight = GridlineSpacing.titleBarHeight)
             .padding(horizontal = GridlineSpacing.sp3, vertical = GridlineSpacing.sp1)
-            .testTag("titlebar"),
+            .testTag(tag),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(GridlineSpacing.sp6),
     ) {
-        GlText(text = title, style = GridlineType.titleBar, modifier = Modifier.testTag("titlebar-title"))
+        GlText(text = title, style = GridlineType.titleBar, modifier = Modifier.testTag("$tag-title"))
         Spacer(Modifier.weight(1f))
         if (state != null) {
-            GlText(text = state, style = GridlineType.titleBar, modifier = Modifier.testTag("titlebar-state"))
+            GlText(text = state, style = GridlineType.titleBar, modifier = Modifier.testTag("$tag-state"))
         }
         trailing()
     }
