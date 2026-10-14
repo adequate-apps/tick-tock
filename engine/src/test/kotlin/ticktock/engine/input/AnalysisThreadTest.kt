@@ -74,8 +74,10 @@ class AnalysisThreadTest {
         val worker = worker(estimator = throwing)
         worker.start(input).getOrThrow()
 
-        // Far more than the ring holds in one block: the oldest is pushed out and counted.
-        input.push(FloatArray(hopFrames * (HopAnalyser.DEFAULT_RING_HOPS + 4)))
+        // Far more than the ring holds in one block: the oldest is pushed out
+        // and counted. Audio over the gate's floor, because silence never
+        // reaches the estimator (DET-17) and this test is about its errors.
+        input.push(FloatArray(hopFrames * (HopAnalyser.DEFAULT_RING_HOPS + 4)) { 0.1f })
 
         awaitUntil("ring drained") { worker.counters.analysisErrors > 0 && worker.analyser.counters.hopsAnalysed == 0L }
         awaitUntil("errors counted") { worker.counters.analysisErrors >= HopAnalyser.DEFAULT_RING_HOPS - 1 }
