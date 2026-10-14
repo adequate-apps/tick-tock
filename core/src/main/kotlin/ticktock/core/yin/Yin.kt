@@ -27,7 +27,12 @@ sealed interface YinResult {
         val meetsThreshold: Boolean,
     ) : YinResult
 
-    /** No dip inside the search range, or the first dip that counts lies outside it. */
+    /**
+     * No dip inside the search range, the first dip that counts lies outside
+     * it, or the signal repeats at a fraction of the period found that lies
+     * above the band: a tone above [Yin.HIGH_HZ] read through its first
+     * multiple inside the band is no reading (DET-13).
+     */
     data object NoPeriod : YinResult
 
     /** The window held NaN or an infinity; it was skipped and counted (DET-15). */
@@ -126,7 +131,11 @@ class Yin(val sampleRate: Int) {
             } else {
                 min(sampled, parabolicMinimum(cmnd, lag))
             }
-            if (depth < threshold) return resultFor(refinePeriod(lag), depth, true)
+            if (depth < threshold) {
+                val period = refinePeriod(lag)
+                if (periodicAboveBand(period, depth)) return YinResult.NoPeriod
+                return resultFor(period, depth, true)
+            }
             if (depth < bestDepth) {
                 bestDepth = depth
                 bestLag = lag
@@ -134,6 +143,30 @@ class Yin(val sampleRate: Int) {
         }
         if (bestLag < 0) return YinResult.NoPeriod
         return resultFor(refinePeriod(bestLag), bestDepth, false)
+    }
+
+    /**
+     * Whether the window repeats at a fraction of [period] that the scan never
+     * examined because it is shorter than [minLag]. A tone above [HIGH_HZ]
+     * still repeats at every multiple of its period, so the first multiple
+     * inside the band is a dip as deep as the true one and would read as a
+     * sub-harmonic (DET-13). A note inside the band with a weak fundamental
+     * also dips near a fraction of its period, but its fundamental keeps that
+     * dip measurably shallower than the period's own (DET-08: 20 dB under the
+     * octave lifts it by about 0.02), which is what [depth] is compared with.
+     *
+     * Only a period under twice the shortest lag can have such a fraction:
+     * the first in-band multiple of a shorter period lies below that.
+     */
+    private fun periodicAboveBand(period: Double, depth: Double): Boolean {
+        if (period >= 2.0 * minLag) return false
+        val tolerance = SUB_PERIOD_RIPPLE * depth + SUB_PERIOD_FLOOR
+        var k = 2
+        while (period / k >= SHORTEST_PERIOD) {
+            if (interpolatedCmnd(period / k) <= depth + tolerance) return true
+            k++
+        }
+        return false
     }
 
     private fun resultFor(periodFrames: Double, aperiodicity: Double, meetsThreshold: Boolean): YinResult {
@@ -355,6 +388,19 @@ class Yin(val sampleRate: Int) {
 
         /** Rounds of the polish; four take the position error below a millionth of a lag. */
         private const val POLISH_ROUNDS = 4
+
+        /**
+         * How far a sub-period dip may sit above the period's own and still
+         * count as the same periodicity. White noise moves the normalised
+         * difference between two lags of one window by about a tenth of its
+         * depth; the fixed part covers a clean window's own ripple. Both sit
+         * well under the 0.02 a fundamental 20 dB below its octave adds.
+         */
+        private const val SUB_PERIOD_RIPPLE = 0.1
+        private const val SUB_PERIOD_FLOOR = 0.005
+
+        /** Two lags, the period at the Nyquist frequency: no shorter one can be sampled. */
+        private const val SHORTEST_PERIOD = 2.0
 
         fun hopFrames(sampleRate: Int): Int = Hop.frames(sampleRate)
 
