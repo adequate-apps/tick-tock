@@ -77,6 +77,12 @@ class FakeOutputPort : OutputPort {
         info.value = null
     }
 
+    /** An incoming call: every registered tool parks and nothing restarts until the player acts. */
+    fun incomingCall() {
+        emit(OutputEvent.Parked(ParkReason.INCOMING_CALL, registered.toSet()))
+        info.value = null
+    }
+
     /** Route returned, possibly at another rate: the parked set restarts. */
     fun replug(sampleRate: Int, routeClass: RouteClass = RouteClass.HEADPHONES) {
         val next = DEFAULT_INFO.copy(sampleRate = sampleRate, routeClass = routeClass)

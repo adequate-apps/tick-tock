@@ -149,8 +149,8 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 | OUT-05 | replug | H, D | 2.0 | | open |
 | OUT-06 | off stays off | H | 2.0 | | open |
 | OUT-07 | late devices | H | 2.0 | | open |
-| OUT-08 | permanent loss | H | 2.0 | | open |
-| OUT-09 | transient loss | H | 2.0 | | open |
+| OUT-08 | permanent loss | H | superseded by decision 4: another app taking audio never parks the tools; the contract has no focus reason | | closed |
+| OUT-09 | transient loss | H | superseded by decision 4: an incoming call parks every tool (`ParkReason.INCOMING_CALL`) and nothing restarts on its own; no duck on focus | OutputPortContractTest | red |
 | OUT-10 | mute reasons | H | 2.0 | | open |
 | OUT-11 | background policy | H | 2.0 (v1 policy: stop everything) | | open |
 | OUT-12 | route from the routed device | H, D | 2.0 | | open |

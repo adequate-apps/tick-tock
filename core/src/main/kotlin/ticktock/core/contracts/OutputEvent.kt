@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.core.contracts
 
-/** Why the engine parked every registered tool (OUT-02). */
+/**
+ * Why the engine parked every registered tool (OUT-02). There is no reason
+ * for another app taking audio: owner decision 4 says the app coexists with
+ * music players and never treats their playback as a reason to stop. An
+ * incoming call is the one outside event that stops output.
+ */
 enum class ParkReason {
     HEADPHONES_DISCONNECTED,
-    FOCUS_LOST,
+    INCOMING_CALL,
     OUTPUT_FAILED,
     BACKGROUND,
 }

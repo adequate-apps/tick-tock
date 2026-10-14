@@ -47,5 +47,9 @@ sealed interface OutputCommand {
 /** Tools that can hold the output open. */
 enum class OutputTool { METRONOME, DRONE, PITCH_PIPE, TEST_TONE }
 
-/** Reasons output may be silenced. One registry owns the set; see OUT-10. */
-enum class MuteReason { FOCUS_LOSS, RECORDING_ON_SPEAKER, BACKGROUND }
+/**
+ * Reasons output may be silenced while the tools keep running. One registry
+ * owns the set; see OUT-10. A call is not a mute reason: it parks the tools
+ * (decision 4), so nothing resumes into a recording on its own.
+ */
+enum class MuteReason { RECORDING_ON_SPEAKER, BACKGROUND }
