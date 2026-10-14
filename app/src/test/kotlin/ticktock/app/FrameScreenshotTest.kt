@@ -19,8 +19,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Gridline goldens of the frame on a 360 x 640 dp phone at font scale 1.0
- * and 2.0 (A11Y-02). The goldens live in app/src/test/screenshots and are
+ * Gridline goldens of the frame on a 360 x 640 dp phone at font scales 1.0,
+ * 1.3, 1.5 and 2.0 (A11Y-02). The goldens live in app/src/test/screenshots and are
  * written by `:app:recordRoborazziDebug`; `:app:verifyRoborazziDebug` fails
  * on any pixel change. Under a plain test run the capture is a no-op and the
  * layout assertions still have to hold: every label is displayed, and a tab
@@ -74,6 +74,22 @@ class FrameScreenshotTest {
     }
 
     @Test
+    fun `tune at font scale 1_3`() {
+        launch(1.3f)
+        assertFrameReadable()
+        compose.onNodeWithTag("tune-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-tune-360x640-fs1.3")
+    }
+
+    @Test
+    fun `tune at font scale 1_5`() {
+        launch(1.5f)
+        assertFrameReadable()
+        compose.onNodeWithTag("tune-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-tune-360x640-fs1.5")
+    }
+
+    @Test
     fun `tune at font scale 2_0`() {
         launch(2f)
         assertFrameReadable()
@@ -88,6 +104,24 @@ class FrameScreenshotTest {
         assertFrameReadable()
         compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         golden("frame-drone-metronome-360x640-fs1.0")
+    }
+
+    @Test
+    fun `drone and metronome at font scale 1_3`() {
+        launch(1.3f)
+        compose.onNodeWithTag("tabs-1").performClick()
+        assertFrameReadable()
+        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-drone-metronome-360x640-fs1.3")
+    }
+
+    @Test
+    fun `drone and metronome at font scale 1_5`() {
+        launch(1.5f)
+        compose.onNodeWithTag("tabs-1").performClick()
+        assertFrameReadable()
+        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-drone-metronome-360x640-fs1.5")
     }
 
     @Test
@@ -106,6 +140,24 @@ class FrameScreenshotTest {
         compose.onNodeWithTag("back").assertIsDisplayed()
         compose.onNodeWithTag("settings-empty", useUnmergedTree = true).assertIsDisplayed()
         golden("frame-settings-360x640-fs1.0")
+    }
+
+    @Test
+    fun `settings at font scale 1_3`() {
+        launch(1.3f)
+        compose.onNodeWithTag("open-settings").performClick()
+        compose.onNodeWithTag("back").assertIsDisplayed()
+        compose.onNodeWithTag("settings-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-settings-360x640-fs1.3")
+    }
+
+    @Test
+    fun `settings at font scale 1_5`() {
+        launch(1.5f)
+        compose.onNodeWithTag("open-settings").performClick()
+        compose.onNodeWithTag("back").assertIsDisplayed()
+        compose.onNodeWithTag("settings-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-settings-360x640-fs1.5")
     }
 
     @Test
