@@ -9,7 +9,8 @@
 #                 heap allocation, locking or logging on the render path
 #   3. U tier     :core:test
 #   4. N tier     host-tests/ (cmake, ninja, gtest) when present
-#   5. H tier     Robolectric tests, lint, assembleDebug, manifest allowlist
+#   5. H tier     Robolectric tests, lint, assembleDebug, manifest allowlist,
+#                 16 KB page alignment of the native libraries
 #
 # Every test tier must leave JUnit XML with at least one test case and no
 # skipped case; a tier that produced nothing is as red as a failing one.
@@ -234,7 +235,11 @@ run_gradle h-tier --continue \
 for m in engine data design app; do
     check_results "H tier ($m)" "$m/build/test-results/testDebugUnitTest"
 done
-tools/check-manifest.sh || red manifest "the merged manifest differs from tools/manifest-allowlist.txt"
+tools/check-manifest.sh || red manifest "the merged manifest differs from its release allowlist (tools/manifest-allowlist-<release>.txt)"
+
+# DST-03: a 64-bit library linked for 4 KB pages fails to load on a 16 KB
+# device and blocks Play updates, so the APK that ships is the thing checked.
+tools/check-alignment.sh || red alignment "a native library is not aligned to 16 KB pages"
 
 # --- verdict -------------------------------------------------------------------
 

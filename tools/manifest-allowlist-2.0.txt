@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Every <uses-permission> the 2.0 merged manifest may carry, one per line
+# (DST-02). The check in tools/check-manifest.sh compares the set exactly: a
+# permission that appears here and is missing from the build is as much a
+# finding as a new one, because either means the manifest changed without this
+# file being reviewed.
+#
+# One file per release, named after the major.minor of versionName in
+# app/build.gradle.kts, so a release that gains a permission gains a new file
+# and a diff a reviewer reads. v1.1 (background playback) adds
+# FOREGROUND_SERVICE and FOREGROUND_SERVICE_MEDIA_PLAYBACK in
+# manifest-allowlist-1.1.txt; nothing else is planned. No release lists
+# INTERNET: the app has no network (decision 15).
+#
+# The literal <applicationId> stands for the package of the variant under
+# test, so the debug suffix does not need its own line.
+#
+# 2.0 records audio and nothing else.
+android.permission.RECORD_AUDIO
+
+# Declared by androidx.core for every app: a signature-level permission that
+# protects dynamically registered receivers. It is granted to the app itself
+# and prompts for nothing.
+<applicationId>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION

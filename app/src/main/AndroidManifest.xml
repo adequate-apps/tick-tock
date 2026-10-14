@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- The only permission in v1. Background playback (v1.2) is the next one. -->
+    <!-- The only permission in 2.0; tools/manifest-allowlist-2.0.txt is the reviewed list. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <uses-feature android:name="android.hardware.microphone" android:required="false" />

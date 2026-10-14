@@ -89,8 +89,9 @@ No slogans, no marketing, no explanatory negatives.
   `tools/worktree.sh PATH BRANCH`): it installs the pre-commit and pre-push identity scans
   and sets the commit identity.
 - `tools/verify.sh` is the full local gate and must be green before every PR: identity scan,
-  source guards, the U, N and H tiers, lint, the debug APK and the manifest allowlist, with
-  one verdict. `--skip-h` stops after the N tier for the inner loop.
+  source guards, the U, N and H tiers, lint, the debug APK, the manifest allowlist and the 16 KB
+  page alignment of every native library, with one verdict. `--skip-h` stops after the N tier
+  for the inner loop.
 - `tools/prove-red.sh` shows the PR's tests fail on the base; its output goes in the PR body.
 - The render callback lives under `engine/src/main/cpp/render/`, where allocation, locks and
   logging are refused. The band thresholds live in `CentsBand.kt` and nowhere else.

@@ -2,9 +2,10 @@
 #
 # Every push and PR: identity scan (with the private denylist from a secret),
 # wrapper hashes, strict dependency verification, the JVM tiers, lint, a debug
-# APK, the manifest allowlist, the release guard and, on PRs, the red-on-base
-# proof. Actions are pinned to full commit SHAs; the tag is a comment so a
-# reviewer can see what the SHA was resolved from.
+# APK, the manifest allowlist, the 16 KB page-alignment check of the native
+# libraries, the release guard and, on PRs, the red-on-base proof. Actions are
+# pinned to full commit SHAs; the tag is a comment so a reviewer can see what
+# the SHA was resolved from.
 name: check
 
 on:
@@ -106,7 +107,7 @@ jobs:
             "https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented/16-robolectric-13921718-i7/${ROBOLECTRIC_JAR}"
           (cd tools/robolectric-deps && sha256sum -c MANIFEST.sha256)
 
-      - name: Full gate (sources, U, N, H, lint, APK, manifest)
+      - name: Full gate (sources, U, N, H, lint, APK, manifest, 16 KB alignment)
         env:
           # On a push this is the previous tip; on a new branch it is all zeros
           # and verify.sh falls back to the merge base with main.
@@ -132,7 +133,7 @@ jobs:
           grep -q 'Release builds are blocked' "$RUNNER_TEMP/release.log" \
             || { tail -40 "$RUNNER_TEMP/release.log"; echo "assembleRelease failed for another reason than the guard" >&2; exit 1; }
 
-  # The gate's own proof: seven planted failures must each turn it red. It
+  # The gate's own proof: nine planted failures must each turn it red. It
   # rebuilds the tree once per case, so it runs on main only.
   selftest:
     if: github.event_name == 'push'
@@ -173,5 +174,5 @@ jobs:
             "https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented/16-robolectric-13921718-i7/${ROBOLECTRIC_JAR}"
           (cd tools/robolectric-deps && sha256sum -c MANIFEST.sha256)
 
-      - name: Seven planted failures turn the gate red
+      - name: Nine planted failures turn the gate red
         run: tools/verify-selftest.sh
