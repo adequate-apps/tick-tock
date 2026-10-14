@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Render the BellCurve app icon assets from the SVG sources.
+Render the TickTock app icon assets from the SVG sources.
 
 Sources (edit these, then re-run this script):
   assets/icon.svg              full art on the 108-unit adaptive-icon canvas,
