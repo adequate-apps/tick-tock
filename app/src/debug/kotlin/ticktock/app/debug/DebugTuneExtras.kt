@@ -47,7 +47,7 @@ import java.util.Locale
 fun DebugTuneExtras() {
     val activity = LocalActivity.current ?: return
     val choice = remember { InputSeam.choose(activity) } ?: return
-    val capture = remember { LiveCapture() }
+    val capture = remember { LiveCapture(a4Hz = choice.a4Hz) }
     val input = remember { choice.make(capture) }
     var granted by remember {
         mutableStateOf(!choice.needsMicrophone || activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
@@ -76,6 +76,7 @@ fun DebugTuneExtras() {
     val cents = readout.cents?.let { "${Cents.format(it)} c" } ?: Cents.NO_READING
     val hz = readout.hz?.let { String.format(Locale.US, "%.1f Hz", it) } ?: Cents.NO_READING
     val level = String.format(Locale.US, "%.0f dBFS", readout.levelDb)
+    val a4 = String.format(Locale.US, "%.0f Hz", capture.a4Hz)
     val source = state.info?.let { "${it.source} at ${it.sampleRate} Hz, ${it.deviceName}" } ?: stringResource(R.string.debug_no_input)
     val platform = state.recording?.let { report ->
         val effects = if (report.effects.isEmpty()) stringResource(R.string.debug_no_effects) else report.effects.joinToString()
@@ -91,7 +92,7 @@ fun DebugTuneExtras() {
     )
     LaunchedEffect(note, cents, hz, source) {
         // One line per change for tools/device/readout.sh, never one per hop.
-        Log.i(LOG_TAG, "readout note=$note cents=$cents hz=$hz level=$level source=$source")
+        Log.i(LOG_TAG, "readout note=$note cents=$cents hz=$hz level=$level a4=$a4 source=$source")
     }
 
     Pane(
@@ -105,6 +106,7 @@ fun DebugTuneExtras() {
             SettingRow(label = stringResource(R.string.debug_row_cents), value = cents, tag = "debug-cents")
             SettingRow(label = stringResource(R.string.debug_row_hz), value = hz, tag = "debug-hz")
             SettingRow(label = stringResource(R.string.debug_row_level), value = level, tag = "debug-level")
+            SettingRow(label = stringResource(R.string.debug_row_a4), value = a4, tag = "debug-a4")
             // Sentences rather than values: stacked under a caption so they wrap as prose.
             CaptionedLine(caption = stringResource(R.string.debug_row_source), text = source, tag = "debug-source")
             CaptionedLine(caption = stringResource(R.string.debug_row_platform), text = platform, tag = "debug-platform")

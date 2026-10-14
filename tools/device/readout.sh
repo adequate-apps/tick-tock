@@ -6,13 +6,14 @@
 # through the debug seam, which is the only input path on a headless emulator;
 # with --live it opens the real microphone.
 #
-#   tools/device/readout.sh --tone HZ [--amp A] [--rate R] [--seconds N] [--expect NOTE]
-#   tools/device/readout.sh --live [--seconds N]
+#   tools/device/readout.sh --tone HZ [--amp A] [--rate R] [--a4 HZ] [--seconds N] [--expect NOTE]
+#   tools/device/readout.sh --live [--a4 HZ] [--seconds N]
 #
 # Installs the debug APK first (offline Gradle), starts the activity with the
 # launch extras InputSeam reads, waits, then prints every readout line the app
 # logged. With --expect the last line must name that note (as the app spells
-# it, for example A4 or "A#/Bb3") or the script exits 1. Evidence goes under
+# it, for example A4 or "A#/Bb3") or the script exits 1. --a4 sets the A4 the
+# detector measures against (default 440). Evidence goes under
 # verification/<date>/, which is gitignored.
 set -euo pipefail
 
@@ -25,6 +26,7 @@ amp="0.1"
 rate="48000"
 seconds="6"
 expect=""
+a4="440"
 while [ $# -gt 0 ]; do
     case "$1" in
         --tone) mode=tone; hz="${2:?--tone needs a frequency in Hz}"; shift ;;
@@ -33,7 +35,8 @@ while [ $# -gt 0 ]; do
         --rate) rate="${2:?--rate needs a value}"; shift ;;
         --seconds) seconds="${2:?--seconds needs a value}"; shift ;;
         --expect) expect="${2:?--expect needs a note label}"; shift ;;
-        -h|--help) sed -n '2,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 2 ;;
+        --a4) a4="${2:?--a4 needs a frequency in Hz}"; shift ;;
+        -h|--help) sed -n '2,19p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 2 ;;
         *) echo "readout: unknown argument '$1'" >&2; exit 2 ;;
     esac
     shift
@@ -55,11 +58,11 @@ tag="ticktock.debug"
 "$adb" logcat -c
 case "$mode" in
     tone)
-        "$adb" shell am start -W -n "$activity" --ef ticktock.debug.tone_hz "$hz" --ef ticktock.debug.tone_amp "$amp" --ei ticktock.debug.tone_rate "$rate" > /dev/null
+        "$adb" shell am start -W -n "$activity" --ef ticktock.debug.tone_hz "$hz" --ef ticktock.debug.tone_amp "$amp" --ei ticktock.debug.tone_rate "$rate" --ef ticktock.debug.a4_hz "$a4" > /dev/null
         ;;
     live)
         "$adb" shell pm grant "$package" android.permission.RECORD_AUDIO
-        "$adb" shell am start -W -n "$activity" --ez ticktock.debug.live true > /dev/null
+        "$adb" shell am start -W -n "$activity" --ez ticktock.debug.live true --ef ticktock.debug.a4_hz "$a4" > /dev/null
         ;;
 esac
 sleep "$seconds"

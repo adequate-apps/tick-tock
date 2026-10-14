@@ -4,6 +4,7 @@ package ticktock.app.debug
 import android.app.Activity
 import kotlinx.coroutines.flow.StateFlow
 import ticktock.core.contracts.AudioInput
+import ticktock.core.music.Pitch
 import ticktock.engine.input.AndroidRecorderPlatform
 import ticktock.engine.input.AudioRecordSource
 import ticktock.engine.input.InputListener
@@ -17,15 +18,17 @@ import ticktock.engine.input.RecordingState
  * Launch extras:
  *  - `ticktock.debug.live` (boolean): the device microphone through [AudioRecordSource];
  *  - `ticktock.debug.tone_hz` (float): a synthesised tone through [ToneInput], with
- *    `ticktock.debug.tone_amp` (float, default 0.1) and `ticktock.debug.tone_rate` (int, default 48000).
+ *    `ticktock.debug.tone_amp` (float, default 0.1) and `ticktock.debug.tone_rate` (int, default 48000);
+ *  - `ticktock.debug.a4_hz` (float, default 440): the A4 the detector measures against, with either input.
  *
- * A test sets [override] and gets the readout without any extra.
+ * A test sets [override] and gets the readout without any extra; the A4 extra still applies.
  */
 object InputSeam {
     const val EXTRA_LIVE = "ticktock.debug.live"
     const val EXTRA_TONE_HZ = "ticktock.debug.tone_hz"
     const val EXTRA_TONE_AMPLITUDE = "ticktock.debug.tone_amp"
     const val EXTRA_TONE_RATE = "ticktock.debug.tone_rate"
+    const val EXTRA_A4_HZ = "ticktock.debug.a4_hz"
     const val DEFAULT_AMPLITUDE = 0.1f
     const val DEFAULT_RATE = 48_000
 
@@ -36,23 +39,26 @@ object InputSeam {
     /** What the readout will listen to, and whether the microphone permission is needed first. */
     class Choice(
         val needsMicrophone: Boolean,
+        val a4Hz: Double,
         private val build: (InputListener) -> AudioInput,
     ) {
         fun make(listener: InputListener): AudioInput = build(listener)
     }
 
     fun choose(activity: Activity): Choice? {
-        override?.let { fixed -> return Choice(needsMicrophone = false) { fixed } }
-        val intent = activity.intent ?: return null
+        val intent = activity.intent
+        val a4Hz = intent?.getFloatExtra(EXTRA_A4_HZ, Pitch.A4_DEFAULT_HZ.toFloat())?.toDouble() ?: Pitch.A4_DEFAULT_HZ
+        override?.let { fixed -> return Choice(needsMicrophone = false, a4Hz = a4Hz) { fixed } }
+        if (intent == null) return null
         if (intent.hasExtra(EXTRA_TONE_HZ)) {
             val hz = intent.getFloatExtra(EXTRA_TONE_HZ, 0f).toDouble()
             val amplitude = intent.getFloatExtra(EXTRA_TONE_AMPLITUDE, DEFAULT_AMPLITUDE).toDouble()
             val rate = intent.getIntExtra(EXTRA_TONE_RATE, DEFAULT_RATE)
-            return Choice(needsMicrophone = false) { ToneInput(hz, amplitude, rate) }
+            return Choice(needsMicrophone = false, a4Hz = a4Hz) { ToneInput(hz, amplitude, rate) }
         }
         if (intent.getBooleanExtra(EXTRA_LIVE, false)) {
             val platform = AndroidRecorderPlatform(activity.applicationContext)
-            return Choice(needsMicrophone = true) { listener -> AudioRecordSource(platform, listener = listener) }
+            return Choice(needsMicrophone = true, a4Hz = a4Hz) { listener -> AudioRecordSource(platform, listener = listener) }
         }
         return null
     }

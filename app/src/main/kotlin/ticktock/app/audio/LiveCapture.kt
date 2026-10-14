@@ -65,9 +65,12 @@ data class CaptureState(
  */
 class LiveCapture(
     mode: ResponseMode = ResponseMode.NORMAL,
+    /** The A4 every reading is measured against (POL-19); the saved value in M4, a launch extra until then. */
+    a4Hz: Double = Pitch.A4_DEFAULT_HZ,
     private val promote: () -> Unit = { Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO) },
 ) : InputListener {
-    private val detector = Detector(mode)
+    private val detector = Detector(mode).also { it.setA4(a4Hz) }
+    val a4Hz: Double get() = detector.a4.hz
     private val thread = AnalysisThread(HopAnalyser(detector, YinEstimator(detector)), promote, ::onDecisions)
     private val stateFlow = MutableStateFlow(CaptureState())
     val state: StateFlow<CaptureState> = stateFlow

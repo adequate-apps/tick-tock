@@ -7,6 +7,7 @@
     <string name="debug_row_cents">Cents</string>
     <string name="debug_row_hz">Frequency</string>
     <string name="debug_row_level">Level</string>
+    <string name="debug_row_a4">A4</string>
     <string name="debug_row_source">Input</string>
     <string name="debug_row_platform">Platform reports</string>
     <string name="debug_row_counters">Analysis</string>
@@ -26,4 +27,32 @@
     <string name="debug_failure_disconnected">%1$s is disconnected</string>
     <string name="debug_failure_refused">%1$s refused the rates %2$s</string>
     <string name="debug_failure_denied">recording on %1$s is not permitted</string>
+
+    <!-- Debug-only output pane (M2); M5 replaces it with the real Drone and Metronome panes. -->
+    <string name="debug_output_title">Output (debug)</string>
+    <string name="debug_row_route">Stream</string>
+    <string name="debug_row_drone">Drone</string>
+    <string name="debug_row_metro">Metronome</string>
+    <string name="debug_row_beats">Beats</string>
+    <string name="debug_row_output_counters">Counters</string>
+    <string name="debug_row_native">Render callback</string>
+    <string name="debug_output_no_stream">No stream open</string>
+    <string name="debug_output_off">Off</string>
+    <string name="debug_drone_value">%1$s (MIDI %2$d), sine, gain %3$s</string>
+    <string name="debug_metro_value">%1$d bpm, 4/4, wood</string>
+    <string name="debug_beats_none">No beats yet</string>
+    <string name="debug_beats_value">%1$d beats; last index %2$d at beat %3$d of the bar, frame %4$d</string>
+    <string name="debug_counters_none">No counters yet</string>
+    <string name="debug_counters_value">%1$d late beats dropped, %2$d underruns</string>
+    <string name="debug_native_none">Not available on this port</string>
+    <string name="debug_native_value">%1$d frames rendered, %2$d underruns, %3$d bursts, %4$d late dropped</string>
+
+    <!-- The pane's state: one fact about the output stream. -->
+    <string name="debug_output_closed">Closed</string>
+    <string name="debug_output_open">Open on %1$s at %2$d Hz</string>
+    <string name="debug_output_paused_headphones">Paused: headphones disconnected</string>
+    <string name="debug_output_paused_call">Paused: phone call</string>
+    <string name="debug_output_paused_failed">Paused: output failed</string>
+    <string name="debug_output_paused_background">Paused: app in background</string>
+    <string name="debug_output_failed">Output failed: %1$s refused the rates %2$s</string>
 </resources>
