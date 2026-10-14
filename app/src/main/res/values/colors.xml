@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <!-- Only what the window theme needs before Compose runs; the rest is in :design. -->
+    <color name="gridline_gray">#C6C6C6</color>
+    <color name="gridline_blue">#0000A8</color>
+</resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <!-- The user-visible name lives here and in AppIdentity.NAME, nowhere else. -->
+    <string name="app_name">TickTock</string>
+
+    <string name="state_idle">Idle</string>
+    <string name="status_microphone_closed">Microphone closed</string>
+    <string name="status_output_closed">Output closed</string>
+    <string name="pane_tune">Tune</string>
+    <string name="empty_ready">Ready.</string>
+</resources>

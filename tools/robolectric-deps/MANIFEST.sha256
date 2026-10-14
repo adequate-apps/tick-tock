@@ -1,0 +1,8 @@
+# Robolectric runtime for API 36. The jar is gitignored; this manifest is the
+# pin. Robolectric runs with robolectric.offline=true and this directory as its
+# dependency dir, so a missing or renamed jar fails the test run instead of
+# triggering a download.
+#
+# Restage from Maven Central (org/robolectric/android-all-instrumented/16-robolectric-13921718-i7/)
+# into this directory, then run: sha256sum -c MANIFEST.sha256
+16f1f751643d1d3d5592008846bbdfc1e57cff15e6ec303d26584de3b6ac25ec  android-all-instrumented-16-robolectric-13921718-i7.jar
