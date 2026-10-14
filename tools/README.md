@@ -1,7 +1,7 @@
 # Tools
 
 The gate scripts. Each one runs from any directory and finds the repository
-root on its own. They need bash, git, GNU awk and coreutils; the test tiers
+root on its own. They need bash, git, grep, POSIX awk (GNU or mawk) and coreutils; the test tiers
 need JDK 21 (`JAVA_HOME`), the Android SDK (`ANDROID_HOME`) and the Robolectric
 jar staged under `robolectric-deps/`.
 

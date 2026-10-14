@@ -82,7 +82,7 @@ check_results() {
     # $1 tier label, $2 results directory. Counts the <testsuite> headers.
     local tier="$1" dir="$2" summary
     [ -d "$dir" ] || red "$tier" "missing tier output: no results directory at ${dir#"$root"/}"
-    summary=$(cat "$dir"/TEST-*.xml 2>/dev/null | gawk '
+    summary=$(cat "$dir"/TEST-*.xml 2>/dev/null | awk '
         /<testsuite / {
             match($0, /tests="[0-9]+"/);    t += substr($0, RSTART + 7, RLENGTH - 8)
             match($0, /skipped="[0-9]+"/);  s += substr($0, RSTART + 9, RLENGTH - 10)
@@ -218,6 +218,6 @@ tools/check-manifest.sh || red manifest "the merged manifest differs from tools/
 # --- verdict -------------------------------------------------------------------
 
 echo
-gaps=$(grep -r -h -o '@KnownGap("[^"]*"' --include='*.kt' --exclude='KnownGapRuleTest.kt' --exclude-dir=build . 2>/dev/null | sed 's/@KnownGap("//; s/"$//' | sort | uniq -c | gawk '{ printf "%s x%d ", $2, $1 }')
+gaps=$(grep -r -h -o '@KnownGap("[^"]*"' --include='*.kt' --exclude='KnownGapRuleTest.kt' --exclude-dir=build . 2>/dev/null | sed 's/@KnownGap("//; s/"$//' | sort | uniq -c | awk '{ printf "%s x%d ", $2, $1 }')
 echo "known gaps: ${gaps:-none}"
 echo "VERDICT: GREEN after $(( $(date +%s) - started )) s"

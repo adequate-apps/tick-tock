@@ -26,9 +26,16 @@
 # Options:
 #   --allow-missing-denylist  warn instead of fail when the denylist is absent
 #
-# Exit status: 0 clean, 1 a rule matched, 2 usage or setup error.
+# Exit status: 0 clean, 1 a rule matched, 2 usage or setup error. The scan
+# fails closed: a tool error while matching is exit 2, never "clean".
 
 set -euo pipefail
+
+# POSIX awk only (GNU or mawk both serve), so the CI image needs nothing
+# beyond git, grep, sed and coreutils.
+for tool in git grep sed cut awk sort mktemp; do
+    command -v "$tool" > /dev/null 2>&1 || { echo "identity-scan: $tool is not installed" >&2; exit 2; }
+done
 
 EXPECTED_IDENTITY='knelsonb <222288362+knelsonb@users.noreply.github.com>'
 
@@ -74,7 +81,7 @@ identities="$work/identities"
 # Added lines of a unified diff, located as FILE:LINE. Removed lines are
 # ignored on purpose: deleting a leak is the fix, never a new leak.
 added_lines_of_diff() {
-    gawk '
+    awk '
         /^\+\+\+ / { file = substr($0, 5); sub(/^b\//, "", file); next }
         /^--- /    { next }
         /^@@ /     { match($0, /\+[0-9]+/); line = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
@@ -106,7 +113,7 @@ add_commit() {
     printf 'commit %s (author)\t%s\n' "$sha" "$author" >> "$corpus"
     printf 'commit %s (committer)\t%s\n' "$sha" "$committer" >> "$corpus"
     printf '%s\t%s\t%s\n' "$sha" "$author" "$committer" >> "$identities"
-    git log -1 --format='%B' "$sha" | gawk -v sha="$sha" '{ printf "commit %s (message line %d)\t%s\n", sha, NR, $0 }' >> "$corpus"
+    git log -1 --format='%B' "$sha" | awk -v sha="$sha" '{ printf "commit %s (message line %d)\t%s\n", sha, NR, $0 }' >> "$corpus"
     git show --no-color --unified=0 --format= --diff-filter=AMCR "$sha" | added_lines_of_diff \
         | sed "s/^/commit ${sha:0:12} /" >> "$corpus"
 }
@@ -114,9 +121,10 @@ add_commit() {
 add_range() {
     local range="$1"
     local sha
+    git rev-list --reverse "$range" > "$work/shas" || { echo "identity-scan: git rev-list failed for '$range'" >&2; exit 2; }
     while IFS= read -r sha; do
         [ -n "$sha" ] && add_commit "$sha"
-    done < <(git rev-list --reverse "$range")
+    done < "$work/shas"
 }
 
 case "$mode" in
@@ -139,7 +147,8 @@ case "$mode" in
             printf 'branch %s\t%s\n' "$local_ref" "${local_ref#refs/heads/}" >> "$corpus"
             if [ "$remote_sha" = "$zero" ]; then
                 # New remote branch: every commit not already on some remote.
-                while IFS= read -r sha; do add_commit "$sha"; done < <(git rev-list --reverse "$local_sha" --not --remotes)
+                git rev-list --reverse "$local_sha" --not --remotes > "$work/shas" || { echo "identity-scan: git rev-list failed" >&2; exit 2; }
+                while IFS= read -r sha; do add_commit "$sha"; done < "$work/shas"
             else
                 add_range "$remote_sha..$local_sha"
             fi
@@ -152,7 +161,7 @@ case "$mode" in
         ;;
     text)
         [ -f "$arg" ] || { echo "identity-scan: no such file '$arg'" >&2; exit 2; }
-        gawk -v f="$arg" '{ printf "%s:%d\t%s\n", f, NR, $0 }' "$arg" >> "$corpus"
+        awk -v f="$arg" '{ printf "%s:%d\t%s\n", f, NR, $0 }' "$arg" >> "$corpus"
         ;;
     branch)
         printf 'branch (name)\t%s\n' "$arg" >> "$corpus"
@@ -178,12 +187,17 @@ report_builtin() {
 }
 
 matches() {
-    # $1 regex, $2 file of locations to skip (regex on the location), prints
-    # the matching corpus lines.
-    local regex="$1" skip="$2"
-    grep -n -i -E -e "$regex" "$work/text" | cut -d: -f1 \
-        | gawk -v skip="$skip" 'NR == FNR { want[$1] = 1; next }
-                               (FNR in want) && (skip == "" || $0 !~ skip)' - "$corpus"
+    # $1 regex, $2 regex on the location to skip (empty: skip nothing). Writes
+    # the matching corpus lines to $work/matches. Any failure other than
+    # "no match" is a setup error: a loop that reads nothing because a tool
+    # died would otherwise report a leaking tree as clean.
+    local regex="$1" skip="$2" status=0
+    grep -n -i -E -e "$regex" "$work/text" > "$work/grep" || status=$?
+    [ "$status" -le 1 ] || { echo "identity-scan: grep failed (status $status) on rule '$regex'" >&2; exit 2; }
+    cut -d: -f1 "$work/grep" > "$work/want" || { echo "identity-scan: cut failed" >&2; exit 2; }
+    awk -v skip="$skip" 'NR == FNR { want[$1] = 1; next }
+                         (FNR in want) && (skip == "" || $0 !~ skip)' "$work/want" "$corpus" > "$work/matches" \
+        || { echo "identity-scan: awk failed while applying a rule" >&2; exit 2; }
 }
 
 # Built-in rules skip the rules file itself, whose every line is a pattern.
@@ -195,11 +209,12 @@ while IFS= read -r rule; do
     regex=${rule#"$name"}
     regex=${regex#"${regex%%[![:space:]]*}"}
     [ -n "$regex" ] || continue
+    matches "$regex" "$skip_rules_file"
     while IFS= read -r match; do
         [ -n "$match" ] || continue
         report_builtin "$name" "$match"
         hits=$((hits + 1))
-    done < <(matches "$regex" "$skip_rules_file")
+    done < "$work/matches"
 done < "$rules_file"
 
 if [ -f "$denylist" ]; then
@@ -207,11 +222,12 @@ if [ -f "$denylist" ]; then
     while IFS= read -r regex || [ -n "$regex" ]; do
         case "$regex" in ''|'#'*) continue ;; esac
         n=$((n + 1))
+        matches "$regex" ""
         while IFS= read -r match; do
             [ -n "$match" ] || continue
             printf 'denylist rule %d matched in %s\n' "$n" "${match%%$'\t'*}"
             hits=$((hits + 1))
-        done < <(matches "$regex" "")
+        done < "$work/matches"
     done < "$denylist"
     [ "$n" -gt 0 ] || { echo "identity-scan: the denylist at $denylist has no rules" >&2; exit 2; }
 elif [ "$allow_missing_denylist" = 1 ]; then
