@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Every push and PR: wrapper hashes, strict dependency verification, the JVM
-# tiers and a debug APK. Actions are pinned to full commit SHAs; the tag is a
-# comment so a reviewer can see what the SHA was resolved from.
+# Every push and PR: identity scan (with the private denylist from a secret),
+# wrapper hashes, strict dependency verification, the JVM tiers, lint, a debug
+# APK, the manifest allowlist, the release guard and, on PRs, the red-on-base
+# proof. Actions are pinned to full commit SHAs; the tag is a comment so a
+# reviewer can see what the SHA was resolved from.
 name: check
 
 on:
@@ -13,10 +15,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   WRAPPER_JAR_SHA256: 497c8c2a7e5031f6aa847f88104aa80a93532ec32ee17bdb8d1d2f67a194a9c7
   ROBOLECTRIC_JAR: android-all-instrumented-16-robolectric-13921718-i7.jar
-  ROBOLECTRIC_JAR_SHA256: 16f1f751643d1d3d5592008846bbdfc1e57cff15e6ec303d26584de3b6ac25ec
+  # Belt and braces with gradle.properties: an artifact missing from
+  # gradle/verification-metadata.xml fails the job.
+  GRADLE_OPTS: -Dorg.gradle.dependency.verification=strict
+  TICKTOCK_DENYLIST: ${{ runner.temp }}/denylist
 
 jobs:
   check:
@@ -24,6 +33,41 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          # The PR's own head, never the synthetic merge commit: its committer
+          # would fail the identity check. The scan reads the whole history.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Write the denylist from its secret
+        env:
+          DENYLIST: ${{ secrets.TICKTOCK_DENYLIST }}
+        run: |
+          if [ -z "$DENYLIST" ]; then
+            echo "the TICKTOCK_DENYLIST secret is not available to this run; the scan cannot be complete" >&2
+            exit 1
+          fi
+          (umask 077 && printf '%s\n' "$DENYLIST" > "$TICKTOCK_DENYLIST")
+
+      - name: Identity scan over the tree and the whole history
+        run: |
+          tools/identity-scan.sh --tree
+          tools/identity-scan.sh --history
+
+      - name: Identity scan over the PR range, title, body and branch name
+        if: github.event_name == 'pull_request'
+        env:
+          # Passed through the environment, never interpolated into the script.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_BRANCH: ${{ github.head_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY" > "$RUNNER_TEMP/pr.txt"
+          tools/identity-scan.sh --text "$RUNNER_TEMP/pr.txt"
+          tools/identity-scan.sh --branch "$PR_BRANCH"
+          tools/identity-scan.sh --range "$BASE_SHA..$HEAD_SHA"
 
       - name: Verify the Gradle wrapper
         run: |
@@ -42,19 +86,61 @@ jobs:
             "https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented/16-robolectric-13921718-i7/${ROBOLECTRIC_JAR}"
           (cd tools/robolectric-deps && sha256sum -c MANIFEST.sha256)
 
-      - name: JVM tiers and debug APK
+      - name: Full gate (sources, U, N, H, lint, APK, manifest)
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+          # On a push this is the previous tip; on a new branch it is all zeros
+          # and verify.sh falls back to the merge base with main.
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: tools/verify.sh --base "$BASE_SHA"
+
+      - name: Prove the PR's tests are red on the base
+        if: github.event_name == 'pull_request'
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: tools/prove-red.sh --base "$BASE_SHA" --head "$HEAD_SHA"
+
+      - name: Release guard fires on the placeholder id
         env:
           ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
         run: |
-          ./gradlew --no-daemon --console=plain --dependency-verification=strict \
-            :core:test \
-            :engine:testDebugUnitTest :data:testDebugUnitTest :design:testDebugUnitTest \
-            :app:testDebugUnitTest \
-            :app:assembleDebug
-
-      - name: Release guard fires on the placeholder id
-        run: |
-          if ./gradlew --no-daemon --console=plain --dependency-verification=strict :app:checkReleaseApplicationId; then
+          if ./gradlew --no-daemon --console=plain :app:checkReleaseApplicationId; then
             echo "the release guard passed on a placeholder id" >&2
             exit 1
           fi
+
+  # The gate's own proof: seven planted failures must each turn it red. It
+  # rebuilds the tree once per case, so it runs on main only.
+  selftest:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Write the denylist from its secret
+        env:
+          DENYLIST: ${{ secrets.TICKTOCK_DENYLIST }}
+        run: |
+          [ -n "$DENYLIST" ] || { echo "the TICKTOCK_DENYLIST secret is not available to this run" >&2; exit 1; }
+          (umask 077 && printf '%s\n' "$DENYLIST" > "$TICKTOCK_DENYLIST")
+
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Stage the Robolectric runtime
+        run: |
+          curl -sSfL -o "tools/robolectric-deps/${ROBOLECTRIC_JAR}" \
+            "https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented/16-robolectric-13921718-i7/${ROBOLECTRIC_JAR}"
+          (cd tools/robolectric-deps && sha256sum -c MANIFEST.sha256)
+
+      - name: Seven planted failures turn the gate red
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+        run: tools/verify-selftest.sh
