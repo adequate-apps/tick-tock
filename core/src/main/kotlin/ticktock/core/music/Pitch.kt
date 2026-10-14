@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.core.music
 
+import kotlin.math.floor
+import kotlin.math.log2
+import kotlin.math.pow
+
 /**
  * MIDI pitch facts shared by every module. The detector window is declared here
  * once (spec 0.3) so a range, a histogram and a test can never disagree about
@@ -13,15 +17,39 @@ object Pitch {
     const val MIDI_A4 = 69
 
     /** Spelling-neutral label such as "A#/Bb3" or "C4"; octave numbers follow C4 = 60. */
-    fun label(midi: Int): String {
-        val octave = midi / 12 - 1
-        return NAMES[Math.floorMod(midi, 12)] + octave
+    fun label(midi: Int): String = NAMES[Math.floorMod(midi, 12)] + octave(midi)
+
+    /** Scientific octave number: 60 is C4, 59 is B3. */
+    fun octave(midi: Int): Int = Math.floorDiv(midi, 12) - 1
+
+    /** Equal-tempered frequency of a (possibly fractional) MIDI number against [a4Hz]. */
+    fun hzFromMidi(midi: Double, a4Hz: Double): Double = a4Hz * 2.0.pow((midi - MIDI_A4) / 12.0)
+
+    fun hzFromMidi(midi: Int, a4Hz: Double): Double = hzFromMidi(midi.toDouble(), a4Hz)
+
+    /** Fractional MIDI number of [hz] against [a4Hz]; NaN when [hz] is not a positive finite number. */
+    fun midiFromHz(hz: Double, a4Hz: Double): Double =
+        if (hz.isNaN() || hz <= 0.0 || hz.isInfinite()) Double.NaN else MIDI_A4 + 12.0 * log2(hz / a4Hz)
+
+    /**
+     * The nearest equal-tempered note to [hz] and the signed cents from it, or
+     * null when [hz] carries no reading (BND-05). An exact quarter-tone rounds
+     * to the upper note, so the cents are always in -50..50.
+     */
+    fun nearest(hz: Double, a4Hz: Double): NearestNote? {
+        val midi = midiFromHz(hz, a4Hz)
+        if (midi.isNaN()) return null
+        val note = floor(midi + 0.5).toInt()
+        return NearestNote(note, (midi - note) * 100.0)
     }
 
     private val NAMES = arrayOf(
         "C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B",
     )
 }
+
+/** The note a frequency sits nearest to and how far off it is, in signed cents. */
+data class NearestNote(val midi: Int, val cents: Double)
 
 /**
  * Transposition is sounding minus written, in semitones, for every instrument
