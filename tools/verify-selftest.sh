@@ -127,6 +127,8 @@ plant_threshold() {
 package ticktock.core
 
 const val PLANTED_CLOSE_CENTS = 12.0
+
+fun plantedColour(shown: Int): Int = if (kotlin.math.abs(shown) <= 5) 1 else 3
 EOF
 }
 

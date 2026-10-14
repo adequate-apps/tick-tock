@@ -136,16 +136,27 @@ fi
 echo "no skip markers in test sources"
 
 # BND-04: the band thresholds live in CentsBand and nowhere else. Any other
-# file that declares a cents constant or compares cents to a literal is a
-# second threshold in the making.
-band_file="core/src/main/kotlin/ticktock/core/band/CentsBand.kt"
+# main-source file that declares a cents constant, compares cents to a
+# literal, or compares anything at all against a band literal (5, 12, or the
+# 1.x values 3, 15, 10, 25) is a second threshold in the making, whatever the
+# variable is called. Unrelated uses are named in tools/band-literal-allowlist.txt.
+# The BND-04 test in :core applies the same rule from Kotlin.
+band_file="core/src/main/kotlin/ticktock/core/music/CentsBand.kt"
+[ -f "$band_file" ] || red sources "$band_file is missing; the band guard has nothing to exclude"
+band_literal='(3|5|10|12|15|25)(\.0+)?'
 main_sources=$(find . -path ./build -prune -o -path '*/src/main/*' -type f -name '*.kt' -print | grep -v '/build/' | grep -v "^\./$band_file\$" || true)
 if [ -n "$main_sources" ]; then
+    grep -v -e '^#' -e '^[[:space:]]*$' tools/band-literal-allowlist.txt > "$logdir/band-allow" || true
     # shellcheck disable=SC2086
     hits=$(code_lines $main_sources | grep -E \
         -e '\bval [A-Za-z_]*(Cents|CENTS)[A-Za-z_]*( *: *[A-Za-z]+)? *= *-?[0-9]' \
+        -e '\b(IN_TUNE_MAX|CLOSE_MAX) *=' \
         -e '[Cc]ents\)? *(<=?|>=?|==) *-?[0-9]' \
-        -e '[0-9] *(<=?|>=?) *(abs\()?[A-Za-z_.]*[Cc]ents\b' || true)
+        -e '[0-9] *(<=?|>=?) *(abs\()?[A-Za-z_.]*[Cc]ents\b' \
+        -e "(^|[^-=<>!])(<=|>=|==|<|>) *-?$band_literal([^0-9.A-Za-z_]|\$)" \
+        -e "(^|[^0-9A-Za-z_.])$band_literal *(<=|>=|<|>)([^>=-]|\$)" \
+        | sed -E 's/^\.\/([^:]+):[0-9]+:[[:space:]]*/\1:/' | sed -E 's/[[:space:]]+$//' \
+        | grep -v -E -f "$logdir/band-allow" || true)
     [ -z "$hits" ] || { echo "$hits"; red sources "a cents threshold outside $band_file"; }
 fi
 echo "no cents threshold outside ${band_file##*/}"

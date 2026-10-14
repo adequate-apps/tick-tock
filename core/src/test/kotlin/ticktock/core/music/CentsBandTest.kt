@@ -68,9 +68,10 @@ class CentsBandTest {
 
     /**
      * BND-04: the thresholds live in CentsBand and nowhere else. Any main source in
-     * any module that compares a cents-ish value against a whole-number literal is
-     * an offender, as is a second definition of the threshold names. The 1.x sets
-     * (3/15, 5/15, 10/25) are caught by the same rule.
+     * any module that compares against a band literal (5, 12, or a 1.x value 3, 15,
+     * 10, 25) under any name, compares a cents-ish value against any literal, or
+     * declares a cents constant or the threshold names is an offender, unless
+     * tools/band-literal-allowlist.txt names that exact line as unrelated.
      */
     @Test
     fun `BND-04 no other band threshold literal exists in any module`() {
@@ -80,9 +81,10 @@ class CentsBandTest {
             .flatMap { module -> File(module, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" } }
         check(mainSources.any { it.name == "CentsBand.kt" }) { "scan did not reach CentsBand.kt from ${repoRoot.path}" }
 
+        val allow = BandThresholdGuard.allowlist(File(repoRoot, "tools/band-literal-allowlist.txt"))
         val offenders = mainSources
             .filter { it.name != "CentsBand.kt" }
-            .flatMap { file -> BandThresholdGuard.offenders(file, file.relativeTo(repoRoot).path) }
+            .flatMap { file -> BandThresholdGuard.offenders(file, file.relativeTo(repoRoot).path, allow) }
         assertEquals("band thresholds outside CentsBand.kt", emptyList<String>(), offenders)
     }
 

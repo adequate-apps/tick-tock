@@ -1,0 +1,11 @@
+# BND-04 allowlist. The band guards (tools/verify.sh and the BND-04 test in
+# :core) refuse any main-source Kotlin line that compares against one of the
+# band literals 3, 5, 10, 12, 15 or 25, whatever the variable is called. A
+# comparison that has nothing to do with cents goes here as one extended
+# regex per line, matched against "<repo path>:<code line, trimmed>", with a
+# comment above it saying why. Keep entries narrow: the file name and the
+# exact expression.
+#
+# Example:
+#   # a page of five rows, unrelated to cents
+#   ^app/src/main/kotlin/ticktock/app/screens/Table.kt:if \(rows > 5\)

@@ -23,9 +23,13 @@ jar staged under `robolectric-deps/`.
   fixtures): it keeps failing on its merits and turns the build red the day it
   passes.
 - **Band thresholds.** The cents thresholds live in
-  `core/src/main/kotlin/ticktock/core/band/CentsBand.kt` only. Any other
-  `src/main` Kotlin file that declares a `...Cents` constant with a literal or
-  compares cents to a literal is refused.
+  `core/src/main/kotlin/ticktock/core/music/CentsBand.kt` only. Any other
+  `src/main` Kotlin file that declares a `...Cents` constant with a literal,
+  compares cents to a literal, or compares anything against a band literal
+  (5, 12, or the 1.x values 3, 15, 10, 25) is refused, whatever the variable
+  is called. A comparison that has nothing to do with cents is named in
+  `band-literal-allowlist.txt` with its reason. The BND-04 test in `:core`
+  applies the same rule and reads the same allowlist.
 - **Render path.** Files under `engine/src/main/cpp/render/` run inside the
   audio callback. Heap allocation, standard containers, locks and logging are
   refused there by a source lint; the host-tests allocation counter adds the
