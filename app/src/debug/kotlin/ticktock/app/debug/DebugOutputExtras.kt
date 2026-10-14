@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -18,10 +19,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onSubscription
+import kotlinx.coroutines.launch
 import ticktock.app.R
 import ticktock.core.contracts.OutputCommand
 import ticktock.core.contracts.OutputEvent
 import ticktock.core.contracts.OutputInfo
+import ticktock.core.contracts.OutputPort
 import ticktock.core.contracts.OutputTool
 import ticktock.core.contracts.ParkReason
 import ticktock.core.contracts.Voice
@@ -36,9 +43,12 @@ import ticktock.design.components.Pane
 import ticktock.design.components.SettingRow
 import ticktock.engine.output.NativeDiagnostics
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** What the port has reported since the pane started, folded from its events. */
 private data class OutputState(
+    /** The variant name of the newest event, for the row and the harness. */
+    val lastEvent: String? = null,
     val beats: Long = 0,
     val lastBeat: OutputEvent.Beat? = null,
     val counters: OutputEvent.Counters? = null,
@@ -54,7 +64,7 @@ private data class OutputState(
         is OutputEvent.Parked -> copy(parked = event.reason)
         is OutputEvent.Failed -> copy(failed = event)
         OutputEvent.Closed -> this
-    }
+    }.copy(lastEvent = event.name())
 }
 
 /**
@@ -73,22 +83,21 @@ fun DebugOutputExtras() {
     var state by remember { mutableStateOf(OutputState()) }
     val info by port.info.collectAsStateWithLifecycle()
 
-    LaunchedEffect(port) {
-        port.events.collect { event ->
-            state = state.after(event)
-            // One line per event for tools/device/output.sh; beats are at most a few per second.
-            Log.i(LOG_TAG, "output event=${event.line()}")
-        }
-    }
-
+    val scope = rememberCoroutineScope()
+    val collecting = remember { AtomicBoolean(false) }
     LifecycleResumeEffect(choice) {
-        choice.droneMidi?.let { midi ->
-            send(port, OutputCommand.Register(OutputTool.DRONE))
-            send(port, OutputCommand.VoiceOn(OutputSeam.DRONE_SLOT, midi, Voice.SINE, OutputSeam.DRONE_GAIN))
-        }
-        choice.metroBpm?.let { bpm ->
-            send(port, OutputCommand.Register(OutputTool.METRONOME))
-            send(port, OutputCommand.MetroStart(OutputSeam.metroSetup(bpm)))
+        if (collecting.getAndSet(true)) {
+            start(port, choice)
+        } else {
+            // The real port replays nothing, so the first start waits for the
+            // subscription; otherwise Opened is emitted before anyone listens.
+            scope.launch {
+                port.events.onSubscribed { start(port, choice) }.collect { event ->
+                    state = state.after(event)
+                    // One line per event for tools/device/output.sh; beats are at most a few per second.
+                    Log.i(LOG_TAG, "output event=${event.line()}")
+                }
+            }
         }
         onPauseOrDispose {
             // Leaving the screen stops exactly what this pane started, tool by tool.
@@ -124,6 +133,7 @@ fun DebugOutputExtras() {
         ?: stringResource(R.string.debug_beats_none)
     val counters = state.counters?.let { stringResource(R.string.debug_counters_value, it.lateBeatsDropped, it.underruns) }
         ?: stringResource(R.string.debug_counters_none)
+    val lastEvent = state.lastEvent ?: stringResource(R.string.debug_event_none)
     val nativeLine = native?.let { stringResource(R.string.debug_native_value, it.framesRendered, it.underruns, it.bufferBursts, it.lateBeatsDropped) }
         ?: stringResource(R.string.debug_native_none)
 
@@ -135,6 +145,7 @@ fun DebugOutputExtras() {
     ) {
         Field(Modifier.fillMaxWidth()) {
             SettingRow(label = stringResource(R.string.debug_row_route), value = route, tag = "debug-route")
+            SettingRow(label = stringResource(R.string.debug_row_last_event), value = lastEvent, tag = "debug-last-event")
             SettingRow(label = stringResource(R.string.debug_row_drone), value = drone, tag = "debug-drone")
             SettingRow(label = stringResource(R.string.debug_row_metro), value = metro, tag = "debug-metro")
             SettingRow(label = stringResource(R.string.debug_row_beats), value = beats, tag = "debug-beats")
@@ -147,7 +158,22 @@ fun DebugOutputExtras() {
     }
 }
 
-private fun send(port: ticktock.core.contracts.OutputPort, cmd: OutputCommand) {
+private fun start(port: OutputPort, choice: OutputSeam.Choice) {
+    choice.droneMidi?.let { midi ->
+        send(port, OutputCommand.Register(OutputTool.DRONE))
+        send(port, OutputCommand.VoiceOn(OutputSeam.DRONE_SLOT, midi, Voice.SINE, OutputSeam.DRONE_GAIN))
+    }
+    choice.metroBpm?.let { bpm ->
+        send(port, OutputCommand.Register(OutputTool.METRONOME))
+        send(port, OutputCommand.MetroStart(OutputSeam.metroSetup(bpm)))
+    }
+}
+
+/** Runs [action] once the collector is registered: on a shared flow exactly then, on any other flow just before collecting. */
+private fun <T> Flow<T>.onSubscribed(action: () -> Unit): Flow<T> =
+    if (this is SharedFlow<T>) onSubscription { action() } else onStart { action() }
+
+private fun send(port: OutputPort, cmd: OutputCommand) {
     Log.i(LOG_TAG, "output sent=$cmd")
     port.send(cmd)
 }
@@ -166,6 +192,8 @@ private fun sentence(info: OutputInfo?, state: OutputState): String {
         else -> stringResource(R.string.debug_output_closed)
     }
 }
+
+private fun OutputEvent.name(): String = line().substringBefore(' ')
 
 private fun OutputEvent.line(): String = when (this) {
     is OutputEvent.Opened -> "Opened ${info.line()}"

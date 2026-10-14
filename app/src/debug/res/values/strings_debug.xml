@@ -31,6 +31,8 @@
     <!-- Debug-only output pane (M2); M5 replaces it with the real Drone and Metronome panes. -->
     <string name="debug_output_title">Output (debug)</string>
     <string name="debug_row_route">Stream</string>
+    <string name="debug_row_last_event">Last event</string>
+    <string name="debug_event_none">None yet</string>
     <string name="debug_row_drone">Drone</string>
     <string name="debug_row_metro">Metronome</string>
     <string name="debug_row_beats">Beats</string>
