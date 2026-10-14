@@ -17,7 +17,8 @@ import ticktock.engine.output.NativeDiagnostics
  *
  * Launch extras:
  *  - `ticktock.debug.drone_midi` (int): a sine drone at that MIDI note;
- *  - `ticktock.debug.metro_bpm` (int): the metronome in 4/4 on the wood click.
+ *  - `ticktock.debug.metro_bpm` (int): the metronome in 4/4 on the wood click;
+ *  - `ticktock.debug.a4_hz` (float, shared with [InputSeam]): the A4 the drone is tuned to, sent before it strikes.
  *
  * Either extra opens the pane; the port is the device's [AndroidAudioControl],
  * one per process. A test sets [override] and the extras reach its port instead.
@@ -36,6 +37,8 @@ object OutputSeam {
     class Choice(
         val droneMidi: Int?,
         val metroBpm: Int?,
+        /** Null means the engine's default A4 stands. */
+        val a4Hz: Double?,
         val port: OutputPort,
         /** The native counters of the open stream, null on a port that has none. */
         val nativeDiagnostics: () -> NativeDiagnostics?,
@@ -46,9 +49,10 @@ object OutputSeam {
         val droneMidi = if (intent.hasExtra(EXTRA_DRONE_MIDI)) intent.getIntExtra(EXTRA_DRONE_MIDI, 0) else null
         val metroBpm = if (intent.hasExtra(EXTRA_METRO_BPM)) intent.getIntExtra(EXTRA_METRO_BPM, 0) else null
         if (droneMidi == null && metroBpm == null) return null
-        override?.let { fixed -> return Choice(droneMidi, metroBpm, fixed) { null } }
+        val a4Hz = if (intent.hasExtra(InputSeam.EXTRA_A4_HZ)) intent.getFloatExtra(InputSeam.EXTRA_A4_HZ, 0f).toDouble() else null
+        override?.let { fixed -> return Choice(droneMidi, metroBpm, a4Hz, fixed) { null } }
         val stack = shared(activity.applicationContext)
-        return Choice(droneMidi, metroBpm, stack.control, stack::nativeDiagnostics)
+        return Choice(droneMidi, metroBpm, a4Hz, stack.control, stack::nativeDiagnostics)
     }
 
     /** The one setup the pane starts: a plain 4/4 on the wood click at [bpm]. */

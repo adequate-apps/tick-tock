@@ -40,7 +40,7 @@
     <string name="debug_row_native">Render callback</string>
     <string name="debug_output_no_stream">No stream open</string>
     <string name="debug_output_off">Off</string>
-    <string name="debug_drone_value">%1$s (MIDI %2$d), sine, gain %3$s</string>
+    <string name="debug_drone_value">%1$s (MIDI %2$d)%3$s, sine, gain %4$s</string>
     <string name="debug_metro_value">%1$d bpm, 4/4, wood</string>
     <string name="debug_beats_none">No beats yet</string>
     <string name="debug_beats_value">%1$d beats; last index %2$d at beat %3$d of the bar, frame %4$d</string>

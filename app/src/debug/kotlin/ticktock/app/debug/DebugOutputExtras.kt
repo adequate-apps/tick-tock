@@ -126,8 +126,10 @@ fun DebugOutputExtras() {
     val sentence = sentence(info, state)
     val route = info?.let { "${it.deviceName}, ${it.routeClass}, ${it.framesPerBlock} frames per block, ${it.latencyMillis} ms" }
         ?: stringResource(R.string.debug_output_no_stream)
-    val drone = choice.droneMidi?.let { stringResource(R.string.debug_drone_value, Pitch.label(it), it, OutputSeam.DRONE_GAIN.toString()) }
-        ?: stringResource(R.string.debug_output_off)
+    val drone = choice.droneMidi?.let { midi ->
+        val a4 = choice.a4Hz?.let { String.format(Locale.US, " at A4 = %.0f Hz", it) } ?: ""
+        stringResource(R.string.debug_drone_value, Pitch.label(midi), midi, a4, OutputSeam.DRONE_GAIN.toString())
+    } ?: stringResource(R.string.debug_output_off)
     val metro = choice.metroBpm?.let { stringResource(R.string.debug_metro_value, it) } ?: stringResource(R.string.debug_output_off)
     val beats = state.lastBeat?.let { stringResource(R.string.debug_beats_value, state.beats, it.index, it.beatInBar, it.frame) }
         ?: stringResource(R.string.debug_beats_none)
@@ -167,6 +169,8 @@ private fun CaptionedLine(caption: String, text: String, tag: String) {
 private fun start(port: OutputPort, choice: OutputSeam.Choice) {
     choice.droneMidi?.let { midi ->
         send(port, OutputCommand.Register(OutputTool.DRONE))
+        // Retune first, so the voice strikes in tune rather than sliding there (TON-03 covers the slide).
+        choice.a4Hz?.let { send(port, OutputCommand.SetA4(it)) }
         send(port, OutputCommand.VoiceOn(OutputSeam.DRONE_SLOT, midi, Voice.SINE, OutputSeam.DRONE_GAIN))
     }
     choice.metroBpm?.let { bpm ->
