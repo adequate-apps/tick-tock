@@ -46,13 +46,18 @@ class AndroidOutputDevices(private val context: Context, private val audioManage
         unwatch()
         val deviceCallback = object : AudioDeviceCallback() {
             // Registration replays the devices already present, and inputs
-            // arrive here too; the control thread matches outputs by id and
-            // route class, so an input in the list is harmless and an empty
-            // list is not an event.
+            // arrive here too. An input is never a route: a USB microphone
+            // must not read as a headphone replug and bring parked tools out
+            // on the speaker (OUT-03). Only what the output list holds is
+            // passed on, and an empty list is not an event.
             override fun onAudioDevicesAdded(added: Array<AudioDeviceInfo>) {
-                added.routed().takeIf { it.isNotEmpty() }?.let(listener::onAdded)
+                val outputIds = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).mapTo(HashSet()) { it.id }
+                added.filter { it.id in outputIds }.routed().takeIf { it.isNotEmpty() }?.let(listener::onAdded)
             }
 
+            // A removed input matches no stream, so the control thread
+            // ignores it by id; the output list has already dropped the
+            // device, so there is nothing to filter against here.
             override fun onAudioDevicesRemoved(removed: Array<AudioDeviceInfo>) {
                 removed.routed().takeIf { it.isNotEmpty() }?.let(listener::onRemoved)
             }
@@ -80,6 +85,8 @@ class AndroidOutputDevices(private val context: Context, private val audioManage
     companion object {
         fun AudioDeviceInfo.toRouted(): RoutedDevice = RoutedDevice(id, type, productName.toString())
 
-        private fun Array<AudioDeviceInfo>.routed(): List<RoutedDevice> = map { it.toRouted() }
+        private fun Iterable<AudioDeviceInfo>.routed(): List<RoutedDevice> = map { it.toRouted() }
+
+        private fun Array<AudioDeviceInfo>.routed(): List<RoutedDevice> = asIterable().routed()
     }
 }
