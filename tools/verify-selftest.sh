@@ -7,16 +7,17 @@
 # that produced it. A control run on the unmodified tree must be green first,
 # otherwise a red proves nothing.
 #
-# The nine planted failures:
+# The ten planted failures:
 #   1. missing tier output     the U tier task is disabled, so it writes no XML
 #   2. zero tests found        the U tier runs with a filter that matches nothing
 #   3. a passing known gap     a @KnownGap test whose body passes
 #   4. allocation in render    a heap allocation in engine/src/main/cpp/render
-#   5. a threshold outside CentsBand   a cents constant in another core file
-#   6. a denylisted string     one denylist entry pasted into README.md
-#   7. a wrong commit author   a commit on the branch by someone else
-#   8. a stray permission      a <uses-permission> the allowlist does not name
-#   9. a misaligned library    a prebuilt 64-bit .so linked for 4 KB pages
+#   5. allocation in the callback   a heap allocation inside OutputController::onRender
+#   6. a threshold outside CentsBand   a cents constant in another core file
+#   7. a denylisted string     one denylist entry pasted into README.md
+#   8. a wrong commit author   a commit on the branch by someone else
+#   9. a stray permission      a <uses-permission> the allowlist does not name
+#  10. a misaligned library    a prebuilt 64-bit .so linked for 4 KB pages
 #
 # The denylisted string is read from the denylist at run time, written into
 # the scratch tree only and never printed. The misaligned library is compiled
@@ -24,7 +25,7 @@
 #
 #   tools/verify-selftest.sh [--only NAME ...]
 #
-# --only runs the control case plus the named cases; the default is all nine.
+# --only runs the control case plus the named cases; the default is all ten.
 set -uo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -142,6 +143,15 @@ float* planted() { return new float[64]; }
 EOF
 }
 
+plant_callback_alloc() {
+    # Inside the controller's callback, outside render/: the function scan has
+    # to catch what the directory scan cannot.
+    sed -i 's|^void OutputController::onRender(float\* interleaved, std::int32_t frames) {$|&\n    float* planted = new float[64];\n    delete[] planted;|' \
+        "$scratch/engine/src/main/cpp/control/OutputController.cpp"
+    grep -q 'planted = new float' "$scratch/engine/src/main/cpp/control/OutputController.cpp" \
+        || { echo "verify-selftest: could not plant the callback allocation" >&2; exit 2; }
+}
+
 plant_threshold() {
     mkdir -p "$scratch/core/src/main/kotlin/ticktock/core"
     cat > "$scratch/core/src/main/kotlin/ticktock/core/Planted.kt" <<'EOF'
@@ -199,6 +209,7 @@ run_case missing-tier-output RED "missing tier output" plant_missing_output
 run_case zero-tests RED "zero tests found" plant_zero_tests
 run_case passing-known-gap RED "SELFTEST-01 (a gap that quietly closed) passed" plant_passing_gap
 run_case render-allocation RED "allocation, locking or logging on the render path" plant_render_alloc
+run_case callback-allocation RED "allocation, locking or logging on the render path" plant_callback_alloc
 run_case threshold-outside-band RED "a cents threshold outside" plant_threshold
 run_case denylisted-string RED "denylist rule" plant_denylisted
 run_case wrong-commit-author RED "rule commit-identity matched" plant_wrong_author
