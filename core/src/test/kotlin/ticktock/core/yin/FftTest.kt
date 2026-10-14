@@ -34,17 +34,54 @@ class FftTest {
         assertEquals(6400, yin48.fftLength)
         assertEquals(Fft.smallestFiveSmoothAtLeast(yin48.windowFrames + yin48.maxLag + 1), yin48.fftLength)
         val yin44 = Yin(44100)
+        assertEquals(6000, yin44.fftLength)
         assertEquals(Fft.smallestFiveSmoothAtLeast(yin44.windowFrames + yin44.maxLag + 1), yin44.fftLength)
         assertTrue(Fft.isFiveSmooth(yin44.fftLength))
         for (yin in listOf(yin44, yin48)) {
             assertTrue("no power-of-two pad at ${yin.sampleRate}", yin.fftLength and (yin.fftLength - 1) != 0)
             assertTrue(yin.fftLength >= yin.windowFrames + yin.maxLag + 1)
+            assertEquals("even, for the real transform at ${yin.sampleRate}", 0, yin.fftLength % 2)
         }
     }
 
     @Test
+    fun `DET-17 the even 5-smooth length is the 5-smooth one when that is even, and the next even one otherwise`() {
+        assertEquals(6400, Fft.smallestEvenFiveSmoothAtLeast(6342))
+        assertEquals(6000, Fft.smallestEvenFiveSmoothAtLeast(5861))
+        assertEquals(2, Fft.smallestEvenFiveSmoothAtLeast(1))
+        assertEquals(4, Fft.smallestEvenFiveSmoothAtLeast(3))
+        assertEquals(6, Fft.smallestEvenFiveSmoothAtLeast(5))
+        assertEquals(128, Fft.smallestEvenFiveSmoothAtLeast(126))  // 125 and 127 are out, 128 is next
+        assertEquals(250, Fft.smallestEvenFiveSmoothAtLeast(244))  // 243 is odd
+    }
+
+    @Test
+    fun `DET-17 the real transform matches the complex one on real input, bin for bin up to the middle`() {
+        for (length in intArrayOf(2, 4, 6, 10, 30, 60, 250, 1024, 5832, 6000, 6400)) {
+            val random = Random(length.toLong() + 7)
+            val x = DoubleArray(length) { random.nextDouble() * 2 - 1 }
+            val original = x.copyOf()
+            val re = x.copyOf()
+            val im = DoubleArray(length)
+            Fft(length).forward(re, im)
+            val real = RealFft(length)
+            val outRe = DoubleArray(real.bins)
+            val outIm = DoubleArray(real.bins)
+            real.forward(x, outRe, outIm)
+            assertEquals(length / 2 + 1, real.bins)
+            for (k in 0 until real.bins) {
+                assertEquals("re[$k] of $length", re[k], outRe[k], 1e-9 * length)
+                assertEquals("im[$k] of $length", im[k], outIm[k], 1e-9 * length)
+            }
+            // The input is left as it was.
+            assertTrue(original.contentEquals(x))
+        }
+        assertTrue(runCatching { RealFft(15) }.exceptionOrNull() is IllegalArgumentException)
+    }
+
+    @Test
     fun `DET-05 the mixed-radix transform matches a direct DFT`() {
-        for (length in intArrayOf(1, 2, 3, 5, 6, 30, 60, 243, 250, 1024, 5832, 6400)) {
+        for (length in intArrayOf(1, 2, 3, 5, 6, 9, 25, 30, 60, 243, 250, 1024, 3200, 5832, 6400)) {
             val random = Random(length.toLong())
             val re = DoubleArray(length) { random.nextDouble() * 2 - 1 }
             val im = DoubleArray(length) { random.nextDouble() * 2 - 1 }
