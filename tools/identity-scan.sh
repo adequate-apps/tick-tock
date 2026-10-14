@@ -161,6 +161,11 @@ esac
 
 # --- rule application ---------------------------------------------------------
 
+# Rules match the text alone, so that anchors such as ^ apply to the scanned
+# line. The location column is kept beside it, line for line.
+cut -f1 "$corpus" > "$work/loc"
+cut -f2- "$corpus" > "$work/text"
+
 hits=0
 
 report_builtin() {
@@ -172,8 +177,17 @@ report_builtin() {
     printf 'rule %s matched in %s: %.120s\n' "$name" "$loc" "$text"
 }
 
+matches() {
+    # $1 regex, $2 file of locations to skip (regex on the location), prints
+    # the matching corpus lines.
+    local regex="$1" skip="$2"
+    grep -n -i -E -e "$regex" "$work/text" | cut -d: -f1 \
+        | gawk -v skip="$skip" 'NR == FNR { want[$1] = 1; next }
+                               (FNR in want) && (skip == "" || $0 !~ skip)' - "$corpus"
+}
+
 # Built-in rules skip the rules file itself, whose every line is a pattern.
-grep -v -e "^${rules_rel}[: ]" -e "^commit [0-9a-f]* ${rules_rel}[: ]" "$corpus" > "$work/corpus-builtin" || true
+skip_rules_file="^(commit [0-9a-f]+ )?${rules_rel}[: ]"
 
 while IFS= read -r rule; do
     case "$rule" in ''|'#'*) continue ;; esac
@@ -182,9 +196,10 @@ while IFS= read -r rule; do
     regex=${regex#"${regex%%[![:space:]]*}"}
     [ -n "$regex" ] || continue
     while IFS= read -r match; do
+        [ -n "$match" ] || continue
         report_builtin "$name" "$match"
         hits=$((hits + 1))
-    done < <(grep -i -E -e "$regex" "$work/corpus-builtin" || true)
+    done < <(matches "$regex" "$skip_rules_file")
 done < "$rules_file"
 
 if [ -f "$denylist" ]; then
@@ -193,9 +208,10 @@ if [ -f "$denylist" ]; then
         case "$regex" in ''|'#'*) continue ;; esac
         n=$((n + 1))
         while IFS= read -r match; do
+            [ -n "$match" ] || continue
             printf 'denylist rule %d matched in %s\n' "$n" "${match%%$'\t'*}"
             hits=$((hits + 1))
-        done < <(grep -i -E -e "$regex" "$corpus" || true)
+        done < <(matches "$regex" "")
     done < "$denylist"
     [ "$n" -gt 0 ] || { echo "identity-scan: the denylist at $denylist has no rules" >&2; exit 2; }
 elif [ "$allow_missing_denylist" = 1 ]; then
