@@ -31,7 +31,12 @@ object Cents {
     const val NO_READING = "–"
 
     private fun roundHalfAwayFromZero(value: Double): Int {
-        val magnitude = floor(abs(value) + 0.5)
+        // Compare the fraction rather than adding 0.5 first: the addition can
+        // round the largest double below one half up to 1.0 before the floor.
+        // The subtraction of a double from its own floor is exact.
+        val a = abs(value)
+        val whole = floor(a)
+        val magnitude = if (a - whole >= 0.5) whole + 1 else whole
         return if (value < 0) (-magnitude).toInt() else magnitude.toInt()
     }
 }
