@@ -34,8 +34,9 @@ export ANDROID_HOME=/path/to/android-sdk
 ./gradlew :core:test :app:assembleDebug
 ```
 
-The debug APK lands in `app/build/outputs/apk/debug/`. Release builds fail on purpose while the
-application id is still the `com.example` placeholder; see `docs/DECISIONS.md`.
+The debug APK lands in `app/build/outputs/apk/debug/`. The application id is
+`com.adequateapps.metronome` (decision 17); a release build with a `com.example` id fails on
+purpose, see `docs/DECISIONS.md`.
 
 The build never fetches a JDK (`org.gradle.java.installations.auto-download=false`) and refuses
 any dependency that is missing from `gradle/verification-metadata.xml` or whose sha256 differs.

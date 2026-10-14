@@ -40,7 +40,10 @@ export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-21-openjdk}"
 adb="${ANDROID_HOME:?set ANDROID_HOME}/platform-tools/adb"
 [ -x "$adb" ] || adb=$(command -v adb) || { echo "output: adb not found" >&2; exit 2; }
 
-package=$(sed -n 's/^val placeholderApplicationId = "\(.*\)"/\1/p' app/build.gradle.kts).debug
+# The default application id (decision 17), plus the debug suffix.
+base_id=$(sed -n 's/^ *\.getOrElse("\(.*\)")$/\1/p' app/build.gradle.kts)
+[ -n "$base_id" ] || { echo "output: no application id found in app/build.gradle.kts" >&2; exit 2; }
+package="$base_id.debug"
 activity="$package/ticktock.app.MainActivity"
 tag="ticktock.debug"
 
