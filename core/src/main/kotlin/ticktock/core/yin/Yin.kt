@@ -366,11 +366,18 @@ class Yin(val sampleRate: Int) {
         /** Two hops: above two periods of [LOW_HZ] with room for the interpolation (DET-14). */
         const val WINDOW_SECONDS = Hop.WINDOW_HOPS * HOP_SECONDS
 
-        /** Lowest frequency searched: below A0 at A4 = 430 Hz (DET-01). */
-        const val LOW_HZ = 25.5
+        /**
+         * Lowest frequency searched (DET-01). A0 at A4 = 415, the bottom of
+         * the A4 range (decision 16), is 25.94 Hz; half a semitone under it,
+         * the far edge of the nearest-note window, is 25.2 Hz.
+         */
+        const val LOW_HZ = 25.0
 
-        /** Highest frequency searched: above C8 at A4 = 450 Hz plus a quarter tone (DET-01). */
-        const val HIGH_HZ = 4500.0
+        /**
+         * Highest frequency searched (DET-01). C8 at A4 = 466, the top of the
+         * A4 range, is 4433 Hz; half a semitone over it is 4564 Hz.
+         */
+        const val HIGH_HZ = 4570.0
 
         /**
          * A period shorter than this many lags is re-measured on the dip near
