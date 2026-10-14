@@ -30,13 +30,18 @@ object NoSoundingNotes : SoundingNotes {
  *    the oldest to history, so the first saved reading lands at hop C + 2E
  *    (POL-01) and the last E readings of a note are still pending when it
  *    ends and are discarded with it (POL-07);
- *  - a note ends when no vote for it is left in the window, or when another
- *    note wins (POL-02, POL-14). A re-attack after silence confirms afresh,
- *    so its edge is dropped again (POL-08).
+ *  - a note ends when silence outlasts the release edge, when no vote for it
+ *    is left in the window, or when another note wins (POL-02, POL-14). A
+ *    re-attack after silence confirms afresh on its own hops, so its edge is
+ *    dropped again (POL-08).
  *
- * A gap shorter than the window is part of the same held note: the pending
- * queue survives it and the readout holds. That trades a merged tongued
- * repeat for immunity to a single glitchy hop mid-note.
+ * Silence shorter than the release edge is a glitch the held note rides out:
+ * the pending queue survives it and the readout holds. Silence longer than
+ * the edge is the end of the note whatever votes the window still holds,
+ * because the tail that drooped into it and the scoop that follows it are
+ * what the edges exist to keep out of history (POL-07). The edge is the
+ * mode's allowance for a transient at either end of a note, so the same
+ * figure sizes the gap that ends one.
  */
 class Detector(
     mode: ResponseMode = ResponseMode.DEFAULT,
@@ -61,6 +66,9 @@ class Detector(
     private val pending = ArrayDeque<Reading>()
     private var awaitingSettle = false
     private var bleed = BleedState.IDLE
+
+    /** Consecutive hops rejected as silence; anything else sounding resets it. */
+    private var silentHops = 0
 
     /** The note the readout shows, or null for a blank readout. */
     val shownNote: Int? get() = incumbent
@@ -94,6 +102,7 @@ class Detector(
         incumbent = null
         edgeRemaining = 0
         awaitingSettle = false
+        silentHops = 0
         window.clear()
     }
 
@@ -124,6 +133,8 @@ class Detector(
             }
         }
 
+        silentHops = if (reason == RejectReason.SILENCE) silentHops + 1 else 0
+
         val bleedStep = BleedPolicy.step(bleed, sounding.current(), midi, level, duckable)
         bleed = bleedStep.state
         val duck = bleedStep.duck
@@ -141,7 +152,16 @@ class Detector(
         if (reason != null) {
             window.push(VoteWindow.NO_NOTE, 0.0)
             val held = incumbent
-            val release = if (held != null && window.votes(held) == 0) endNote(hop, ReleaseCause.SILENCE) else null
+            var release: Release? = null
+            if (held != null && silentHops > params.edge) {
+                // The note is over: its tail goes with it, and the window is
+                // cleared so the next sound, even the same note, has to win on
+                // its own hops (POL-08).
+                release = endNote(hop, ReleaseCause.SILENCE)
+                window.clear()
+            } else if (held != null && window.votes(held) == 0) {
+                release = endNote(hop, ReleaseCause.SILENCE)
+            }
             return Decision(hop, HopClass.REJECT, reject = reason, level = level, incumbent = incumbent, release = release, duck = duck)
         }
         return vote(estimate.hz, cents, hop, midi!!, level, duck)
@@ -202,6 +222,7 @@ class Detector(
         incumbent = null
         edgeRemaining = 0
         awaitingSettle = false
+        silentHops = 0
         return Release(hop, note, discarded, cause)
     }
 }
