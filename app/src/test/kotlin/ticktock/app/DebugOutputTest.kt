@@ -19,8 +19,13 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import ticktock.app.debug.OutputSeam
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import ticktock.core.contracts.OutputCommand
 import ticktock.core.contracts.OutputEvent
+import ticktock.core.contracts.OutputInfo
+import ticktock.core.contracts.OutputPort
 import ticktock.core.contracts.OutputTool
 import ticktock.core.contracts.Voice
 import ticktock.core.contracts.fakes.FakeOutputPort
@@ -81,6 +86,7 @@ class DebugOutputTest {
         )
         compose.waitUntil(TIMEOUT) { nodes("debug-output-titlebar-state", "Open on Fake speaker at 48000 Hz") == 1 }
         value("debug-route").assertTextEquals("Fake speaker, SPEAKER, 240 frames per block, 20 ms")
+        compose.waitUntil(TIMEOUT) { nodes("debug-last-event-value", "Opened") == 1 }
         value("debug-drone").assertTextEquals("A4 (MIDI 69), sine, gain 0.5")
         value("debug-metro").assertTextEquals("120 bpm, 4/4, wood")
         value("debug-beats").assertTextEquals("No beats yet")
@@ -127,6 +133,38 @@ class DebugOutputTest {
         port.fail("USB DAC", listOf(48_000, 44_100))
         compose.waitUntil(TIMEOUT) { nodes("debug-output-titlebar-state", "Output failed: USB DAC refused the rates 48000, 44100") == 1 }
         value("debug-drone").assertTextEquals("A3 (MIDI 57), sine, gain 0.5")
+    }
+
+    @Test
+    fun `OUT-02 the Opened event is seen on a port that replays nothing, so the pane never shows a live stream as closed`() {
+        val strict = NoReplayPort()
+        OutputSeam.override = strict
+        val intent = Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java)
+            .putExtra(OutputSeam.EXTRA_DRONE_MIDI, 69)
+        scenario = ActivityScenario.launch(intent)
+        compose.waitUntil(TIMEOUT) { strict.sent.size >= 2 }
+        // The port emitted Opened inside Register; a collector that subscribed later would never see it.
+        compose.waitUntil(TIMEOUT) { nodes("debug-last-event-value", "Opened") == 1 }
+    }
+
+    /**
+     * The real port's shape: events are emitted on the engine's thread with
+     * no replay, so a collector that arrives late sees nothing. Opened is
+     * emitted synchronously inside the first Register and info is published
+     * through the event alone.
+     */
+    private class NoReplayPort : OutputPort {
+        val sent = mutableListOf<OutputCommand>()
+        private val eventFlow = MutableSharedFlow<OutputEvent>(extraBufferCapacity = 64)
+        override val events: Flow<OutputEvent> get() = eventFlow
+        override val info = MutableStateFlow<OutputInfo?>(null)
+
+        override fun send(cmd: OutputCommand) {
+            sent += cmd
+            if (cmd is OutputCommand.Register && sent.count { it is OutputCommand.Register } == 1) {
+                eventFlow.tryEmit(OutputEvent.Opened(FakeOutputPort.DEFAULT_INFO))
+            }
+        }
     }
 
     private companion object {
