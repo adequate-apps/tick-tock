@@ -6,6 +6,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Test
 import ticktock.core.catalogue.Catalogue
 import ticktock.core.catalogue.Family
+import ticktock.core.config.Spelling
+import org.junit.Assert.assertNull
 
 /** Note spelling follows the instrument unless the player overrides it (PLAN 2.1, features 9). */
 class NoteSpellingTest {
@@ -85,5 +87,16 @@ class NoteSpellingTest {
                 assertFalse(name, name.startsWith("Cb") || name.startsWith("B#") || name.startsWith("Fb") || name.startsWith("E#"))
             }
         }
+    }
+
+    /** The stored choice (prefs, personal configuration) maps onto the override the resolver takes; AUTO is no override. */
+    @Test
+    fun `the stored spelling maps to an accidentals override, with AUTO meaning none`() {
+        assertNull(Spelling.AUTO.accidentals)
+        assertEquals(Accidentals.SHARPS, Spelling.SHARPS.accidentals)
+        assertEquals(Accidentals.FLATS, Spelling.FLATS.accidentals)
+        val alto = Catalogue.get("eb_alto")
+        assertEquals(NoteSpelling.auto(alto), NoteSpelling.resolve(alto, Spelling.AUTO.accidentals))
+        assertEquals(Accidentals.SHARPS, NoteSpelling.resolve(alto, Spelling.SHARPS.accidentals))
     }
 }
