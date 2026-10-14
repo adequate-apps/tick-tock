@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.core.yin
 
+import ticktock.core.detect.Hop
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -321,11 +322,16 @@ class Yin(val sampleRate: Int) {
     }
 
     companion object {
-        /** The analysis step, held in seconds so it is the same length at every rate. */
-        const val HOP_SECONDS = 2048.0 / 44100.0
+        /**
+         * The analysis step, held in seconds so it is the same length at every
+         * rate. [Hop] is the one definition; the analyser that cuts the audio
+         * into hops reads the same figure, so a window handed over is always
+         * the window analysed.
+         */
+        const val HOP_SECONDS = Hop.SECONDS
 
         /** Two hops: above two periods of [LOW_HZ] with room for the interpolation (DET-14). */
-        const val WINDOW_SECONDS = 2.0 * HOP_SECONDS
+        const val WINDOW_SECONDS = Hop.WINDOW_HOPS * HOP_SECONDS
 
         /** Lowest frequency searched: below A0 at A4 = 430 Hz (DET-01). */
         const val LOW_HZ = 25.5
@@ -350,9 +356,9 @@ class Yin(val sampleRate: Int) {
         /** Rounds of the polish; four take the position error below a millionth of a lag. */
         private const val POLISH_ROUNDS = 4
 
-        fun hopFrames(sampleRate: Int): Int = Math.round(sampleRate * HOP_SECONDS).toInt()
+        fun hopFrames(sampleRate: Int): Int = Hop.frames(sampleRate)
 
-        fun windowFrames(sampleRate: Int): Int = Math.round(sampleRate * WINDOW_SECONDS).toInt()
+        fun windowFrames(sampleRate: Int): Int = Hop.windowFrames(sampleRate)
 
         /** k = round(REFINEMENT_LAG / lag) for short lags, 1 from [REFINEMENT_LAG] up (DET-03). */
         fun refinementMultiple(lagFrames: Double): Int =
