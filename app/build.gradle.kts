@@ -75,6 +75,13 @@ android {
     }
 }
 
+// The screenshot goldens are compared inside the unit tests, so a changed
+// golden must re-run them; otherwise verifyRoborazziDebug could stay green
+// on a stale result.
+tasks.withType<Test>().configureEach {
+    inputs.files(fileTree("src/test/screenshots")).withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
 val checkReleaseApplicationId by tasks.registering {
     group = "verification"
     description = "Fails while the application id is still the com.example placeholder."
