@@ -57,7 +57,20 @@ class NativeStreamBackendTest {
         stream?.close()
     }
 
-    private fun open(): OpenStream = backend.open(StreamRequest(), listener).getOrThrow().also { stream = it }
+    // Event threads already alive when this test opened its stream. Another test's stream (the
+    // OUT-15 case leaks one on purpose) may still be winding down, so a test waits for its own
+    // thread to end and never for every thread of that name in the JVM.
+    private var threadsBeforeOpen: Set<Thread> = emptySet()
+
+    private fun eventThreads(): Set<Thread> =
+        Thread.getAllStackTraces().keys.filter { it.name == NativeStreamBackend.EVENT_THREAD_NAME && it.isAlive }.toSet()
+
+    private fun ownEventThreadGone(): Boolean = (eventThreads() - threadsBeforeOpen).isEmpty()
+
+    private fun open(): OpenStream {
+        threadsBeforeOpen = eventThreads()
+        return backend.open(StreamRequest(), listener).getOrThrow().also { stream = it }
+    }
 
     private fun await(what: String, condition: () -> Boolean) {
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
@@ -202,7 +215,7 @@ class NativeStreamBackendTest {
         assertTrue(handle.destroyed)
         // Closed came from the native side and was swallowed: the control thread emits its own.
         assertEquals(emptyList<Pair<OpenStream, OutputEvent>>(), events.toList())
-        await("event thread gone") { Thread.getAllStackTraces().keys.none { it.name == NativeStreamBackend.EVENT_THREAD_NAME && it.isAlive } }
+        await("event thread gone") { ownEventThreadGone() }
     }
 
     @Test
@@ -262,7 +275,7 @@ class NativeStreamBackendTest {
         assertTrue(handle.parked)
         assertFalse(handle.destroyed)
         assertNull(backend.diagnostics())
-        await("event thread gone") { Thread.getAllStackTraces().keys.none { it.name == NativeStreamBackend.EVENT_THREAD_NAME && it.isAlive } }
+        await("event thread gone") { ownEventThreadGone() }
 
         native.sampleRate = 44_100
         val second = open()
