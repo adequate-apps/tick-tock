@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Every push and PR: wrapper hashes, strict dependency verification, the JVM
+# tiers and a debug APK. Actions are pinned to full commit SHAs; the tag is a
+# comment so a reviewer can see what the SHA was resolved from.
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  WRAPPER_JAR_SHA256: 497c8c2a7e5031f6aa847f88104aa80a93532ec32ee17bdb8d1d2f67a194a9c7
+  ROBOLECTRIC_JAR: android-all-instrumented-16-robolectric-13921718-i7.jar
+  ROBOLECTRIC_JAR_SHA256: 16f1f751643d1d3d5592008846bbdfc1e57cff15e6ec303d26584de3b6ac25ec
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Verify the Gradle wrapper
+        run: |
+          echo "${WRAPPER_JAR_SHA256}  gradle/wrapper/gradle-wrapper.jar" | sha256sum -c -
+          grep -q '^distributionSha256Sum=' gradle/wrapper/gradle-wrapper.properties
+          grep -q '^validateDistributionUrl=true' gradle/wrapper/gradle-wrapper.properties
+
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Stage the Robolectric runtime
+        run: |
+          curl -sSfL -o "tools/robolectric-deps/${ROBOLECTRIC_JAR}" \
+            "https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented/16-robolectric-13921718-i7/${ROBOLECTRIC_JAR}"
+          (cd tools/robolectric-deps && sha256sum -c MANIFEST.sha256)
+
+      - name: JVM tiers and debug APK
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+        run: |
+          ./gradlew --no-daemon --console=plain --dependency-verification=strict \
+            :core:test \
+            :engine:testDebugUnitTest :data:testDebugUnitTest :design:testDebugUnitTest \
+            :app:testDebugUnitTest \
+            :app:assembleDebug
+
+      - name: Release guard fires on the placeholder id
+        run: |
+          if ./gradlew --no-daemon --console=plain --dependency-verification=strict :app:checkReleaseApplicationId; then
+            echo "the release guard passed on a placeholder id" >&2
+            exit 1
+          fi
