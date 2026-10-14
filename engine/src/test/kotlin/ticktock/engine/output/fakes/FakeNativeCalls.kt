@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit
  */
 class FakeNativeCalls : NativeCalls {
     /** One native call as the test sees it: the method and its arguments after the handle. */
-    data class Call(val name: String, val args: List<Any?>)
+    data class Call(val name: String, val args: List<Any?> = emptyList())
 
     inner class Handle(val id: Long) {
         val calls: MutableList<Call> = Collections.synchronizedList(mutableListOf())
@@ -158,12 +158,32 @@ class FakeNativeCalls : NativeCalls {
 
     override fun nativeMute(handle: Long, reason: Int, active: Boolean): Boolean = record(handle, "mute", reason, active)
 
+    /** As the native controller: a park with tools registered closes the stream and keeps them; parked twice is one park. */
     override fun nativePark(handle: Long, reason: Int) {
-        record(handle, "park", reason)
+        val h = handle(handle)
+        synchronized(h) {
+            h.calls += Call("park", listOf(reason))
+            if (h.registered == 0 || h.parked) return
+            h.streamOpen = false
+            h.parked = true
+            h.events += Event(KIND_PARKED, reason.toLong(), tools = h.registered)
+        }
     }
 
+    /** As the native controller: reopens for the parked set at whatever the device now gives, or reports the refusal. */
     override fun nativeResume(handle: Long) {
-        record(handle, "resume")
+        val h = handle(handle)
+        synchronized(h) {
+            h.calls += Call("resume")
+            if (!h.parked || h.registered == 0 || h.streamOpen) return
+            if (refuseOpens) {
+                h.events += Event(KIND_FAILED, deviceId, ints = intArrayOf(48_000, 44_100))
+                return
+            }
+            h.parked = false
+            h.streamOpen = true
+            h.events += Event(KIND_RESUMED, sampleRate, framesPerBurst, deviceId, latencyMillis, tools = h.registered)
+        }
     }
 
     override fun nativeDrainEvents(handle: Long, listener: NativeBridge.Listener, timeoutMillis: Int): Int {

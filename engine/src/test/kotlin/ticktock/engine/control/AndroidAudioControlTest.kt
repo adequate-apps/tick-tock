@@ -9,6 +9,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -140,7 +141,7 @@ class AndroidAudioControlTest {
     }
 
     @Test
-    fun `OUT-03 a native disconnect with the device gone parks every tool with the reason`() {
+    fun `OUT-03 a native disconnect with the device gone parks every tool with the reason and keeps the engine`() {
         val speaker = startWithSpeaker()
         send(OutputCommand.Register(OutputTool.DRONE), OutputCommand.Register(OutputTool.METRONOME))
         shadowOf(audioManager).removeOutputDevice(speaker, false)
@@ -150,18 +151,54 @@ class AndroidAudioControlTest {
         assertEquals(ParkReason.HEADPHONES_DISCONNECTED, parked.reason)
         assertEquals(setOf(OutputTool.DRONE, OutputTool.METRONOME), parked.tools)
         assertNull(control.info.value)
+        assertTrue(native.single.parked)
+        assertFalse(native.single.destroyed)
+
+        // Switched off while waiting, the tools take the engine with them.
+        send(OutputCommand.Unregister(OutputTool.DRONE), OutputCommand.Unregister(OutputTool.METRONOME))
         assertTrue(native.single.destroyed)
     }
 
     @Test
-    fun `OUT-13 a native disconnect with the device still present reopens on a fresh handle and replays the tools`() {
+    fun `OUT-05 and MET-09 a replug resumes the parked handle, so the engine continues instead of restarting`() {
+        val speaker = startWithSpeaker()
+        send(OutputCommand.Register(OutputTool.METRONOME), OutputCommand.MetroStart(setup))
+        shadowOf(audioManager).removeOutputDevice(speaker, false)
+        native.single.disconnect()
+        await("parked") { eventsOf<OutputEvent.Parked>().isNotEmpty() }
+
+        val headset = AudioDeviceInfoBuilder.newBuilder().setType(AudioDeviceInfo.TYPE_WIRED_HEADSET).build()
+        native.sampleRate = 44_100
+        native.deviceId = headset.id.toLong()
+        shadowOf(audioManager).addOutputDevice(headset, true)
+        await("resumed") { eventsOf<OutputEvent.Resumed>().isNotEmpty() }
+
+        assertEquals(1, native.handles.size)
+        assertEquals(1, native.single.calls("resume").size)
+        assertEquals(1, native.single.calls("metroStart").size)
+        assertEquals(listOf(Call("metroUpdate", listOf(120, 4, 4, false, listOf(0, 1, 1, 1), 1, 0, 0.8f, 1, 0))), native.single.calls("metroUpdate"))
+        assertEquals(44_100, control.info.value?.sampleRate)
+        assertEquals(RouteClass.HEADPHONES, control.info.value?.routeClass)
+    }
+
+    @Test
+    fun `OUT-13 a native disconnect with the device still present resumes the same handle at the new rate and the tools carry on`() {
         startWithSpeaker()
-        send(OutputCommand.Register(OutputTool.DRONE), OutputCommand.VoiceOn(slot = 0, midi = 69, voice = Voice.WARM, gain = 0.5f))
+        send(
+            OutputCommand.Register(OutputTool.DRONE), OutputCommand.Register(OutputTool.METRONOME),
+            OutputCommand.VoiceOn(slot = 0, midi = 69, voice = Voice.WARM, gain = 0.5f), OutputCommand.MetroStart(setup),
+        )
         native.sampleRate = 44_100
         native.single.disconnect()
-        await("reopened") { native.handles.size == 2 && control.info.value?.sampleRate == 44_100 }
-        assertEquals(listOf(Call("voiceOn", listOf(0, 69, 1, 0.5f))), native.handle(2).calls("voiceOn"))
-        assertEquals(setOf(OutputTool.DRONE), eventsOf<OutputEvent.Resumed>().single().tools)
-        assertTrue(native.handle(1).destroyed)
+        await("reopened") { control.info.value?.sampleRate == 44_100 }
+        assertEquals(1, native.handles.size)
+        val handle = native.single
+        assertEquals(listOf(Call("resume", emptyList())), handle.calls("resume"))
+        assertEquals(listOf(Call("voiceOn", listOf(0, 69, 1, 0.5f)), Call("voiceOn", listOf(0, 69, 1, 0.5f))), handle.calls("voiceOn"))
+        assertEquals(1, handle.calls("metroStart").size)
+        assertEquals(1, handle.calls("metroUpdate").size)
+        assertEquals(setOf(OutputTool.DRONE, OutputTool.METRONOME), eventsOf<OutputEvent.Resumed>().single().tools)
+        assertFalse(handle.destroyed)
+        assertTrue(handle.streamOpen)
     }
 }

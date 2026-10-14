@@ -12,6 +12,7 @@ import ticktock.core.contracts.MuteReason
 import ticktock.core.contracts.OutputCommand
 import ticktock.core.contracts.OutputEvent
 import ticktock.core.contracts.OutputTool
+import ticktock.core.contracts.ParkReason
 import ticktock.core.contracts.Voice
 import ticktock.core.metro.Accent
 import ticktock.core.metro.ClickSound
@@ -23,10 +24,10 @@ import java.util.concurrent.TimeUnit
 
 /**
  * The StreamBackend the control thread talks to on a device, over a fake of
- * the JNI bridge: one native handle per open, one holder registration that
- * keeps the native registry non-empty, an event thread that turns the
- * bridge's numbers into the listener's calls, and a close that never hangs
- * the control thread.
+ * the JNI bridge: one native handle per engine, one holder registration that
+ * keeps the native registry non-empty, a park that keeps the handle for the
+ * next open to resume, an event thread that turns the bridge's numbers into
+ * the listener's calls, and a close that never hangs the control thread.
  */
 class NativeStreamBackendTest {
     private val native = FakeNativeCalls()
@@ -254,15 +255,81 @@ class NativeStreamBackendTest {
     }
 
     @Test
-    fun `each open is its own native handle, so a parked native registry never outlives its stream`() {
+    fun `OUT-05 and MET-09 a park keeps the handle with its engine and the next open resumes it, at the device's new rate`() {
         val first = open()
-        native.single.disconnect()
-        await("disconnect") { disconnected.isNotEmpty() }
-        assertTrue(first.close())
-        val second = backend.open(StreamRequest(), listener).getOrThrow()
-        stream = second
-        assertEquals(2, native.handles.size)
-        assertTrue(native.handle(2).streamOpen)
-        assertEquals(48_000, second.sampleRate)
+        val handle = native.single
+        assertTrue(first.park())
+        stream = null
+        assertEquals(listOf(Call("park", listOf(ParkReason.HEADPHONES_DISCONNECTED.ordinal))), handle.calls("park"))
+        assertTrue(handle.parked)
+        assertFalse(handle.destroyed)
+        assertNull(backend.diagnostics())
+        await("event thread gone") { Thread.getAllStackTraces().keys.none { it.name == NativeStreamBackend.EVENT_THREAD_NAME && it.isAlive } }
+
+        native.sampleRate = 44_100
+        val second = open()
+        assertEquals(1, native.handles.size)
+        assertEquals(listOf(Call("resume", emptyList())), handle.calls("resume"))
+        assertEquals(listOf(Call("register", listOf(NativeStreamBackend.HOLDER.ordinal))), handle.calls("register"))
+        assertTrue(handle.streamOpen)
+        assertFalse(handle.parked)
+        assertEquals(44_100, second.sampleRate)
+        assertEquals(44_100L, backend.diagnostics()?.sampleRate)
+        // The park the first stream left behind reached its own listener at most, never the verdict.
+        assertTrue(disconnected.all { it === first })
     }
+
+    @Test
+    fun `a park after the native side parked itself is nothing more, and the resume still reopens`() {
+        val first = open()
+        val handle = native.single
+        handle.disconnect()
+        await("disconnect") { disconnected.isNotEmpty() }
+        assertTrue(first.park())
+        stream = null
+        assertTrue(handle.parked)
+        assertFalse(handle.destroyed)
+        open()
+        assertEquals(1, native.handles.size)
+        assertTrue(handle.streamOpen)
+    }
+
+    @Test
+    fun `a close destroys the handle and the next open creates another, from nothing`() {
+        val first = open()
+        assertTrue(first.close())
+        stream = null
+        assertTrue(native.handle(1).destroyed)
+        open()
+        assertEquals(2, native.handles.size)
+        assertEquals(emptyList<Call>(), native.handle(2).calls("resume"))
+        assertTrue(native.handle(2).streamOpen)
+    }
+
+    @Test
+    fun `discard destroys a parked handle so the next open creates another, and with nothing parked it is nothing`() {
+        backend.discard()
+        assertTrue(native.handles.isEmpty())
+        val first = open()
+        assertTrue(first.park())
+        stream = null
+        backend.discard()
+        assertTrue(native.handle(1).destroyed)
+        open()
+        assertEquals(2, native.handles.size)
+        assertEquals(emptyList<Call>(), native.handle(2).calls("resume"))
+    }
+
+    @Test
+    fun `OUT-17 a resume the device refuses fails with the device and the rates and destroys the handle`() {
+        val first = open()
+        assertTrue(first.park())
+        stream = null
+        native.refuseOpens = true
+        val failure = backend.open(StreamRequest(), listener).exceptionOrNull() as StreamOpenFailure
+        assertEquals("Built-in speaker", failure.deviceName)
+        assertEquals(listOf(48_000, 44_100), failure.refusedRates)
+        assertTrue(native.handle(1).destroyed)
+    }
+
 }

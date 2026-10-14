@@ -362,3 +362,78 @@ TEST(OutputController, aLateBeatShowsUpInCounters) {
     EXPECT_EQ(0, events.back().b);
     EXPECT_EQ(1, c.diagnostics().lateBeatsDropped);
 }
+
+// MET-09, OUT-13: what the control thread replays into a resumed engine
+// disturbs nothing. voiceOn on the sounding slot keeps its phase, so the
+// drone continues where it left off instead of striking again; metroUpdate
+// with the setup the generator already runs keeps the next click one period
+// after the first frame of the new stream, and the beat count continues.
+TEST(OutputController, theReplayIntoAResumedEngineDisturbsNeitherTheVoiceNorTheBeat) {
+    FakeDevice device;
+    OutputController c(device);
+    c.registerTool(OutputTool::Metronome);
+    c.registerTool(OutputTool::Drone);
+    ASSERT_TRUE(c.metroStart(params(120)));
+    ASSERT_TRUE(c.voiceOn(0, 62, render::Voice::Sine, 0.3f));
+    drainAll(c);
+    const std::int32_t before = 30000;  // beats 0 and 1; the voice is 183.5 cycles in
+    pull(device, before);
+    drainAll(c);
+
+    c.park(ParkReason::HeadphonesDisconnected);
+    drainAll(c);
+    c.resume();
+    auto events = drainAll(c);
+    ASSERT_EQ(1u, events.size());
+    EXPECT_EQ(EventKind::Resumed, events[0].kind);
+
+    // The replay, as the control thread sends it into the continued engine.
+    ASSERT_TRUE(c.voiceOn(0, 62, render::Voice::Sine, 0.3f));
+    ASSERT_TRUE(c.metroUpdate(params(120)));
+
+    std::vector<float> mono;
+    pull(device, 48000 + 100, &mono);
+    events = drainAll(c);
+    ASSERT_EQ(2u, events.size());
+    EXPECT_EQ(EventKind::Beat, events[0].kind);
+    EXPECT_EQ(2, events[0].a) << "the beat count continues";
+    EXPECT_EQ(2, events[0].b) << "the bar position continues";
+    EXPECT_EQ(24000, events[0].c) << "one beat after the new stream's first frame, never at once";
+    EXPECT_EQ(3, events[1].a);
+    EXPECT_EQ(48000, events[1].c);
+
+    // The drone sounds throughout, so the clicks are read off the signal
+    // against it: the sine the old stream was playing, phase and all, so that
+    // sample i of the new stream is sample `before + i` of one continuous
+    // tone. A re-strike would start from phase zero under a gain ramp. The
+    // stream's own fade-in covers the first 5 ms.
+    const double hz = ticktock::test::midiHz(62);
+    const double increment = 2.0 * M_PI * hz / 48000.0;
+    auto drone = [&](std::int32_t i) { return 0.3 * std::sin(increment * (before + i)); };
+    for (std::int32_t i = 0; i < 1440; ++i) {
+        const double gate = i < 240 ? (i + 1) / 240.0 : 1.0;
+        ASSERT_NEAR(drone(i) * gate, mono[static_cast<std::size_t>(i)], 2e-3) << "frame " << i << ": no click at once";
+    }
+    for (std::int32_t i = 1440; i < 24000; ++i) {
+        ASSERT_NEAR(drone(i), mono[static_cast<std::size_t>(i)], 2e-3) << "frame " << i;
+    }
+    EXPECT_NEAR(drone(24000) + render::kWoodData[0] * 0.7, mono[24000], 2e-3) << "the click lands on beat 2's frame";
+}
+
+// A metronome started while the tools were parked reaches the resumed
+// engine as an edit too; a generator that was not running starts from it
+// and clicks at once, as a fresh start does.
+TEST(OutputController, aMetronomeStartedWhileParkedClicksAtOnceOnResume) {
+    FakeDevice device;
+    OutputController c(device);
+    c.registerTool(OutputTool::Drone);
+    drainAll(c);
+    pull(device, 4800);
+    c.park(ParkReason::HeadphonesDisconnected);
+    drainAll(c);
+    c.resume();
+    drainAll(c);
+    ASSERT_TRUE(c.metroUpdate(params(120)));
+    const auto clicks = pull(device, 24000 + 100);
+    EXPECT_EQ((std::vector<std::int64_t>{0, 24000}), clicks);
+}

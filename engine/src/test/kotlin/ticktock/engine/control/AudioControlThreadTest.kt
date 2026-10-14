@@ -261,12 +261,16 @@ class AudioControlThreadTest {
     }
 
     @Test
-    fun `OUT-05 and OUT-13 replug restarts exactly the parked set at the new rate with the voices and metronome rebuilt`() {
+    fun `OUT-05 OUT-13 and MET-09 replug restarts exactly the parked set at the new rate, continuing the engine the unplug kept`() {
         startOnHeadset()
         register(OutputTool.DRONE, OutputTool.METRONOME)
         send(OutputCommand.SetA4(442.0), drone, OutputCommand.MetroStart(setup))
         devices.becomingNoisy()
         idle()
+        // The unplug parks the stream and keeps its engine: the drone's phase
+        // and the metronome's count wait for the route with the tools.
+        assertEquals(true, backend.opened.single().engineKept)
+        assertNull(backend.parked?.takeIf { it !== backend.opened.single() })
 
         backend.nextSampleRate = 44_100
         backend.nextRouted = USB_DAC
@@ -279,13 +283,38 @@ class AudioControlThreadTest {
         assertEquals(RouteClass.HEADPHONES, resumed.info.routeClass)
         assertEquals(USB_DAC.name, resumed.info.deviceName)
         assertEquals(resumed.info, control.info.value)
+        val continued = checkNotNull(backend.current)
+        assertTrue("the new stream continues the kept engine", continued.continuesEngine)
+        // The metronome is an edit of the running generator, never a restart:
+        // a MetroStart here would click at once and restart the bar (MET-09).
         assertEquals(
-            listOf(OutputCommand.SetA4(442.0), drone, OutputCommand.MetroStart(setup)),
-            checkNotNull(backend.current).sent,
+            listOf(OutputCommand.SetA4(442.0), drone, OutputCommand.MetroUpdate(setup)),
+            continued.sent,
         )
         assertArrayEquals(intArrayOf(62), control.soundingNotes.current())
         assertEquals(listOf("started"), owner.calls)
         assertEquals(1, eventsOf<OutputEvent.Opened>().size)
+        assertEquals(0, backend.discards)
+    }
+
+    @Test
+    fun `OUT-06 what the player switches off while unplugged is switched off in the continued engine too`() {
+        startOnHeadset()
+        register(OutputTool.DRONE, OutputTool.METRONOME)
+        send(drone, OutputCommand.MetroStart(setup))
+        devices.becomingNoisy()
+        idle()
+
+        // No stream to send to, and the engine still holds both.
+        send(OutputCommand.VoiceOff(0), OutputCommand.MetroStop)
+        devices.add(BLE_HEADSET)
+        idle()
+
+        assertEquals(
+            listOf(OutputCommand.VoiceOff(0), OutputCommand.MetroStop),
+            checkNotNull(backend.current).sent,
+        )
+        assertArrayEquals(intArrayOf(), control.soundingNotes.current())
     }
 
     @Test
@@ -332,9 +361,13 @@ class AudioControlThreadTest {
         assertEquals(emptyList<OutputEvent.Resumed>(), eventsOf<OutputEvent.Resumed>())
         assertEquals(1, backend.opened.size)
 
-        // Whatever sounded before the unplug is forgotten with the registry.
+        // Whatever sounded before the unplug is forgotten with the registry,
+        // and the engine the unplug kept goes with it.
+        assertEquals(1, backend.discards)
         register(OutputTool.DRONE)
-        assertEquals(emptyList<OutputCommand>(), checkNotNull(backend.current).sent)
+        val fresh = checkNotNull(backend.current)
+        assertEquals(emptyList<OutputCommand>(), fresh.sent)
+        assertFalse(fresh.continuesEngine)
     }
 
     @Test
@@ -374,6 +407,9 @@ class AudioControlThreadTest {
         assertEquals(WIRED_HEADSET.name, control.info.value?.deviceName)
         assertEquals(listOf<OutputCommand>(drone), checkNotNull(backend.current).sent)
         assertEquals(2, backend.opened.size)
+        // A move keeps the engine: the drone continues without a gap (OUT-13).
+        assertEquals(true, backend.opened.first().engineKept)
+        assertTrue(checkNotNull(backend.current).continuesEngine)
     }
 
     @Test
@@ -484,9 +520,27 @@ class AudioControlThreadTest {
         assertEquals(1, backend.opened.size)
 
         // The player starts again from nothing: no stale voice comes back.
+        assertEquals(false, backend.opened.single().engineKept)
         register(OutputTool.DRONE)
         assertEquals(false, backend.current?.muted)
         assertEquals(emptyList<OutputCommand>(), checkNotNull(backend.current).sent)
+        assertFalse(checkNotNull(backend.current).continuesEngine)
+    }
+
+    @Test
+    fun `CAL-02 a call while the tools wait for a route drops them and the engine the unplug kept`() {
+        startOnHeadset()
+        register(OutputTool.DRONE)
+        send(drone)
+        devices.becomingNoisy()
+        idle()
+        assertEquals(true, backend.opened.single().engineKept)
+
+        modes.setMode(AudioManager.MODE_IN_CALL)
+        idle()
+        assertEquals(ParkReason.INCOMING_CALL, eventsOf<OutputEvent.Parked>().last().reason)
+        assertEquals(1, backend.discards)
+        assertEquals(listOf("started", "stopped"), owner.calls)
     }
 
     // --- OUT-11 -----------------------------------------------------------------------------

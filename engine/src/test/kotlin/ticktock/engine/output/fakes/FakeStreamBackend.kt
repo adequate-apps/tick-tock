@@ -13,13 +13,18 @@ import ticktock.engine.output.StreamRequest
 import java.util.Collections
 import java.util.concurrent.CountDownLatch
 
-/** A stream the test plays: it records what it was sent and can end, re-route, underrun and refuse to stop in time. */
+/**
+ * A stream the test plays: it records what it was sent and can end,
+ * re-route, underrun and refuse to stop in time. [continuesEngine] says
+ * whether it opened on the engine a parked stream kept.
+ */
 class FakeOpenStream(
     override val sampleRate: Int,
     override val framesPerBurst: Int,
     var routed: RoutedDevice?,
     var latency: Int,
     private val closeTimesOut: Boolean,
+    val continuesEngine: Boolean,
 ) : OpenStream {
     lateinit var listener: StreamListener
     val sent = mutableListOf<OutputCommand>()
@@ -29,6 +34,10 @@ class FakeOpenStream(
     var xruns = 0
     var bursts = StreamRequest.INITIAL_BUFFER_BURSTS
     var closed = false
+        private set
+
+    /** True after a park, false after a close, null while open. */
+    var engineKept: Boolean? = null
         private set
 
     override fun routedDevice(): RoutedDevice? = routed
@@ -47,8 +56,13 @@ class FakeOpenStream(
         return bursts
     }
 
-    override fun close(): Boolean {
+    override fun close(): Boolean = end(keep = false)
+
+    override fun park(): Boolean = end(keep = true)
+
+    private fun end(keep: Boolean): Boolean {
         closed = true
+        engineKept = keep && !closeTimesOut
         return !closeTimesOut
     }
 
@@ -77,6 +91,13 @@ class FakeStreamBackend : StreamBackend {
     /** The stream that is open now, if any. */
     val current: FakeOpenStream? get() = opened.lastOrNull()?.takeIf { !it.closed }
 
+    /** The stream whose engine waits for the next open, if any. */
+    val parked: FakeOpenStream? get() = opened.lastOrNull()?.takeIf { it.engineKept == true && !discardedAfter.contains(it) }
+
+    /** Engines dropped by [discard]; a discard with nothing kept is not counted. */
+    val discards: Int get() = discardedAfter.size
+    private val discardedAfter = mutableSetOf<FakeOpenStream>()
+
     /** Name of the thread each open ran on: the control thread and nothing else (OUT-15). */
     val openThreads = Collections.synchronizedList(mutableListOf<String>())
 
@@ -92,10 +113,15 @@ class FakeStreamBackend : StreamBackend {
         openGate?.await()
         requests += request
         refusal?.let { return Result.failure(it) }
-        val stream = FakeOpenStream(nextSampleRate, nextFramesPerBurst, nextRouted, nextLatency, nextCloseTimesOut)
+        val continues = parked != null
+        val stream = FakeOpenStream(nextSampleRate, nextFramesPerBurst, nextRouted, nextLatency, nextCloseTimesOut, continues)
         stream.listener = listener
         opened += stream
         return Result.success(stream)
+    }
+
+    override fun discard() {
+        parked?.let { discardedAfter += it }
     }
 
     companion object {
