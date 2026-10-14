@@ -2,7 +2,9 @@
 package ticktock.core.music
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
@@ -78,20 +80,45 @@ class CentsBandTest {
             .flatMap { module -> File(module, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" } }
         check(mainSources.any { it.name == "CentsBand.kt" }) { "scan did not reach CentsBand.kt from ${repoRoot.path}" }
 
-        val comparison = Regex("""(<=|>=|<|>|==)\s*-?\d+\b""")
-        val centsish = Regex("""(?i)cents|band|inTune|in_tune""")
-        val thresholdNames = Regex("""\b(IN_TUNE_MAX|CLOSE_MAX)\s*=""")
-
         val offenders = mainSources
             .filter { it.name != "CentsBand.kt" }
-            .flatMap { file ->
-                file.readLines().mapIndexedNotNull { index, line ->
-                    val code = line.substringBefore("//")
-                    val suspicious = (centsish.containsMatchIn(code) && comparison.containsMatchIn(code)) ||
-                        thresholdNames.containsMatchIn(code)
-                    if (suspicious) "${file.relativeTo(repoRoot).path}:${index + 1}: ${line.trim()}" else null
-                }
-            }
+            .flatMap { file -> BandThresholdGuard.offenders(file, file.relativeTo(repoRoot).path) }
         assertEquals("band thresholds outside CentsBand.kt", emptyList<String>(), offenders)
+    }
+
+    /**
+     * The shapes BND-04 has to catch, whatever the variable is called: a
+     * duplicated threshold reads exactly like CentsBand's own comparison once
+     * the parameter is named "shown" or "value" instead of "cents".
+     */
+    @Test
+    fun `BND-04 the rule catches a threshold under any name`() {
+        val caught = listOf(
+            "const val CLOSE_CENTS = 12",
+            "val inTuneCents: Int = 5",
+            "if (abs(cents) <= 5) green() else if (abs(cents) <= 12) amber()",
+            "fun readingColour(shown: Int): Int = if (kotlin.math.abs(shown) <= 5) 1 else if (kotlin.math.abs(shown) <= 12) 2 else 3",
+            "val tone = when { abs(value) < 3 -> Tone.IN; abs(value) < 15 -> Tone.CLOSE; else -> Tone.OFF }",
+            "return 10 >= abs(delta)",
+            "if (deviation > 25.0) return Band.OFF",
+            "val IN_TUNE_MAX = 5",
+        )
+        for (line in caught) assertTrue("should offend: $line", BandThresholdGuard.offends(line))
+    }
+
+    @Test
+    fun `BND-04 the rule leaves ordinary code alone`() {
+        val allowed = listOf(
+            "// abs(shown) <= 5 is explained here, in a comment",
+            "val bars = 101",
+            "for (i in 0 until 5) draw(i)",
+            "if (count == 0) return",
+            "val label = \"\${cents}\"",
+            "val colour = CentsBand.of(shown)",
+            "items.map { it -> 5 }",
+            "val shifted = bits shr 5",
+            "if (index >= size) throw IndexOutOfBoundsException()",
+        )
+        for (line in allowed) assertFalse("should pass: $line", BandThresholdGuard.offends(line))
     }
 }
