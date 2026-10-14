@@ -146,23 +146,23 @@ ledgered under their own prefixes below.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| OUT-01 | output-user registry | H | 2.0 (decision 12 removes the focus clause: the registry opens the stream on the first tool and closes it on the last, and its two transitions drive BGH-01) | | open |
-| OUT-02 | truthful state | H | 2.0 | | open |
-| OUT-03 | unplug | H, D | 2.0 | | open |
+| OUT-01 | output-user registry | H | 2.0 (decision 12 removes the focus clause: the registry opens the stream on the first tool and closes it on the last, and its two transitions drive BGH-01) | OutputRegistryTest `OUT-01` (the registry's transitions) and AudioControlThreadTest `OUT-01` (the real control thread opens the fake backend's stream on the first tool and closes it on the last, Opened then Closed) | green |
+| OUT-02 | truthful state | H | 2.0 | engine half: every loss of output is a Parked event carrying its reason: AudioControlThreadTest `OUT-03` (headphones disconnected), `OUT-17` (output failed, with the device and the refused rates), `CAL-02` (incoming call), `OUT-11` (background); the control that shows off with the reason lands in M5 | open |
+| OUT-03 | unplug | H, D | 2.0 | H green: AudioControlThreadTest `OUT-03` (two tests: the noisy broadcast, and a device vanishing without one; every registered tool parks, the stream closes and nothing opens on the speaker; the dead stream's late disconnect is ignored); D: the owner's phone check is pending | open |
 | OUT-04 | drone AUTO on unplug | H | v1.1 | | deferred |
-| OUT-05 | replug | H, D | 2.0 | | open |
-| OUT-06 | off stays off | H | 2.0 | | open |
-| OUT-07 | late devices | H | 2.0 | | open |
+| OUT-05 | replug | H, D | 2.0 | H green: AudioControlThreadTest `OUT-05 and OUT-13` (replug at 44.1 kHz restarts exactly the parked set with A4, voices and the metronome rebuilt in the new stream), `OUT-05` (two more: a speaker appearing is not a replug; a tool the player starts while unplugged brings the parked set back on the route in hand); D: the owner's phone check is pending | open |
+| OUT-06 | off stays off | H | 2.0 | AudioControlThreadTest `OUT-06` (two tests: a tool switched off while unplugged is not in the Resumed set; when every parked tool is switched off the registry empties and a replug restarts nothing) | green |
+| OUT-07 | late devices | H | 2.0 | AudioControlThreadTest `OUT-07` (a headset plugged in after start-up becomes the route when the speaker stream ends: Resumed, no Parked) and AndroidAdaptersTest `OUT-07` (the platform adapter lists outputs and hears late devices and the noisy broadcast); 2.0 has no manual output setting (scope revision), so the late device is observed and used rather than listed | green |
 | OUT-08 | permanent loss | H | superseded by decisions 4 and 12: another app taking audio never parks the tools; the contract has no focus reason | | closed |
-| OUT-09 | transient loss | H | superseded by decisions 4 and 12: an answered call parks every tool (`ParkReason.INCOMING_CALL`) and nothing restarts on its own; ringing is CAL-01; no duck on focus | OutputPortContractTest | red |
-| OUT-10 | mute reasons | H | 2.0 | | open |
-| OUT-11 | background policy | H | 2.0 (v1 policy: stop everything) | | open |
-| OUT-12 | route from the routed device | H, D | 2.0 | | open |
-| OUT-13 | rate change | H | 2.0 | | open |
-| OUT-14 | rate peg | H | 2.0 | | open |
-| OUT-15 | start and stop never block | H | 2.0 | | open |
+| OUT-09 | transient loss | H | superseded by decisions 4 and 12: an answered call parks every tool (`ParkReason.INCOMING_CALL`) and nothing restarts on its own; ringing is CAL-01; no duck on focus | OutputPortContractTest (the contract) and AudioControlThreadTest `CAL-02` (the real control thread parks every tool with `INCOMING_CALL` when the mode becomes in-call and restarts nothing when it ends) | green |
+| OUT-10 | mute reasons | H | 2.0 | MuteReasonsTest `OUT-10` (two tests: overlap in any order, clearing an unset reason) and AudioControlThreadTest `OUT-10` (two tests: a recording mute and the ringing reason overlap on the real stream and the sounding notes empty while muted; a mute set before the stream opens is in force when it opens) | green |
+| OUT-11 | background policy | H | 2.0 (v1 policy: stop everything) | AudioControlThreadTest `OUT-11` (three tests: `BackgroundPolicy.StopEverything` parks every tool with `BACKGROUND` and the foreground restarts nothing; a policy that keeps some tools parks only the rest; the background with nothing registered is nothing) | green |
+| OUT-12 | route from the routed device | H, D | 2.0 | H green: RouteClassifierTest `OUT-12` (four tests over every `AudioDeviceInfo` type: speakers, wired and USB, Bluetooth classic, LE audio and hearing aids, unknowns) and AudioControlThreadTest `OUT-12` (the route class comes from the stream's routed device; an API 37 routing change re-classifies and re-reads latency without a disconnect, SHM-03); D: the owner's phone check is pending | open |
+| OUT-13 | rate change | H | 2.0 | control half: ToolStateTest `OUT-13` (the replay rebuilds A4 first, every voice with its latest gain, then the metronome) and AudioControlThreadTest `OUT-05 and OUT-13` (the rebuilt stream reports the new rate and receives the replayed commands); the generator's anchor conversion through time is MET-09 on the render side | open |
+| OUT-14 | rate peg | H | 2.0 | AudioControlThreadTest `SHM-01 and OUT-14` (the request leaves the rate unspecified; `OutputInfo.sampleRate` is the rate the backend granted, 44.1 kHz in the test) | green |
+| OUT-15 | start and stop never block | H | 2.0 | AudioControlThreadTest `OUT-15` (two tests: with the backend stuck inside open, send has returned and nothing has reached the backend, and the open ran on the `audio-control` thread; a close that times out drops the handle and the next start opens a fresh stream) | green |
 | OUT-16 | render thread | H | 2.0 | | open |
-| OUT-17 | error names | H | 2.0 | | open |
+| OUT-17 | error names | H | 2.0 | AudioControlThreadTest `OUT-17` (a refused open yields `Failed("USB DAC", [48000, 44100])`, the tool parks with `OUTPUT_FAILED`, and the next start tries again) | green |
 | IN-01 | one owner and release | H | 2.0 | | open |
 | IN-02 | busy or missing | H | 2.0 | | open |
 | IN-03 | saved interface stays saved | H | 2.0 | | open |
@@ -310,10 +310,10 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| CAL-01 | ringing adds the mute reason within 500 ms | H | 2.0 | | open |
-| CAL-02 | an answered call parks with "Paused: phone call" | H | 2.0 | | open |
-| CAL-03 | mode observed by poll on 28–30 and by listener on 31+; no READ_PHONE_STATE | H | 2.0 | | open |
-| CAL-04 | another app's music changes nothing | H, D | 2.0 | | open |
+| CAL-01 | ringing adds the mute reason within 500 ms | H | 2.0 | AudioControlThreadTest `CAL-01` (two tests: on API 28 the 2 Hz poll adds the ringing reason within 500 ms and a declined call removes it with no park; on API 31 the listener mutes at once) and `OUT-10` | green |
+| CAL-02 | an answered call parks with "Paused: phone call" | H | 2.0 | AudioControlThreadTest `CAL-02` (ringtone then in-call parks every tool with `INCOMING_CALL`, the owner hears stopped, and neither the mode returning to normal nor a replug restarts anything; a later start replays no stale voice) and CallWatcherTest `CAL-02` (in-call, in-communication and call-screening are all answered) | green |
+| CAL-03 | mode observed by poll on 28–30 and by listener on 31+; no READ_PHONE_STATE | H | 2.0 | CallWatcherTest `CAL-03` (two tests: API 28 polls at 2 Hz and sees a change within a second, and stops polling on stop; API 31 registers the listener once and never polls) and AndroidAdaptersTest `CAL-03` (the platform adapter hears the mode-changed listener); the manifest half is `tools/check-manifest.sh` in the gate (DST-02) | green |
+| CAL-04 | another app's music changes nothing | H, D | 2.0 | H: NoAudioFocusGuardTest `CAL-04` (the engine's production sources contain no focus request, focus listener, playback callback or music-active query, so another app's playback has no path into the control thread; the guard was seen failing on a planted hit); D: the owner's phone check with music playing is pending | open |
 | CAL-05 | a silenced client is named in the status sentence | H | 2.0 | | open |
 
 ### Input source
@@ -328,9 +328,9 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| SHM-01 | SHARED, LOW_LATENCY, two bursts, granted values reported (decision 13) | H, D | 2.0 | | open |
-| SHM-02 | buffer grows on xruns up to four bursts | H | 2.0 | | open |
-| SHM-03 | routing-changed callback on API 37 | H, D | 2.0 | | open |
+| SHM-01 | SHARED, LOW_LATENCY, two bursts, granted values reported (decision 13) | H, D | 2.0 | H green: AudioControlThreadTest `SHM-01 and OUT-14` (the control thread's `StreamRequest` is SHARED, LOW_LATENCY, rate and frames-per-callback unspecified, two bursts, and `OutputInfo` carries the granted rate, burst, route and latency); the bridge maps the request onto the AAudio builder in the integrate step; D: the granted values on the owner's phone are pending | open |
+| SHM-02 | buffer grows on xruns up to four bursts | H | 2.0 | AudioControlThreadTest `SHM-02` (a rising xrun count grows the buffer one burst at a time, 2 to 3 to 4, then stops; each step is a Diagnostics line and the count is reported) | green |
+| SHM-03 | routing-changed callback on API 37 | H, D | 2.0 | H green: AudioControlThreadTest `OUT-12` (the routing-changed callback re-classifies the route and re-reads latency within the same control-thread turn, with no Parked and no new stream); the callback's registration on API 37 is the bridge's; D: pending | open |
 
 ### Bluetooth calibration
 
@@ -382,7 +382,7 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| BGH-01 | `ForegroundOwner.onToolsStarted()` on empty-to-one, `onToolsStopped()` on one-to-empty, both no-ops in 2.0 | H | 2.0 | contract shape and the fake registry's call order: OutputPortContractTest (M0); the real registry's test lands in M2 | open |
+| BGH-01 | `ForegroundOwner.onToolsStarted()` on empty-to-one, `onToolsStopped()` on one-to-empty, both no-ops in 2.0 | H | 2.0 | contract shape and the fake registry's call order: OutputPortContractTest (M0); the real registry: OutputRegistryTest `BGH-01` (two tests: started before the open and stopped after the close; a tool that never registered is not a transition) and AudioControlThreadTest `BGH-01` (the owner's hooks bracket the real stream: no stream open at either) | green |
 
 ## Totals
 
