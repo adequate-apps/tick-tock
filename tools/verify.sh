@@ -20,8 +20,10 @@
 # --skip-h  stop after the N tier; for the inner loop, never before a push
 #
 # Environment: JAVA_HOME (default /usr/lib/jvm/java-21-openjdk, must be 21),
-# ANDROID_HOME, TICKTOCK_DENYLIST (see identity-scan.sh). Gradle runs offline
-# unless CI is set, because every artifact is already pinned and cached.
+# ANDROID_HOME, TICKTOCK_DENYLIST (see identity-scan.sh), TICKTOCK_RANGE_INPUTS
+# (optional; the range generators' input directory, see tools/gen-ranges).
+# Gradle runs offline unless CI is set, because every artifact is already
+# pinned and cached.
 set -uo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -179,6 +181,14 @@ if [ -d "$render_dir" ]; then
     echo "render path is free of allocation, locks and logging"
 else
     echo "render path: $render_dir absent (the engine builder adds it)"
+fi
+
+# RNG-03: the committed range layers reproduce from their inputs. The inputs
+# live outside the repository, so the check runs only where they are present.
+if [ -n "${TICKTOCK_RANGE_INPUTS:-}" ]; then
+    tools/gen-ranges/check.sh "$TICKTOCK_RANGE_INPUTS" || red sources "the range layers do not reproduce from $TICKTOCK_RANGE_INPUTS"
+else
+    echo "range inputs: TICKTOCK_RANGE_INPUTS unset; reproduction not checked here (hashes are checked by RangeLayerDataTest)"
 fi
 
 # --- 3. U tier -----------------------------------------------------------------

@@ -18,6 +18,8 @@ class OverlayRanges(
     val keyed: Map<String, OverlayEntry>,
     val extended: Map<String, OverlayEntry>,
     val decisions: Map<String, String>,
+    /** sha256 of the source document the generator read; empty when the file names none. */
+    val sourceSha256: String = "",
 ) {
     companion object {
         const val SCHEMA = "ticktock-range-overlay"
@@ -36,7 +38,8 @@ class OverlayRanges(
                 decisions[key] = value.string?.takeIf { it.isNotBlank() }
                     ?: throw RangeDataException("decisions.$key: a decision needs its reason")
             }
-            return OverlayRanges(version, entries(root["keyed"], "keyed"), entries(root["extended"], "extended"), decisions)
+            val sha = root["sourceSha256"]?.string ?: ""
+            return OverlayRanges(version, entries(root["keyed"], "keyed"), entries(root["extended"], "extended"), decisions, sha)
         }
 
         private fun entries(value: JsonValue?, tier: String): Map<String, OverlayEntry> {

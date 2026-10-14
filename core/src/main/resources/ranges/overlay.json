@@ -1,6 +1,9 @@
 {
   "schema": "ticktock-range-overlay",
   "version": 1,
+  "generator": "tools/gen-ranges/gen_overlay.py",
+  "sourceFile": "range-overlay-source.with-decisions.json",
+  "sourceSha256": "2af3bb9f0483500724d65316f0b4193cd8e51cb7ae46f010776b32712b9240cf",
   "note": "App-wide corrections to the base layer, in written MIDI. A keyed entry replaces the keyed tier; an extended entry replaces the extended tier; the resolver then widens extended to cover keyed. Decisions record why a wide professional top was accepted.",
   "keyed": {
     "eb_sopranino": {

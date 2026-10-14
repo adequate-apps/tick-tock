@@ -14,6 +14,7 @@ jar staged under `robolectric-deps/`.
 | `verify-selftest.sh` | Proves `verify.sh` goes red for the right reason on seven planted failures, after a green control run. Rebuilds the tree per case; about ten minutes. |
 | `prove-red.sh [--base REV] [--head REV]` | Copies the branch's test files onto the base commit in a scratch worktree and refuses the branch if they pass there. CI runs it on every PR. |
 | `check-manifest.sh [MANIFEST]` | Compares the merged manifest's permissions with `manifest-allowlist.txt`, exact set match. |
+| `gen-ranges/check.sh INPUT_DIR` | Regenerates the two range layers from their inputs and compares byte for byte (RNG-03). `verify.sh` runs it when `TICKTOCK_RANGE_INPUTS` is set. |
 
 ## Source guards in `verify.sh`
 

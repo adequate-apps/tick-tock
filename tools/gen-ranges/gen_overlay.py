@@ -17,6 +17,7 @@ Source layout, all optional:
   DECISIONS           {key: reason}                  accepted professional tops (RNG-05)
 """
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -44,7 +45,9 @@ def main(argv):
     if len(argv) < 2 or len(argv) > 3:
         print(__doc__, file=sys.stderr)
         return 2
-    source = json.loads(Path(argv[1]).read_text())
+    source_path = Path(argv[1])
+    source_bytes = source_path.read_bytes()
+    source = json.loads(source_bytes)
     out_path = Path(argv[2]) if len(argv) == 3 else DEFAULT_OUT
 
     keyed = entries(source.get("KEYED_EXCEPTIONS", {}))
@@ -58,6 +61,12 @@ def main(argv):
     document = {
         "schema": SCHEMA,
         "version": VERSION,
+        # The source document's name and hash make a regeneration checkable:
+        # tools/gen-ranges/check.sh runs this script on the named file and
+        # compares byte for byte.
+        "generator": "tools/gen-ranges/gen_overlay.py",
+        "sourceFile": source_path.name,
+        "sourceSha256": hashlib.sha256(source_bytes).hexdigest(),
         "note": (
             "App-wide corrections to the base layer, in written MIDI. A keyed entry replaces the "
             "keyed tier; an extended entry replaces the extended tier; the resolver then widens "
