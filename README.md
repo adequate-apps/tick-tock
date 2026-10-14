@@ -12,7 +12,7 @@ hash-pinned.
 
 | Module | Role |
 |---|---|
-| `core` | Pure Kotlin JVM: contracts, music maths, detector, schemas. Imports nothing from Android. |
+| `core` | Pure Kotlin JVM: contracts, music maths, detector, instrument catalogue, layered ranges (`tools/gen-ranges`), the personal configuration (`docs/personal-config.md`). Imports nothing from Android. |
 | `engine` | Android library: capture and analysis threads in Kotlin, render callback and synth in C++. |
 | `data` | Android library: SQLite history, prefs file, crash log. |
 | `design` | Android library: the Gridline design system in Compose Foundation, with bundled IBM Plex. |
