@@ -14,17 +14,20 @@ class AppIdentityTest {
     fun `the string resource and the constant agree`() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         assertEquals(AppIdentity.NAME, context.getString(R.string.app_name))
+        assertEquals(AppIdentity.BRAND, context.getString(R.string.brand_name))
     }
 
     @Test
-    fun `the name literal appears in exactly one resource and one Kotlin file`() {
+    fun `the brand literal appears in exactly one resource and one Kotlin file`() {
+        // The brand is distinctive enough to scan for; the short name "Metronome" is an ordinary
+        // word that also labels the metronome tab, so only the brand is held to one home.
         // Working directory is the app module; scan every module's main sources.
         val root = File("..").canonicalFile
         val hits = listOf("app", "core", "engine", "data", "design")
             .map { File(root, "$it/src/main") }
             .filter { it.isDirectory }
             .flatMap { dir -> dir.walkTopDown().filter { it.isFile && (it.extension == "kt" || it.extension == "xml") } }
-            .filter { it.readText().contains(AppIdentity.NAME) }
+            .filter { it.readText().contains(AppIdentity.BRAND) }
             .map { it.relativeTo(root).path }
             .sorted()
         assertEquals(

@@ -7,5 +7,9 @@ package ticktock.app
  * test checks the two agree and that the literal appears nowhere else.
  */
 object AppIdentity {
-    const val NAME = "Adequate Metronome"
+    /** Launcher label and in-app title. */
+    const val NAME = "Metronome"
+
+    /** The brand: splash, About and the store listing. */
+    const val BRAND = "Adequate Metronome"
 }

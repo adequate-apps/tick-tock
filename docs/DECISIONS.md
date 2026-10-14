@@ -177,8 +177,9 @@ questions below.
 
 - The company brand is **AdequateApps** (adequateapps.com); this app is **Adequate Metronome**, served
   at adequateapps.com/metronome. Later products follow the pattern "Adequate X".
-- Play store title: "Adequate Metronome & Tuner" (26 of 30 characters). The short description carries
-  "drone" and the joke, followed by the features.
+- Names by place: the app drawer and the in-app title say "Metronome"; the store listing and the
+  splash say "Adequate Metronome". While running, the title gets out of the way most of the time.
+  Store keywords (tuner, drone) go in the short description.
 - Play developer name: "AdequateApps". Another studio already publishes as "Adequate".
 - Application id: `com.adequateapps.metronome`, permanent once published. The com.example release
   guard stays, and CI proves it with a planted id.
