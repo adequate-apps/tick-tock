@@ -2,6 +2,7 @@
 package ticktock.core.detect
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -69,6 +70,27 @@ class DetectorA4Test {
         // The tone that read +7.85 against 440 reads 0 against 442.
         assertEquals(0.0, after.last().cents, 1e-9)
         assertEquals(Pitch.centsFrom(442.0, 69, 440.0), drive.saved[before - 1].cents, 1e-9)
+    }
+
+    /**
+     * The note the change forgets is still a note that ended: a consumer that
+     * pairs attacks with releases (the ears-first reveal, settle
+     * announcements) gets the release, stamped with the last hop classified
+     * and carrying the discarded tail.
+     */
+    @Test
+    fun `POL-20 a change ends the held note with a release that carries the discarded tail`() {
+        val drive = Drive(Detector())
+        assertNull("nothing held, nothing to release", drive.detector.setA4(442.0))
+        drive.tone(442.0, 30)
+        val lastHop = drive.hop - 1
+        val release = drive.detector.setA4(442.0)
+        assertNotNull(release)
+        assertEquals(ReleaseCause.A4_CHANGE, release!!.cause)
+        assertEquals(69, release.midiSounding)
+        assertEquals(drive.detector.params.edge, release.discardedPending)
+        assertEquals(lastHop, release.hop)
+        assertNull("already released", drive.detector.setA4(440.0))
     }
 
     @Test

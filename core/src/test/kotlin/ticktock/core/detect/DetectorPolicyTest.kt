@@ -82,6 +82,20 @@ class DetectorPolicyTest {
     }
 
     @Test
+    fun `POL-05 a mode change ends the held note with a release`() {
+        val drive = Drive(Detector(ResponseMode.NORMAL))
+        assertNull("nothing held, nothing to release", drive.detector.setMode(ResponseMode.SLOW))
+        drive.note(a4, 30)
+        val lastHop = drive.hop - 1
+        val release = drive.detector.setMode(ResponseMode.FAST)
+        assertNotNull(release)
+        assertEquals(ReleaseCause.MODE_CHANGE, release!!.cause)
+        assertEquals(a4, release.midiSounding)
+        assertEquals("the tail was queued under Slow", ResponseModeTable.of(ResponseMode.SLOW).edge, release.discardedPending)
+        assertEquals(lastHop, release.hop)
+    }
+
+    @Test
     fun `POL-06 the attack edge is shown and never saved`() {
         val drive = Drive(Detector(ResponseMode.NORMAL))
         val params = drive.detector.params
