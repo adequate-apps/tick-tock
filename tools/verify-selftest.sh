@@ -7,7 +7,7 @@
 # that produced it. A control run on the unmodified tree must be green first,
 # otherwise a red proves nothing.
 #
-# The seven planted failures:
+# The nine planted failures:
 #   1. missing tier output     the U tier task is disabled, so it writes no XML
 #   2. zero tests found        the U tier runs with a filter that matches nothing
 #   3. a passing known gap     a @KnownGap test whose body passes
@@ -15,9 +15,16 @@
 #   5. a threshold outside CentsBand   a cents constant in another core file
 #   6. a denylisted string     one denylist entry pasted into README.md
 #   7. a wrong commit author   a commit on the branch by someone else
+#   8. a stray permission      a <uses-permission> the allowlist does not name
+#   9. a misaligned library    a prebuilt 64-bit .so linked for 4 KB pages
 #
 # The denylisted string is read from the denylist at run time, written into
-# the scratch tree only and never printed.
+# the scratch tree only and never printed. The misaligned library is compiled
+# by the NDK's clang into the scratch tree, so the check sees a real ELF.
+#
+#   tools/verify-selftest.sh [--only NAME ...]
+#
+# --only runs the control case plus the named cases; the default is all nine.
 set -uo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -25,6 +32,16 @@ cd "$root" || exit 2
 export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-21-openjdk}"
 denylist="${TICKTOCK_DENYLIST:-$HOME/.config/ticktock/denylist}"
 [ -f "$denylist" ] || { echo "verify-selftest: no denylist at $denylist" >&2; exit 2; }
+
+only=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --only) only+=("${2:?--only needs a case name}"); shift ;;
+        -h|--help) sed -n '2,25p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 2 ;;
+        *) echo "verify-selftest: unknown argument '$1'" >&2; exit 2 ;;
+    esac
+    shift
+done
 
 base=""
 for candidate in origin/main main; do
@@ -61,6 +78,11 @@ failed=0
 # run_case NAME EXPECTED_VERDICT EXPECTED_TEXT PLANT_FUNCTION
 run_case() {
     local name="$1" want_verdict="$2" want_text="$3" plant="$4" log verdict ok=0
+    if [ ${#only[@]} -gt 0 ] && [ "$name" != control ]; then
+        local wanted=0 n
+        for n in "${only[@]}"; do [ "$n" = "$name" ] && wanted=1; done
+        [ $wanted = 1 ] || return 0
+    fi
     make_scratch
     "$plant"
     log="$root/build/verify/selftest-$name.log"
@@ -147,6 +169,30 @@ plant_wrong_author() {
         commit -q -a -m 'docs: planted commit by another author' --no-verify
 }
 
+plant_stray_permission() {
+    # INTERNET is the permission the app must never gain quietly: decision 15
+    # sells an app with no network at all.
+    sed -i 's|^\(<manifest [^>]*>\)$|\1\n    <uses-permission android:name="android.permission.INTERNET" />|' \
+        "$scratch/app/src/main/AndroidManifest.xml"
+    grep -q 'android.permission.INTERNET' "$scratch/app/src/main/AndroidManifest.xml" \
+        || { echo "verify-selftest: could not plant the permission" >&2; exit 2; }
+}
+
+plant_misaligned_library() {
+    # A prebuilt arm64 library whose LOAD segments are aligned to 4 KB, the
+    # shape of a stale third-party binary. AGP packages src/main/jniLibs as is.
+    local sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}" ndk clang
+    ndk=$(sed -n 's/^ndk *= *"\([^"]*\)".*/\1/p' gradle/libs.versions.toml)
+    clang="$sdk/ndk/$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
+    [ -x "$clang" ] || { echo "verify-selftest: no NDK clang at $clang (set ANDROID_HOME)" >&2; exit 2; }
+    mkdir -p "$scratch/app/src/main/jniLibs/arm64-v8a"
+    printf 'int planted(void) { return 1; }\n' > "$scratch/planted.c"
+    "$clang" --target=aarch64-linux-android28 -shared -Wl,-z,max-page-size=4096 \
+        -o "$scratch/app/src/main/jniLibs/arm64-v8a/libplanted.so" "$scratch/planted.c" \
+        || { echo "verify-selftest: could not compile the planted library" >&2; exit 2; }
+    rm -f "$scratch/planted.c"
+}
+
 echo "verify-selftest: base ${base:0:12}, $(git rev-parse --short HEAD) plus uncommitted changes"
 run_case control GREEN "VERDICT: GREEN" plant_nothing
 run_case missing-tier-output RED "missing tier output" plant_missing_output
@@ -156,6 +202,8 @@ run_case render-allocation RED "allocation, locking or logging on the render pat
 run_case threshold-outside-band RED "a cents threshold outside" plant_threshold
 run_case denylisted-string RED "denylist rule" plant_denylisted
 run_case wrong-commit-author RED "rule commit-identity matched" plant_wrong_author
+run_case stray-permission RED "the merged manifest differs from" plant_stray_permission
+run_case misaligned-library RED "not aligned to 16 KB pages" plant_misaligned_library
 
 echo
 printf '%s\n' "${results[@]}"
