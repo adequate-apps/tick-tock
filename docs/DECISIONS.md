@@ -78,6 +78,80 @@ TickTock is the working name and will be workshopped later. It replaces the earl
 user-facing text; the bell icon stays for now. The name lives in exactly one string resource and one
 Kotlin constant so a rename is a two-line change.
 
+## 12. No audio focus; a call is detected and parks the tools
+
+Decisions 9 to 11 are the resolved questions at the end of this file. The scope revision of
+2026-10-14 adds the five below.
+
+- TickTock requests no audio focus, in any mode. Android mutes a focus-holding app during a call
+  and at no other time, so focus bought nothing that decision 4 allows and cost coexistence with
+  music players. The focus request, the LOSS and CAN_DUCK handling and the criteria OUT-01's
+  focus clause, OUT-08 and OUT-09 are gone. The duck ramp stays as an engine command for the
+  bleed policy only.
+- Calls are detected from the audio mode, on the control thread: a mode-changed listener on
+  API 31 and later, a 2 Hz poll of the mode on API 28 to 30. No telephony callback, because that
+  needs READ_PHONE_STATE and the manifest stays at RECORD_AUDIO.
+- Ringing silences: the ringtone mode adds a mute reason within 500 ms and removes it when the
+  mode returns to normal, so a call the player declines costs nothing.
+- An answered call parks: the in-call, in-communication and call-screening modes park every
+  registered tool with "Paused: phone call", and nothing restarts on its own; the player starts
+  the tools again. A call during a recording therefore never unmutes practice sounds into the
+  take.
+- The microphone side is told the truth: the recording callback reports when the client is
+  silenced by a call or another app, and the status sentence says so.
+- The output registry's empty-to-one and one-to-empty transitions carry the `ForegroundOwner`
+  hooks, the only places a media-playback service may start and stop in the release that ships
+  background playback. 2.0 wires a no-op.
+
+## 13. The output stream opens in SHARED mode
+
+SHARED sharing mode with LOW_LATENCY performance mode; sample rate and frames per callback left
+unspecified so the device chooses; buffer size two bursts, grown one burst at a time on xruns up
+to four, each step recorded in Diagnostics. Exclusive MMAP has a documented unplug bug on API 28
+and 29 and saves perhaps 10 to 20 ms that the tuner never feels. On API 37 the routing-changed
+callback re-classifies the route and re-measures latency without a disconnect.
+
+## 14. 2.0 ships on Google Play, with the same build free on GitHub
+
+- M7 is a Play release: an AAB and a universal APK from one build invocation; the fresh-clone
+  rule holds for both.
+- The owner generates the app-signing key offline and uploads it to Play App Signing, so the
+  Play build and the GitHub APK share one signature and an install from either channel updates
+  from the other.
+- A closed test with twelve testers over fourteen days precedes production. The fourteen days are
+  wall clock and start when M6 exits.
+- The Data safety form declares no data collected. The privacy policy lives at a stable URL under
+  `docs/` and is linked from Settings › About. The target audience is 13 and up unless the owner
+  opts into Families.
+- The GitHub APK channel needs the owner's developer-verification registration before it is
+  required for every app in 2027.
+- The manifest allowlist is one file per release (`tools/manifest-allowlist-<major.minor>.txt`),
+  and every 64-bit native library must be linked for 16 KB pages, both checked by the gate.
+
+## 15. One price: USD 5.99, everything included
+
+- One paid-upfront listing at USD 5.99. No in-app purchases, no subscription, no Billing Library,
+  no licence check, no network, no account. The source and a signed APK of the identical build are
+  free on GitHub under decision 7's licence.
+- A licence check in GPL code can be removed by any recipient, so a check buys nothing and would
+  cost a backend the app otherwise never needs. What the buyer pays for is the Play channel and the
+  author's continued work.
+- The `Entitlement` interface in `core/contracts` has one implementation, `AlwaysEntitled`, and no
+  call sites in 2.0; the three gated features are the all-history scope, named sessions and export.
+  It exists so that the reserve plan, a free listing with a single non-consumable unlock at the
+  same price, stays a one-module change. The reserve plan is built only if 2.0's sales say so, and
+  anything free at launch stays free.
+- Play's fee change for new versus existing installs (from 2026-06-30 in the US, EEA and UK) is to
+  be read before the listing goes live; the price stands until that reading says otherwise.
+
+## 16. A4 ranges 415 to 466 Hz
+
+The A4 stepper runs 415 to 466 Hz in 1 Hz steps with 440 as the default. 415 covers baroque pitch;
+466 is the upper end that keeps every A4 within one semitone of 440, so note naming stays
+unambiguous. A run opens on every change as before. The code lands in M1 (the personal-config
+range, the stepper, the sweep ends); this replaces the 430 to 450 range in the resolved
+questions below.
+
 ## Resolved questions
 
 - **Signing.** 1.x was never on a store and had no release keystore, so 2.0 starts with a new
@@ -87,8 +161,9 @@ Kotlin constant so a rename is a two-line change.
   "upload-key custody recorded" stays open until it is.
 - **Data migration from 1.x.** None. A new application id cannot read the old app's private storage,
   and the old history carried breath noise and four wrong transpositions.
-- **A4 range** stays 430–450 Hz. **Half-cent rounding** is away from zero. **Sine voice:** an output
-  open failure names the device and the refused rates; sine is a selectable voice.
+- **A4 range** was 430–450 Hz until decision 16 widened it to 415–466 Hz. **Half-cent rounding** is
+  away from zero. **Sine voice:** an output open failure names the device and the refused rates;
+  sine is a selectable voice.
 - **Detector language.** Kotlin in `:core`, gated by a per-hop cost measurement on the reference
   phone at M2, with a C++ move behind the same interface as the fallback.
 - **Storage engine.** Framework SQLite with hand-written migrations and one JSON prefs file. Room

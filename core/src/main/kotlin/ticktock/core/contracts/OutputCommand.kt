@@ -52,7 +52,9 @@ enum class OutputTool { METRONOME, DRONE, PITCH_PIPE, TEST_TONE }
 
 /**
  * Reasons output may be silenced while the tools keep running. One registry
- * owns the set; see OUT-10. A call is not a mute reason: it parks the tools
- * (decision 4), so nothing resumes into a recording on its own.
+ * owns the set; see OUT-10. An answered call is not a mute reason: it parks
+ * the tools (decisions 4 and 12), so nothing resumes into a recording on its
+ * own. The ringing phase gains its own reason with the call watcher (M2,
+ * CAL-01).
  */
 enum class MuteReason { RECORDING_ON_SPEAKER, BACKGROUND }

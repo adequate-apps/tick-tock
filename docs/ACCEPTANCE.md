@@ -120,6 +120,10 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 
 ## Sessions and runs, history bounds and storage
 
+The scope revision adds columns to the M3 schema before it freezes: attack counts (ATK-01), capture
+context and target (CTX-01), equipment (EQP-01) and the paused-capture state (CAP-02); they are
+ledgered under their own prefixes below.
+
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | SES-01 | the first run starts with saved prefs | H | 2.0 | | open |
@@ -142,15 +146,15 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| OUT-01 | output-user registry | H | 2.0 | | open |
+| OUT-01 | output-user registry | H | 2.0 (decision 12 removes the focus clause: the registry opens the stream on the first tool and closes it on the last, and its two transitions drive BGH-01) | | open |
 | OUT-02 | truthful state | H | 2.0 | | open |
 | OUT-03 | unplug | H, D | 2.0 | | open |
 | OUT-04 | drone AUTO on unplug | H | v1.1 | | deferred |
 | OUT-05 | replug | H, D | 2.0 | | open |
 | OUT-06 | off stays off | H | 2.0 | | open |
 | OUT-07 | late devices | H | 2.0 | | open |
-| OUT-08 | permanent loss | H | superseded by decision 4: another app taking audio never parks the tools; the contract has no focus reason | | closed |
-| OUT-09 | transient loss | H | superseded by decision 4: an incoming call parks every tool (`ParkReason.INCOMING_CALL`) and nothing restarts on its own; no duck on focus | OutputPortContractTest | red |
+| OUT-08 | permanent loss | H | superseded by decisions 4 and 12: another app taking audio never parks the tools; the contract has no focus reason | | closed |
+| OUT-09 | transient loss | H | superseded by decisions 4 and 12: an answered call parks every tool (`ParkReason.INCOMING_CALL`) and nothing restarts on its own; ringing is CAL-01; no duck on focus | OutputPortContractTest | red |
 | OUT-10 | mute reasons | H | 2.0 | | open |
 | OUT-11 | background policy | H | 2.0 (v1 policy: stop everything) | | open |
 | OUT-12 | route from the routed device | H, D | 2.0 | | open |
@@ -164,14 +168,14 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 | IN-03 | saved interface stays saved | H | 2.0 | | open |
 | IN-04 | replug recovers | H, D | 2.0 | | open |
 | IN-05 | honest silence | H | 2.0 | | open |
-| IN-06 | a hung driver costs one timeout | H | 2.0 | | open |
+| IN-06 | a hung driver costs one timeout | H | 2.0 (the fallback trigger is the property check, SRC-01) | | open |
 
 ## Metronome timing
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | MET-01 | sample clock | N | 2.0 | | open |
-| MET-02 | zero drift | N | 2.0 | | open |
+| MET-02 | zero drift | N | 2.0 (a muted beat keeps its subdivisions audible, GAP-03) | | open |
 | MET-03 | in-block placement | N | 2.0 | | open |
 | MET-04 | late events | N | 2.0 | | open |
 | MET-05 | exactly once | N | 2.0 | | open |
@@ -221,10 +225,165 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | A11Y-01 | tuner readout | H | 2.0 | | open |
-| A11Y-02 | every screen | H | 2.0 | | open |
+| A11Y-02 | every screen | H | 2.0 (supplemented by CLR-01..03) | | open |
 | A11Y-03 | colour is never alone | H | 2.0 | | open |
 | A11Y-04 | touch targets | H | 2.0 | | open |
 
+## Scope revision, 2026-10-14
+
+Criteria added by the adopted scope revision (decisions 12 to 16). The text of each lives in the
+revision document; the IDs are claimed here like any other.
+
+### Capture control
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| CAP-01 | paused capture drives the needle and reaches no store | H | 2.0 | | open |
+| CAP-02 | paused state survives process death | H | 2.0 | | open |
+| CAP-03 | a run opened while paused counts skipped readings | H | 2.0 | | open |
+
+### Attacks as the unit
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| ATK-01 | attack columns in note_hist | H | 2.0 | | open |
+| ATK-02 | one attack per attack edge, landing cents from the first settled reading | U, H | 2.0 | | open |
+| ATK-03 | held note versus sweep | H | 2.0 | | open |
+| ATK-04 | attacks shown beside readings | H | 2.0 | | open |
+
+### Run context and target
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| CTX-01 | context and target columns | H | 2.0 | | open |
+| CTX-02 | drone start and stop open runs | H | 2.0 | | open |
+| CTX-03 | drone runs enter All-history by toggle only | H | 2.0 | | open |
+| CTX-04 | no 2.0 path writes `just` | H | 2.0 | | open |
+
+### Equipment
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| EQP-01 | equipment column | H | 2.0 | | open |
+| EQP-02 | equipment field on the session sheet | H | 2.0 | | open |
+
+### Tuning presets
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| CHK-01 | ensemble and check-set pads marked | H | 2.0 | | open |
+| CHK-02 | check sets per instrument, golden over all 73 keys | U | 2.0 | | open |
+| CHK-03 | Next check retunes in place | N, H | 2.0 | | open |
+
+### A4 range
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| A4W-01 | A4 steps 415 to 466 Hz (decision 16; the personal-config range and the sweep ends follow in M1) | U, H | 2.0 | | open |
+
+### Ears first
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| EAR-01 | readout hidden, capture unchanged | H | 2.0 | | open |
+| EAR-02 | reveal after the note | H | 2.0 | | open |
+| EAR-03 | setting persists | H | 2.0 | | open |
+
+### Pitch trace
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| TRC-01 | five-second trace from a fixed ring, no root recomposition | H | 2.0 | | open |
+| TRC-02 | silence breaks the line | H | 2.0 | | open |
+| TRC-03 | TalkBack reads the trace once | H | 2.0 | | open |
+
+### Gap bars and offbeats
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| GAP-01 | N bars on, M bars off (the fields and the on/off rule landed in M0: MetroSetupTest; the generator lands in M2) | N, H | 2.0 | | open |
+| GAP-02 | the cycle keeps its bar position across a tempo change | N | 2.0 | | open |
+| GAP-03 | a muted beat keeps its subdivisions | N | 2.0 | | open |
+| GAP-04 | odd-metre presets | H | 2.0 | | open |
+
+### Calls without audio focus
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| CAL-01 | ringing adds the mute reason within 500 ms | H | 2.0 | | open |
+| CAL-02 | an answered call parks with "Paused: phone call" | H | 2.0 | | open |
+| CAL-03 | mode observed by poll on 28–30 and by listener on 31+; no READ_PHONE_STATE | H | 2.0 | | open |
+| CAL-04 | another app's music changes nothing | H, D | 2.0 | | open |
+| CAL-05 | a silenced client is named in the status sentence | H | 2.0 | | open |
+
+### Input source
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| SRC-01 | source chosen by the UNPROCESSED property | H | 2.0 | | open |
+| SRC-02 | Diagnostics shows source and effects | H | 2.0 | | open |
+| SRC-03 | floors shift by the source offset | U | 2.0 | | open |
+
+### Output stream mode
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| SHM-01 | SHARED, LOW_LATENCY, two bursts, granted values reported (decision 13) | H, D | 2.0 | | open |
+| SHM-02 | buffer grows on xruns up to four bursts | H | 2.0 | | open |
+| SHM-03 | routing-changed callback on API 37 | H, D | 2.0 | | open |
+
+### Bluetooth calibration
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| BTC-01 | tap calibration on Bluetooth routes | H, D | 2.0 | | open |
+| BTC-02 | one offset per route class | H | 2.0 | | open |
+
+### TalkBack
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| TLK-01 | needle state description, read on focus only | H | 2.0 | | open |
+| TLK-02 | opt-in settled-note live region | H | 2.0 | | open |
+| TLK-03 | table rows read as sentences | H | 2.0 | | open |
+| TLK-04 | beats never announced; stepper actions | H | 2.0 | | open |
+
+### Colour and shape
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| CLR-01 | `attention-ink` token at 4.5:1 on white and 3:1 on gray | U | 2.0 | | open |
+| CLR-02 | small close-band text uses `attention-ink` | H | 2.0 | | open |
+| CLR-03 | a geometric cue beside every band, drawn by `CentsBand` only | U, H | 2.0 | | open |
+
+### Export
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| EXP-01 | CSV through the share sheet | H | 2.0 | | open |
+| EXP-02 | CSV rows round-trip to 0.1 c | U | 2.0 | | open |
+
+### Distribution
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| DST-01 | AAB, universal APK and SHA256SUMS from one build | CI | 2.0 | | open |
+| DST-02 | merged manifest equals `tools/manifest-allowlist-2.0.txt` | CI | 2.0 | `tools/check-manifest.sh` in `tools/verify.sh` (every push); `verify-selftest.sh` case `stray-permission` proves it goes red | green |
+| DST-03 | every `.so` passes the 16 KB alignment check | CI | 2.0 | `tools/check-alignment.sh` in `tools/verify.sh` on the debug APK (every push); `verify-selftest.sh` case `misaligned-library` was seen failing before the stage existed; the release job runs the same script on the release artifacts once `release.yml` lands (M7) | open |
+| DST-04 | About shows version, licence, THIRD_PARTY and the privacy policy link | H | 2.0 | | open |
+
+### Entitlement seam
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| ENT-01 | `Entitlement` with one implementation and no call sites outside the three gated features | U | 2.0 | EntitlementContractTest (four tests; the call-site grep covers every module) | green |
+
+### Background hook
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| BGH-01 | `ForegroundOwner.onToolsStarted()` on empty-to-one, `onToolsStopped()` on one-to-empty, both no-ops in 2.0 | H | 2.0 | contract shape and the fake registry's call order: OutputPortContractTest (M0); the real registry's test lands in M2 | open |
+
 ## Totals
 
-160 criteria. Update the Test column with the fully qualified test name when the red commit lands, and the Status column in the same PR as the green commit.
+215 criteria: 160 from the behaviour spec and 55 from the scope revision. Update the Test column with the fully qualified test name when the red commit lands, and the Status column in the same PR as the green commit.
