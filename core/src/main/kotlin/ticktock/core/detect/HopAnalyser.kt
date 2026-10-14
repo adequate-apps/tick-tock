@@ -8,7 +8,11 @@ import ticktock.core.contracts.InputInfo
 /** Diagnostics since the stream started (POL-18). */
 data class AnalysisCounters(
     val hopsAnalysed: Long = 0,
-    /** Hops of audio that never reached the estimator: ring overflow, or delivery before the stream was configured. */
+    /**
+     * Hops that produced no decision: pushed out of the ring unread,
+     * delivered before the stream was configured, or spent as context after
+     * a gap, because the window they would have completed never existed.
+     */
     val droppedHops: Long = 0,
     /** Hops the estimator threw on; each was skipped and the stream continued (ERR-07). */
     val analysisErrors: Long = 0,
@@ -23,8 +27,11 @@ data class AnalysisCounters(
  * and no hop is ever analysed twice (POL-15).
  *
  * Each hop is analysed with the hop before it as context, which makes the
- * window two hops long (DET-14). The window is handed to the estimator
- * unscaled; mic gain is applied by the detector to the gate alone (POL-12).
+ * window two hops long (DET-14). After a gap the hop before is no neighbour
+ * of the hop after, so the first hop past a gap is context alone and the
+ * numbering moves on by the hops lost: a hop index stays a time (POL-09).
+ * The window is handed to the estimator unscaled; mic gain is applied by
+ * the detector to the gate alone (POL-12).
  */
 class HopAnalyser(
     val detector: Detector,
@@ -53,6 +60,9 @@ class HopAnalyser(
     private var current = FloatArray(0)
     private var window = FloatArray(0)
     private var nextHop = 0L
+
+    /** True when the hop in [previous] ends before audio the ring dropped, so it can only be context. */
+    private var contextOnly = false
     private var droppedFrames = 0L
     private var hopsAnalysed = 0L
     private var analysisErrors = 0L
@@ -115,6 +125,7 @@ class HopAnalyser(
         analysisErrors = 0
         lastAnalysisError = null
         nextHop = 0
+        contextOnly = false
     }
 
     private fun configure(info: InputInfo) {
@@ -136,10 +147,21 @@ class HopAnalyser(
     fun drain(): List<Decision> {
         val target = ring ?: return emptyList()
         val decisions = ArrayList<Decision>()
-        while (target.read(current, hopFrames)) {
+        while (true) {
+            val lost = target.readHop(current, hopFrames) ?: break
+            if (lost > 0) skipGap(lost)
+            val hop = nextHop++
+            if (contextOnly) {
+                // The first hop after a gap: the window it would complete, half
+                // from before the gap, never existed. It is kept as the context
+                // for the next hop and counted as a hop without a decision.
+                contextOnly = false
+                synchronized(this) { droppedFrames += hopFrames }
+                swapHops()
+                continue
+            }
             System.arraycopy(previous, 0, window, 0, hopFrames)
             System.arraycopy(current, 0, window, hopFrames, hopFrames)
-            val hop = nextHop++
             val estimate = try {
                 estimator.estimate(window, window.size, sampleRate)
             } catch (failure: RuntimeException) {
@@ -153,8 +175,18 @@ class HopAnalyser(
             decisions += detector.step(estimate, hop, micGain)
             swapHops()
         }
-        synchronized(this) { droppedFrames += target.takeOverflow() }
+        // Audio pushed out while no whole hop was readable counts now, and the
+        // next hop read is already past the gap.
+        val lost = target.takeOverflow()
+        if (lost > 0) skipGap(lost)
         return decisions
+    }
+
+    /** The ring dropped [lostFrames] unread: count them, move the numbering on by the whole hops among them, and mark the context stale. */
+    private fun skipGap(lostFrames: Long) {
+        synchronized(this) { droppedFrames += lostFrames }
+        nextHop += lostFrames / hopFrames
+        contextOnly = true
     }
 
     private fun swapHops() {

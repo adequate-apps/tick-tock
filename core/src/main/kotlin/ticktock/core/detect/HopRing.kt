@@ -55,6 +55,26 @@ class HopRing(val capacityFrames: Int) {
     @Synchronized
     fun read(destination: FloatArray, frames: Int): Boolean {
         if (frames > count) return false
+        copyOut(destination, frames)
+        return true
+    }
+
+    /**
+     * As [read], and also reports the frames pushed out unread before these,
+     * taken together with the copy so the reader learns of a gap with the
+     * first audio after it and never a hop late. Null when fewer than [frames]
+     * are buffered; the overflow count then waits for the next read.
+     */
+    @Synchronized
+    fun readHop(destination: FloatArray, frames: Int): Long? {
+        if (frames > count) return null
+        val lost = overflowFrames
+        overflowFrames = 0
+        copyOut(destination, frames)
+        return lost
+    }
+
+    private fun copyOut(destination: FloatArray, frames: Int) {
         var offset = 0
         var remaining = frames
         while (remaining > 0) {
@@ -65,7 +85,6 @@ class HopRing(val capacityFrames: Int) {
             readPos = (readPos + chunk) % capacityFrames
         }
         count -= frames
-        return true
     }
 
     /** Frames pushed out unread since the last call, and resets the count. */
