@@ -71,16 +71,20 @@ data class TuningSet(
  *    the classic tendency checks beside the F#.
  *  - Strings tune their open strings, the A string first.
  *
- * Families the sources describe by fingering (saxophones, clarinets, flutes,
- * trumpets) are listed in written pitch, so every member shares the set;
- * families described by concert pitch (horns, trombones, low brass, double
- * reeds, strings) are listed sounding and converted through each member's
- * transposition. Instruments without a published set (recorders, harp, voice,
+ * Families the sources describe by fingering (saxophones, clarinets) are
+ * listed in written pitch, so every member shares the set. Sets the sources
+ * describe in concert pitch (the trumpet climb, the upper woodwinds' notes,
+ * horns, trombones, low brass, double reeds, strings) are listed sounding and
+ * converted through each member's transposition, with the piccolo and bass
+ * members of a family an octave up or down so the set sits in their own
+ * register. Instruments without a published set (recorders, harp, voice,
  * piano, the catch-all) check their ensemble note in each register of their
  * keyed range. The two ensemble notes sit a semitone apart in one octave: the
- * octave whose Bb is nearest the primary check note with both notes inside
- * the keyed range, lower on a tie, so a tenor's Bb is written C5 and a tuba's
- * is low Bb. The golden file pins all of it.
+ * octave of the check set's own concert Bb where it names one, else the
+ * octave whose Bb is nearest the first check note, with both notes inside
+ * the keyed range and the lower on a tie, so a tenor's Bb is written C5, a
+ * tuba's is low Bb, and a horn's is the Bb its check set calls the band's.
+ * The golden file pins all of it.
  */
 object TuningNotes {
     fun forInstrument(instrument: Instrument): TuningSet =
@@ -104,17 +108,23 @@ object TuningNotes {
     private val saxophone = Spec.Written(listOf(78 to "top-line F#, the saxophone's tuning note", 73 to "middle C#, the open note", 74 to "fourth-line D, the register's sharp note"))
     private val baritoneSaxophone = Spec.Written(listOf(66 to "bottom-space F#, the baritone's tuning note", 73 to "middle C#, the open note", 74 to "fourth-line D, the register's sharp note"))
     private val clarinet = Spec.Written(listOf(67 to "open G, set on the barrel", 52 to "low E, set on the bell", 71 to "B, the twelfth above low E"))
-    private val flute = Spec.Written(listOf(70 to "Bb, the band's note", 69 to "A, the orchestra's note", 65 to "F, the low register"))
-    private val trumpet = Spec.Written(listOf(67 to "G, where the climb starts", 69 to "A", 71 to "B", 72 to "C, where the climb ends"))
+    // Barnes: the upper woodwinds play concert F, G, A and Bb, and the trumpets
+    // climb written G to C on the Bb trumpet, concert F to the band's Bb.
+    private val flute = Spec.Concert(listOf(70 to "concert Bb, the band's note", 69 to "concert A, the orchestra's note", 65 to "concert F, the low register"))
+    private val trumpet = Spec.Concert(listOf(65 to "concert F, where the climb starts", 67 to "concert G", 69 to "concert A", 70 to "concert Bb, the band's note, where the climb ends"))
     private val horn = Spec.Concert(listOf(65 to "concert F, the horn's note", 58 to "concert Bb, the band's note", 46 to "concert Bb, the low register"))
     // The mellophone's range starts above the horn's low Bb, so its third note is the upper Bb.
     private val mellophone = Spec.Concert(listOf(65 to "concert F, the horn's note", 58 to "concert Bb, the band's note", 70 to "concert Bb, the upper register"))
     private val lowVoice = Spec.Concert(listOf(46 to "concert Bb, the band's note", 53 to "concert F, the fifth above", 58 to "concert Bb, the upper register"))
     private val deepVoice = Spec.Concert(listOf(34 to "low Bb, the band's note two octaves down", 41 to "F, the fifth above", 46 to "Bb, the upper register"))
     private val oboe = Spec.Concert(listOf(69 to "concert A, the oboe's note", 70 to "concert Bb, the band's note", 65 to "concert F, the low register"))
+    // The bassoon follows the oboe's A in the orchestra and plays the band's Bb too, an octave and a fifth down.
+    private val bassoon = Spec.Concert(listOf(45 to "concert A, the orchestra's note", 46 to "concert Bb, the band's note", 53 to "concert F, the fifth above"))
     private val concertA = Spec.Registers(EnsembleNote.CONCERT_A, most = 3)
 
     private fun openStrings(vararg notes: Pair<Int, String>) = Spec.Concert(notes.toList())
+
+    private fun Spec.Concert.octaves(shift: Int) = Spec.Concert(notes.map { (sounding, reason) -> sounding + 12 * shift to reason })
 
     private val byFamily: Map<Family, Spec> = mapOf(
         Family.SAXOPHONE to saxophone,
@@ -133,14 +143,19 @@ object TuningNotes {
 
     private val byKey: Map<String, Spec> = mapOf(
         "eb_bari" to baritoneSaxophone,
+        "flute_piccolo" to flute.octaves(1),
+        "flute_bass_c" to flute.octaves(-1),
+        "trp_piccolo_bb" to trumpet.octaves(1),
+        "trp_piccolo_a" to trumpet.octaves(1),
+        "trp_bass_bb" to trumpet.octaves(-1),
         "mellophone_f" to mellophone,
         "tuba_f" to deepVoice,
         "tuba_eb" to deepVoice,
         "tuba_cc" to deepVoice,
         "tuba_bbb" to deepVoice,
         "sousaphone_bbb" to deepVoice,
-        "bassoon" to lowVoice,
-        "contrabassoon" to deepVoice,
+        "bassoon" to bassoon,
+        "contrabassoon" to bassoon.octaves(-1),
         "violin" to openStrings(69 to "open A string", 62 to "open D string", 55 to "open G string", 76 to "open E string"),
         "viola" to openStrings(69 to "open A string", 62 to "open D string", 55 to "open G string", 48 to "open C string"),
         "cello" to openStrings(57 to "open A string", 50 to "open D string", 43 to "open G string", 36 to "open C string"),
@@ -164,7 +179,9 @@ object TuningNotes {
             is Spec.Registers -> registers(instrument, range, spec)
         }
         val preferred = if (instrument.family in bandFamilies) EnsembleNote.CONCERT_BB else EnsembleNote.CONCERT_A
-        val anchor = check.first().soundingMidi
+        // The pads follow the check set: a set that names the band's Bb puts the pad on that very note.
+        val bandBb = check.firstOrNull { Math.floorMod(it.soundingMidi, 12) == EnsembleNote.CONCERT_BB.concertPitchClass }
+        val anchor = (bandBb ?: check.first()).soundingMidi
         val ensemble = EnsembleNote.entries.associateWith { note ->
             sounding(instrument, ensembleOctave(note, anchor, instrument, range), "${note.label}, the ensemble's note")
         }

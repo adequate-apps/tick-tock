@@ -56,9 +56,9 @@
     },
     "preferred": "concert A",
     "check": [
+      "A2 (45) sounds A2 (45): concert A, the orchestra's note",
       "A#/Bb2 (46) sounds A#/Bb2 (46): concert Bb, the band's note",
-      "F3 (53) sounds F3 (53): concert F, the fifth above",
-      "A#/Bb3 (58) sounds A#/Bb3 (58): concert Bb, the upper register"
+      "F3 (53) sounds F3 (53): concert F, the fifth above"
     ]
   },
   "bb_bass": {
@@ -248,9 +248,9 @@
     },
     "preferred": "concert A",
     "check": [
-      "A#/Bb2 (46) sounds A#/Bb1 (34): low Bb, the band's note two octaves down",
-      "F3 (53) sounds F2 (41): F, the fifth above",
-      "A#/Bb3 (58) sounds A#/Bb2 (46): Bb, the upper register"
+      "A2 (45) sounds A1 (33): concert A, the orchestra's note",
+      "A#/Bb2 (46) sounds A#/Bb1 (34): concert Bb, the band's note",
+      "F3 (53) sounds F2 (41): concert F, the fifth above"
     ]
   },
   "cornet_bb": {
@@ -260,10 +260,10 @@
     },
     "preferred": "concert Bb",
     "check": [
-      "G4 (67) sounds F4 (65): G, where the climb starts",
-      "A4 (69) sounds G4 (67): A",
-      "B4 (71) sounds A4 (69): B",
-      "C5 (72) sounds A#/Bb4 (70): C, where the climb ends"
+      "G4 (67) sounds F4 (65): concert F, where the climb starts",
+      "A4 (69) sounds G4 (67): concert G",
+      "B4 (71) sounds A4 (69): concert A",
+      "C5 (72) sounds A#/Bb4 (70): concert Bb, the band's note, where the climb ends"
     ]
   },
   "double_bass": {
@@ -370,10 +370,10 @@
     },
     "preferred": "concert Bb",
     "check": [
-      "G4 (67) sounds F4 (65): G, where the climb starts",
-      "A4 (69) sounds G4 (67): A",
-      "B4 (71) sounds A4 (69): B",
-      "C5 (72) sounds A#/Bb4 (70): C, where the climb ends"
+      "G4 (67) sounds F4 (65): concert F, where the climb starts",
+      "A4 (69) sounds G4 (67): concert G",
+      "B4 (71) sounds A4 (69): concert A",
+      "C5 (72) sounds A#/Bb4 (70): concert Bb, the band's note, where the climb ends"
     ]
   },
   "flute_alto_g": {
@@ -383,9 +383,9 @@
     },
     "preferred": "concert Bb",
     "check": [
-      "A#/Bb4 (70) sounds F4 (65): Bb, the band's note",
-      "A4 (69) sounds E4 (64): A, the orchestra's note",
-      "F4 (65) sounds C4 (60): F, the low register"
+      "D#/Eb5 (75) sounds A#/Bb4 (70): concert Bb, the band's note",
+      "D5 (74) sounds A4 (69): concert A, the orchestra's note",
+      "A#/Bb4 (70) sounds F4 (65): concert F, the low register"
     ]
   },
   "flute_bass_c": {
@@ -395,9 +395,9 @@
     },
     "preferred": "concert Bb",
     "check": [
-      "A#/Bb4 (70) sounds A#/Bb3 (58): Bb, the band's note",
-      "A4 (69) sounds A3 (57): A, the orchestra's note",
-      "F4 (65) sounds F3 (53): F, the low register"
+      "A#/Bb4 (70) sounds A#/Bb3 (58): concert Bb, the band's note",
+      "A4 (69) sounds A3 (57): concert A, the orchestra's note",
+      "F4 (65) sounds F3 (53): concert F, the low register"
     ]
   },
   "flute_c": {
@@ -407,9 +407,9 @@
     },
     "preferred": "concert Bb",
     "check": [
-      "A#/Bb4 (70) sounds A#/Bb4 (70): Bb, the band's note",
-      "A4 (69) sounds A4 (69): A, the orchestra's note",
-      "F4 (65) sounds F4 (65): F, the low register"
+      "A#/Bb4 (70) sounds A#/Bb4 (70): concert Bb, the band's note",
+      "A4 (69) sounds A4 (69): concert A, the orchestra's note",
+      "F4 (65) sounds F4 (65): concert F, the low register"
     ]
   },
   "flute_piccolo": {
@@ -419,9 +419,9 @@
     },
     "preferred": "concert Bb",
     "check": [
-      "A#/Bb4 (70) sounds A#/Bb5 (82): Bb, the band's note",
-      "A4 (69) sounds A5 (81): A, the orchestra's note",
-      "F4 (65) sounds F5 (77): F, the low register"
+      "A#/Bb4 (70) sounds A#/Bb5 (82): concert Bb, the band's note",
+      "A4 (69) sounds A5 (81): concert A, the orchestra's note",
+      "F4 (65) sounds F5 (77): concert F, the low register"
     ]
   },
   "guitar": {
@@ -451,8 +451,8 @@
   },
   "horn_bb": {
     "ensemble": {
-      "concert Bb": "C5 (72) sounds A#/Bb4 (70)",
-      "concert A": "B4 (71) sounds A4 (69)"
+      "concert Bb": "C4 (60) sounds A#/Bb3 (58)",
+      "concert A": "B3 (59) sounds A3 (57)"
     },
     "preferred": "concert Bb",
     "check": [
@@ -463,8 +463,8 @@
   },
   "horn_eb_alto": {
     "ensemble": {
-      "concert Bb": "G5 (79) sounds A#/Bb4 (70)",
-      "concert A": "F#/Gb5 (78) sounds A4 (69)"
+      "concert Bb": "G4 (67) sounds A#/Bb3 (58)",
+      "concert A": "F#/Gb4 (66) sounds A3 (57)"
     },
     "preferred": "concert Bb",
     "check": [
@@ -500,8 +500,8 @@
   },
   "mellophone_f": {
     "ensemble": {
-      "concert Bb": "F5 (77) sounds A#/Bb4 (70)",
-      "concert A": "E5 (76) sounds A4 (69)"
+      "concert Bb": "F4 (65) sounds A#/Bb3 (58)",
+      "concert A": "E4 (64) sounds A3 (57)"
     },
     "preferred": "concert Bb",
     "check": [
@@ -663,15 +663,15 @@
   },
   "trp_a": {
     "ensemble": {
-      "concert Bb": "C#/Db4 (61) sounds A#/Bb3 (58)",
-      "concert A": "C4 (60) sounds A3 (57)"
+      "concert Bb": "C#/Db5 (73) sounds A#/Bb4 (70)",
+      "concert A": "C5 (72) sounds A4 (69)"
     },
     "preferred": "concert Bb",
     "check": [
-      "G4 (67) sounds E4 (64): G, where the climb starts",
-      "A4 (69) sounds F#/Gb4 (66): A",
-      "B4 (71) sounds G#/Ab4 (68): B",
-      "C5 (72) sounds A4 (69): C, where the climb ends"
+      "G#/Ab4 (68) sounds F4 (65): concert F, where the climb starts",
+      "A#/Bb4 (70) sounds G4 (67): concert G",
+      "C5 (72) sounds A4 (69): concert A",
+      "C#/Db5 (73) sounds A#/Bb4 (70): concert Bb, the band's note, where the climb ends"
     ]
   },
   "trp_bass_bb": {
@@ -681,10 +681,10 @@
     },
     "preferred": "concert Bb",
     "check": [
-      "G4 (67) sounds F3 (53): G, where the climb starts",
-      "A4 (69) sounds G3 (55): A",
-      "B4 (71) sounds A3 (57): B",
-      "C5 (72) sounds A#/Bb3 (58): C, where the climb ends"
+      "G4 (67) sounds F3 (53): concert F, where the climb starts",
+      "A4 (69) sounds G3 (55): concert G",
+      "B4 (71) sounds A3 (57): concert A",
+      "C5 (72) sounds A#/Bb3 (58): concert Bb, the band's note, where the climb ends"
     ]
   },
   "trp_bb": {
@@ -694,10 +694,10 @@
     },
     "preferred": "concert Bb",
     "check": [
-      "G4 (67) sounds F4 (65): G, where the climb starts",
-      "A4 (69) sounds G4 (67): A",
-      "B4 (71) sounds A4 (69): B",
-      "C5 (72) sounds A#/Bb4 (70): C, where the climb ends"
+      "G4 (67) sounds F4 (65): concert F, where the climb starts",
+      "A4 (69) sounds G4 (67): concert G",
+      "B4 (71) sounds A4 (69): concert A",
+      "C5 (72) sounds A#/Bb4 (70): concert Bb, the band's note, where the climb ends"
     ]
   },
   "trp_c": {
@@ -707,10 +707,10 @@
     },
     "preferred": "concert Bb",
     "check": [
-      "G4 (67) sounds G4 (67): G, where the climb starts",
-      "A4 (69) sounds A4 (69): A",
-      "B4 (71) sounds B4 (71): B",
-      "C5 (72) sounds C5 (72): C, where the climb ends"
+      "F4 (65) sounds F4 (65): concert F, where the climb starts",
+      "G4 (67) sounds G4 (67): concert G",
+      "A4 (69) sounds A4 (69): concert A",
+      "A#/Bb4 (70) sounds A#/Bb4 (70): concert Bb, the band's note, where the climb ends"
     ]
   },
   "trp_d": {
@@ -720,10 +720,10 @@
     },
     "preferred": "concert Bb",
     "check": [
-      "G4 (67) sounds A4 (69): G, where the climb starts",
-      "A4 (69) sounds B4 (71): A",
-      "B4 (71) sounds C#/Db5 (73): B",
-      "C5 (72) sounds D5 (74): C, where the climb ends"
+      "D#/Eb4 (63) sounds F4 (65): concert F, where the climb starts",
+      "F4 (65) sounds G4 (67): concert G",
+      "G4 (67) sounds A4 (69): concert A",
+      "G#/Ab4 (68) sounds A#/Bb4 (70): concert Bb, the band's note, where the climb ends"
     ]
   },
   "trp_e": {
@@ -733,10 +733,10 @@
     },
     "preferred": "concert Bb",
     "check": [
-      "G4 (67) sounds B4 (71): G, where the climb starts",
-      "A4 (69) sounds C#/Db5 (73): A",
-      "B4 (71) sounds D#/Eb5 (75): B",
-      "C5 (72) sounds E5 (76): C, where the climb ends"
+      "C#/Db4 (61) sounds F4 (65): concert F, where the climb starts",
+      "D#/Eb4 (63) sounds G4 (67): concert G",
+      "F4 (65) sounds A4 (69): concert A",
+      "F#/Gb4 (66) sounds A#/Bb4 (70): concert Bb, the band's note, where the climb ends"
     ]
   },
   "trp_eb": {
@@ -746,10 +746,10 @@
     },
     "preferred": "concert Bb",
     "check": [
-      "G4 (67) sounds A#/Bb4 (70): G, where the climb starts",
-      "A4 (69) sounds C5 (72): A",
-      "B4 (71) sounds D5 (74): B",
-      "C5 (72) sounds D#/Eb5 (75): C, where the climb ends"
+      "D4 (62) sounds F4 (65): concert F, where the climb starts",
+      "E4 (64) sounds G4 (67): concert G",
+      "F#/Gb4 (66) sounds A4 (69): concert A",
+      "G4 (67) sounds A#/Bb4 (70): concert Bb, the band's note, where the climb ends"
     ]
   },
   "trp_f": {
@@ -759,23 +759,23 @@
     },
     "preferred": "concert Bb",
     "check": [
-      "G4 (67) sounds C5 (72): G, where the climb starts",
-      "A4 (69) sounds D5 (74): A",
-      "B4 (71) sounds E5 (76): B",
-      "C5 (72) sounds F5 (77): C, where the climb ends"
+      "C4 (60) sounds F4 (65): concert F, where the climb starts",
+      "D4 (62) sounds G4 (67): concert G",
+      "E4 (64) sounds A4 (69): concert A",
+      "F4 (65) sounds A#/Bb4 (70): concert Bb, the band's note, where the climb ends"
     ]
   },
   "trp_piccolo_a": {
     "ensemble": {
-      "concert Bb": "C#/Db4 (61) sounds A#/Bb4 (70)",
-      "concert A": "C4 (60) sounds A4 (69)"
+      "concert Bb": "C#/Db5 (73) sounds A#/Bb5 (82)",
+      "concert A": "C5 (72) sounds A5 (81)"
     },
     "preferred": "concert Bb",
     "check": [
-      "G4 (67) sounds E5 (76): G, where the climb starts",
-      "A4 (69) sounds F#/Gb5 (78): A",
-      "B4 (71) sounds G#/Ab5 (80): B",
-      "C5 (72) sounds A5 (81): C, where the climb ends"
+      "G#/Ab4 (68) sounds F5 (77): concert F, where the climb starts",
+      "A#/Bb4 (70) sounds G5 (79): concert G",
+      "C5 (72) sounds A5 (81): concert A",
+      "C#/Db5 (73) sounds A#/Bb5 (82): concert Bb, the band's note, where the climb ends"
     ]
   },
   "trp_piccolo_bb": {
@@ -785,10 +785,10 @@
     },
     "preferred": "concert Bb",
     "check": [
-      "G4 (67) sounds F5 (77): G, where the climb starts",
-      "A4 (69) sounds G5 (79): A",
-      "B4 (71) sounds A5 (81): B",
-      "C5 (72) sounds A#/Bb5 (82): C, where the climb ends"
+      "G4 (67) sounds F5 (77): concert F, where the climb starts",
+      "A4 (69) sounds G5 (79): concert G",
+      "B4 (71) sounds A5 (81): concert A",
+      "C5 (72) sounds A#/Bb5 (82): concert Bb, the band's note, where the climb ends"
     ]
   },
   "tuba_bbb": {
