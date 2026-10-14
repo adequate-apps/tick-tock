@@ -87,6 +87,61 @@ class TuningNotesTest {
         assertEquals(69, TuningNotes.forInstrument(Catalogue.get("violin")).defaultDrone.soundingMidi)
     }
 
+    /**
+     * One band's Bb per instrument: a check entry that calls a note the
+     * band's note sounds the same note as the ensemble pad for concert Bb,
+     * which is also the default drone wherever the band's note is preferred.
+     */
+    @Test
+    fun `CHK-02 the check entry naming the band's note is the ensemble pad's concert Bb`() {
+        for (instrument in Catalogue.all) {
+            val set = TuningNotes.forInstrument(instrument)
+            val pad = set.ensemble.getValue(EnsembleNote.CONCERT_BB).soundingMidi
+            for (note in set.check.filter { "the band's note" in it.reason }) {
+                assertEquals("${instrument.key}: \"${note.reason}\" sounds ${note.soundingMidi}, the pad ${pad}", pad, note.soundingMidi)
+            }
+        }
+        // The horns' band Bb is the one their check set names, written F4 on the F horn.
+        assertEquals(58, TuningNotes.forInstrument(Catalogue.get("horn_bb")).ensemble.getValue(EnsembleNote.CONCERT_BB).soundingMidi)
+        assertEquals(58, TuningNotes.forInstrument(Catalogue.get("mellophone_f")).ensemble.getValue(EnsembleNote.CONCERT_BB).soundingMidi)
+    }
+
+    /**
+     * An instrument whose check set names the band's note either prefers it
+     * or also checks its own ensemble note: the oboe names both, the bassoon
+     * follows the oboe's A and must say so in its set.
+     */
+    @Test
+    fun `CHK-02 a check set that names the band's note agrees with the preferred ensemble note`() {
+        for (instrument in Catalogue.all) {
+            val set = TuningNotes.forInstrument(instrument)
+            if (set.check.none { "the band's note" in it.reason }) continue
+            val checksA = set.check.any { Math.floorMod(it.soundingMidi, 12) == EnsembleNote.CONCERT_A.concertPitchClass }
+            assertTrue("${instrument.key} prefers ${set.preferred.label} and its check set names the band's note without concert A", set.preferred == EnsembleNote.CONCERT_BB || checksA)
+        }
+        val bassoon = TuningNotes.forInstrument(Catalogue.get("bassoon"))
+        assertEquals(EnsembleNote.CONCERT_A, bassoon.preferred)
+        assertEquals(bassoon.defaultDrone.soundingMidi, bassoon.check.first().soundingMidi)
+    }
+
+    /**
+     * The trumpet climb is a concert-pitch exercise, written G to C on the Bb
+     * trumpet: every trumpet starts on concert F and ends on the band's Bb,
+     * in its own octave.
+     */
+    @Test
+    fun `CHK-02 every trumpet climbs from concert F to concert Bb`() {
+        for (instrument in Catalogue.byFamily.getValue(Family.TRUMPET)) {
+            val check = TuningNotes.forInstrument(instrument).check
+            assertEquals(instrument.key, listOf(5, 7, 9, 10), check.map { Math.floorMod(it.soundingMidi, 12) })
+            assertEquals(instrument.key, listOf(2, 2, 1), check.zipWithNext { a, b -> b.soundingMidi - a.soundingMidi })
+        }
+        assertEquals(listOf(67, 69, 71, 72), TuningNotes.forInstrument(Catalogue.get("trp_bb")).check.map { it.writtenMidi })
+        assertEquals(70, TuningNotes.forInstrument(Catalogue.get("trp_c")).check.last().soundingMidi)
+        // The bass trumpet climbs an octave down, inside its keyed range.
+        assertEquals(58, TuningNotes.forInstrument(Catalogue.get("trp_bass_bb")).check.last().soundingMidi)
+    }
+
     @Test
     fun `CHK-03 next check walks the set in order and wraps`() {
         val set = TuningNotes.forInstrument(Catalogue.get("clar_bb"))
