@@ -76,7 +76,11 @@ class NativeStreamBackend(
         native.nativeDrainEvents(handle, verdict, 0)
         return when (val outcome = verdict.outcome) {
             is NativeEvent.Opened -> {
-                val stream = NativeOpenStream(native, handle, outcome, listener, outputs, ::endStream)
+                // Captured now: when the platform reports this device removed,
+                // its list no longer has it, and the control thread still
+                // needs to match the removal against the stream.
+                val device = outputs().firstOrNull { it.id == outcome.deviceId }
+                val stream = NativeOpenStream(native, handle, outcome, device, listener, ::endStream)
                 current = stream
                 stream.startDraining()
                 Result.success(stream)
@@ -171,14 +175,13 @@ private class NativeOpenStream(
     private val native: NativeCalls,
     private val handle: Long,
     opened: NativeEvent.Opened,
+    private val device: RoutedDevice?,
     private val listener: StreamListener,
-    private val outputs: () -> List<RoutedDevice>,
     /** Runs when the stream ends, with what becomes of its handle. */
     private val onEnded: (handle: Long, fate: HandleFate) -> Unit,
 ) : OpenStream, NativeBridge.Listener {
     override val sampleRate: Int = opened.sampleRate
     override val framesPerBurst: Int = opened.framesPerBurst
-    private val deviceId = opened.deviceId
 
     @Volatile
     private var running = true
@@ -186,7 +189,8 @@ private class NativeOpenStream(
 
     fun startDraining() = drainer.start()
 
-    override fun routedDevice(): RoutedDevice? = outputs().firstOrNull { it.id == deviceId }
+    /** The device present when the stream opened. The API 37 routing callback is where it would be read again (SHM-03). */
+    override fun routedDevice(): RoutedDevice? = device
 
     override fun latencyMillis(): Int = native.nativeLatencyMillis(handle)
 
