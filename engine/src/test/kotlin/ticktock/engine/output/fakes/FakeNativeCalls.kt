@@ -97,6 +97,7 @@ class FakeNativeCalls : NativeCalls {
 
     override fun nativeDestroy(handle: Long) {
         handle(handle).destroyed = true
+        lifetimeTrace += "destroy"
     }
 
     override fun nativeRegister(handle: Long, tool: Int) {
@@ -186,6 +187,15 @@ class FakeNativeCalls : NativeCalls {
         }
     }
 
+    /** Set to make the next [nativeDiagnostics] wait until [releaseDiagnostics], the shape of a reader inside the library. */
+    var holdDiagnostics = false
+    private val diagnosticsGate = CountDownLatch(1)
+
+    /** Every call that touches a handle's lifetime, in order: "diagnostics" when a read returns, "destroy" when a handle goes. */
+    val lifetimeTrace = Collections.synchronizedList(mutableListOf<String>())
+
+    fun releaseDiagnostics() = diagnosticsGate.countDown()
+
     override fun nativeDrainEvents(handle: Long, listener: NativeBridge.Listener, timeoutMillis: Int): Int {
         if (timeoutMillis > 0) {
             drainThreads += Thread.currentThread().name
@@ -204,6 +214,9 @@ class FakeNativeCalls : NativeCalls {
 
     override fun nativeDiagnostics(handle: Long): LongArray {
         val h = handle(handle)
+        check(!h.destroyed) { "nativeDiagnostics on a destroyed handle $handle" }
+        if (holdDiagnostics) diagnosticsGate.await()
+        lifetimeTrace += "diagnostics"
         return longArrayOf(
             h.lateBeatsDropped, h.underruns, h.bufferBursts, 0, 0, 0, h.framesRendered, sampleRate,
             if (h.streamOpen) 1 else 0, if (h.parked) 1 else 0,

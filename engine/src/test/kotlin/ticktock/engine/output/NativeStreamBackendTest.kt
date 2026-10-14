@@ -332,4 +332,25 @@ class NativeStreamBackendTest {
         assertTrue(native.handle(1).destroyed)
     }
 
+    @Test
+    fun `a diagnostics read in flight on another thread finishes before the handle is destroyed`() {
+        val opened = open()
+        native.holdDiagnostics = true
+        val reader = Thread { backend.diagnostics() }
+        reader.start()
+        await("the reader inside the library") { reader.state == Thread.State.WAITING || reader.state == Thread.State.TIMED_WAITING }
+
+        val closer = Thread { opened.close() }
+        closer.start()
+        // The close has every reason to finish except the reader; it must wait.
+        Thread.sleep(200)
+        assertTrue(closer.isAlive)
+        assertEquals(emptyList<String>(), native.lifetimeTrace.toList())
+
+        native.releaseDiagnostics()
+        reader.join(5_000)
+        closer.join(5_000)
+        stream = null
+        assertEquals(listOf("diagnostics", "destroy"), native.lifetimeTrace.toList())
+    }
 }
