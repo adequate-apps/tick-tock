@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Debug-only live readout (M2); M4 replaces it with the real Tune pane. -->
+<resources>
+    <string name="debug_readout_title">Live readout (debug)</string>
+    <string name="debug_row_note">Note</string>
+    <string name="debug_row_cents">Cents</string>
+    <string name="debug_row_hz">Frequency</string>
+    <string name="debug_row_level">Level</string>
+    <string name="debug_row_source">Input</string>
+    <string name="debug_row_platform">Platform reports</string>
+    <string name="debug_row_counters">Analysis</string>
+    <string name="debug_no_input">No input open</string>
+    <string name="debug_no_effects">no effects</string>
+    <string name="debug_not_reported">nothing on this Android version</string>
+
+    <!-- The pane's state: one fact about the microphone. -->
+    <string name="debug_state_idle">Stopped</string>
+    <string name="debug_state_listening">Listening</string>
+    <string name="debug_state_listening_substitute">Listening on %2$s; %1$s is absent</string>
+    <string name="debug_state_silenced">Microphone taken by a call or another app</string>
+    <string name="debug_state_stopped">Stopped: %1$s</string>
+    <string name="debug_state_permission_needed">Microphone permission is needed</string>
+    <string name="debug_state_permission_refused">Microphone permission was refused; grant it in system settings</string>
+    <string name="debug_failure_busy">%1$s is in use by another app</string>
+    <string name="debug_failure_disconnected">%1$s is disconnected</string>
+    <string name="debug_failure_refused">%1$s refused the rates %2$s</string>
+    <string name="debug_failure_denied">recording on %1$s is not permitted</string>
+</resources>
