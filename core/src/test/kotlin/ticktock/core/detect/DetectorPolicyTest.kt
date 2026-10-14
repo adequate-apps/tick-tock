@@ -151,6 +151,73 @@ class DetectorPolicyTest {
         assertTrue(secondSaved.none { it < second.hop + params.edge + 1 })
     }
 
+    /**
+     * POL-07 and POL-08 on a gap shorter than the vote window. The release
+     * edge is the mode's allowance for a transient at the end of a note; a
+     * silence that outlasts it is the end of the note, so the tail is
+     * discarded and the next sound is a re-attack confirmed on its own hops,
+     * with its own edge dropped. A gap inside the allowance is a glitch the
+     * held note rides out.
+     */
+    @Test
+    fun `POL-08 a silence longer than the release edge ends the note and the same note re-attacks, at every gap under the window`() {
+        for (mode in ResponseMode.entries) {
+            val params = ResponseModeTable.of(mode)
+            for (gap in 1 until params.voteWindow) {
+                val label = "$mode, gap of $gap hops"
+                val drive = Drive(Detector(mode))
+                drive.note(a4, 30)
+                val lastToneHop = drive.hop - 1
+                val savedBefore = drive.saved.size
+                drive.silence(gap)
+                val again = drive.hop
+                drive.note(a4, 30)
+
+                if (gap <= params.edge) {
+                    assertEquals(label, 1, drive.attacks.size)
+                    assertTrue(label, drive.releases.isEmpty())
+                    continue
+                }
+                val release = drive.releases.single()
+                assertEquals(label, ReleaseCause.SILENCE, release.cause)
+                assertEquals(label, params.edge, release.discardedPending)
+                assertEquals("$label: released on the first silent hop past the edge", lastToneHop + params.edge + 1, release.hop)
+                assertEquals("$label: the tail before the gap", lastToneHop - params.edge, drive.saved[savedBefore - 1].hop)
+                assertTrue("$label: a reading saved across the gap", drive.saved.none { it.hop in (lastToneHop - params.edge + 1) until again })
+                assertEquals(label, 2, drive.attacks.size)
+                val second = drive.attacks[1]
+                assertEquals("$label: the re-attack confirms on its own hops", again + params.confirm - 1, second.hop)
+                val secondSaved = drive.saved.filter { it.hop >= again }.map { it.hop }
+                assertEquals("$label: the re-attack's edge is dropped", second.hop + params.edge + 1, secondSaved.first())
+            }
+        }
+    }
+
+    /**
+     * What the gap rule protects: a note stops with a flat droop, a tongued
+     * gap shorter than the window follows, and the same note scoops back in
+     * sharp. Neither the droop nor the scoop is a reading of the held tone.
+     */
+    @Test
+    fun `POL-07 the release droop and the re-attack scoop around a short gap never reach history`() {
+        val drive = Drive(Detector(ResponseMode.NORMAL))
+        val params = drive.detector.params
+        fun detuned(cents: Double, hops: Int) = drive.tone(Pitch.hzFromMidi(a4 + cents / 100.0, Pitch.A4_DEFAULT_HZ), hops)
+        drive.note(a4, 30)
+        detuned(-25.0, params.edge)
+        drive.silence(params.edge + 2)
+        detuned(30.0, params.confirm + params.edge)
+        drive.note(a4, 30)
+
+        val offPitch = drive.saved.filter { kotlin.math.abs(it.cents) > 1.0 }.map { "${it.hop}: ${it.cents} c" }
+        assertEquals("off-pitch readings saved", emptyList<String>(), offPitch)
+        assertEquals(2, drive.attacks.size)
+        assertEquals(30.0, drive.attacks[1].landingCents, 1e-9)
+        val release = drive.releases.single()
+        assertEquals(ReleaseCause.SILENCE, release.cause)
+        assertEquals(params.edge, release.discardedPending)
+    }
+
     @Test
     fun `POL-10 noise is rejected on every path and shows no note`() {
         for (mode in ResponseMode.entries) {
