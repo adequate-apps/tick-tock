@@ -79,6 +79,8 @@ object PersonalConfigMerge {
         settingChange(changes, "responseMode", current.settings.responseMode, incoming.settings.responseMode, "Response") { it.wire }
         settingChange(changes, "noiseFloorDb", current.settings.noiseFloorDb, incoming.settings.noiseFloorDb, "Ignore sounds quieter than") { "$it dB" }
         settingChange(changes, "keepAwake", current.settings.keepAwake, incoming.settings.keepAwake, "Keep screen awake") { if (it) "on" else "off" }
+        settingChange(changes, "earsFirst", current.settings.earsFirst, incoming.settings.earsFirst, "Ears first") { if (it) "on" else "off" }
+        settingChange(changes, "announceSettledNotes", current.settings.announceSettledNotes, incoming.settings.announceSettledNotes, "Announce settled notes") { if (it) "on" else "off" }
         settingChange(changes, "droneVoice", current.settings.droneVoice, incoming.settings.droneVoice, "Drone voice") { it.wire }
         settingChange(changes, "clickSound", current.settings.clickSound, incoming.settings.clickSound, "Click sound") { it.wire }
         settingChange(changes, "visualOffsetMs", current.settings.visualOffsetMs, incoming.settings.visualOffsetMs, "Visual offset") { "$it ms" }
@@ -109,6 +111,8 @@ object PersonalConfigMerge {
             responseMode = incoming.responseMode ?: current.responseMode,
             noiseFloorDb = incoming.noiseFloorDb ?: current.noiseFloorDb,
             keepAwake = incoming.keepAwake ?: current.keepAwake,
+            earsFirst = incoming.earsFirst ?: current.earsFirst,
+            announceSettledNotes = incoming.announceSettledNotes ?: current.announceSettledNotes,
             droneVoice = incoming.droneVoice ?: current.droneVoice,
             clickSound = incoming.clickSound ?: current.clickSound,
             visualOffsetMs = incoming.visualOffsetMs ?: current.visualOffsetMs,

@@ -1,0 +1,893 @@
+{
+  "banjo": {
+    "ensemble": {
+      "concert Bb": "A#/Bb3 (58) sounds A#/Bb3 (58)",
+      "concert A": "A3 (57) sounds A3 (57)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "G3 (55) sounds G3 (55): open G string",
+      "B3 (59) sounds B3 (59): open B string",
+      "D4 (62) sounds D4 (62): open D string",
+      "D3 (50) sounds D3 (50): open low D string"
+    ]
+  },
+  "baritone_bc": {
+    "ensemble": {
+      "concert Bb": "A#/Bb2 (46) sounds A#/Bb2 (46)",
+      "concert A": "A2 (45) sounds A2 (45)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb2 (46) sounds A#/Bb2 (46): concert Bb, the band's note",
+      "F3 (53) sounds F3 (53): concert F, the fifth above",
+      "A#/Bb3 (58) sounds A#/Bb3 (58): concert Bb, the upper register"
+    ]
+  },
+  "baritone_tc": {
+    "ensemble": {
+      "concert Bb": "C4 (60) sounds A#/Bb2 (46)",
+      "concert A": "B3 (59) sounds A2 (45)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "C4 (60) sounds A#/Bb2 (46): concert Bb, the band's note",
+      "G4 (67) sounds F3 (53): concert F, the fifth above",
+      "C5 (72) sounds A#/Bb3 (58): concert Bb, the upper register"
+    ]
+  },
+  "bass_guitar": {
+    "ensemble": {
+      "concert Bb": "A#/Bb2 (46) sounds A#/Bb1 (34)",
+      "concert A": "A2 (45) sounds A1 (33)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A2 (45) sounds A1 (33): open A string",
+      "D3 (50) sounds D2 (38): open D string",
+      "G3 (55) sounds G2 (43): open G string",
+      "E2 (40) sounds E1 (28): open E string"
+    ]
+  },
+  "bassoon": {
+    "ensemble": {
+      "concert Bb": "A#/Bb2 (46) sounds A#/Bb2 (46)",
+      "concert A": "A2 (45) sounds A2 (45)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A#/Bb2 (46) sounds A#/Bb2 (46): concert Bb, the band's note",
+      "F3 (53) sounds F3 (53): concert F, the fifth above",
+      "A#/Bb3 (58) sounds A#/Bb3 (58): concert Bb, the upper register"
+    ]
+  },
+  "bb_bass": {
+    "ensemble": {
+      "concert Bb": "C5 (72) sounds A#/Bb2 (46)",
+      "concert A": "B4 (71) sounds A2 (45)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "F#/Gb5 (78) sounds E3 (52): top-line F#, the saxophone's tuning note",
+      "C#/Db5 (73) sounds B2 (47): middle C#, the open note",
+      "D5 (74) sounds C3 (48): fourth-line D, the register's sharp note"
+    ]
+  },
+  "bb_soprano": {
+    "ensemble": {
+      "concert Bb": "C5 (72) sounds A#/Bb4 (70)",
+      "concert A": "B4 (71) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "F#/Gb5 (78) sounds E5 (76): top-line F#, the saxophone's tuning note",
+      "C#/Db5 (73) sounds B4 (71): middle C#, the open note",
+      "D5 (74) sounds C5 (72): fourth-line D, the register's sharp note"
+    ]
+  },
+  "bb_tenor": {
+    "ensemble": {
+      "concert Bb": "C5 (72) sounds A#/Bb3 (58)",
+      "concert A": "B4 (71) sounds A3 (57)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "F#/Gb5 (78) sounds E4 (64): top-line F#, the saxophone's tuning note",
+      "C#/Db5 (73) sounds B3 (59): middle C#, the open note",
+      "D5 (74) sounds C4 (60): fourth-line D, the register's sharp note"
+    ]
+  },
+  "c": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A4 (69) sounds A4 (69): concert A in this register",
+      "A3 (57) sounds A3 (57): concert A in this register"
+    ]
+  },
+  "cello": {
+    "ensemble": {
+      "concert Bb": "A#/Bb3 (58) sounds A#/Bb3 (58)",
+      "concert A": "A3 (57) sounds A3 (57)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A3 (57) sounds A3 (57): open A string",
+      "D3 (50) sounds D3 (50): open D string",
+      "G2 (43) sounds G2 (43): open G string",
+      "C2 (36) sounds C2 (36): open C string"
+    ]
+  },
+  "clar_a": {
+    "ensemble": {
+      "concert Bb": "C#/Db4 (61) sounds A#/Bb3 (58)",
+      "concert A": "C4 (60) sounds A3 (57)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds E4 (64): open G, set on the barrel",
+      "E3 (52) sounds C#/Db3 (49): low E, set on the bell",
+      "B4 (71) sounds G#/Ab4 (68): B, the twelfth above low E"
+    ]
+  },
+  "clar_alto_eb": {
+    "ensemble": {
+      "concert Bb": "G4 (67) sounds A#/Bb3 (58)",
+      "concert A": "F#/Gb4 (66) sounds A3 (57)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds A#/Bb3 (58): open G, set on the barrel",
+      "E3 (52) sounds G2 (43): low E, set on the bell",
+      "B4 (71) sounds D4 (62): B, the twelfth above low E"
+    ]
+  },
+  "clar_bass_bb": {
+    "ensemble": {
+      "concert Bb": "C5 (72) sounds A#/Bb3 (58)",
+      "concert A": "B4 (71) sounds A3 (57)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds F3 (53): open G, set on the barrel",
+      "E3 (52) sounds D2 (38): low E, set on the bell",
+      "B4 (71) sounds A3 (57): B, the twelfth above low E"
+    ]
+  },
+  "clar_basset_f": {
+    "ensemble": {
+      "concert Bb": "F4 (65) sounds A#/Bb3 (58)",
+      "concert A": "E4 (64) sounds A3 (57)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds C4 (60): open G, set on the barrel",
+      "E3 (52) sounds A2 (45): low E, set on the bell",
+      "B4 (71) sounds E4 (64): B, the twelfth above low E"
+    ]
+  },
+  "clar_bb": {
+    "ensemble": {
+      "concert Bb": "C5 (72) sounds A#/Bb4 (70)",
+      "concert A": "B4 (71) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds F4 (65): open G, set on the barrel",
+      "E3 (52) sounds D3 (50): low E, set on the bell",
+      "B4 (71) sounds A4 (69): B, the twelfth above low E"
+    ]
+  },
+  "clar_c": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds G4 (67): open G, set on the barrel",
+      "E3 (52) sounds E3 (52): low E, set on the bell",
+      "B4 (71) sounds B4 (71): B, the twelfth above low E"
+    ]
+  },
+  "clar_contraalto_eb": {
+    "ensemble": {
+      "concert Bb": "G4 (67) sounds A#/Bb2 (46)",
+      "concert A": "F#/Gb4 (66) sounds A2 (45)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds A#/Bb2 (46): open G, set on the barrel",
+      "E3 (52) sounds G1 (31): low E, set on the bell",
+      "B4 (71) sounds D3 (50): B, the twelfth above low E"
+    ]
+  },
+  "clar_contrabass_bb": {
+    "ensemble": {
+      "concert Bb": "C5 (72) sounds A#/Bb2 (46)",
+      "concert A": "B4 (71) sounds A2 (45)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds F2 (41): open G, set on the barrel",
+      "E3 (52) sounds D1 (26): low E, set on the bell",
+      "B4 (71) sounds A2 (45): B, the twelfth above low E"
+    ]
+  },
+  "clar_d": {
+    "ensemble": {
+      "concert Bb": "G#/Ab4 (68) sounds A#/Bb4 (70)",
+      "concert A": "G4 (67) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds A4 (69): open G, set on the barrel",
+      "E3 (52) sounds F#/Gb3 (54): low E, set on the bell",
+      "B4 (71) sounds C#/Db5 (73): B, the twelfth above low E"
+    ]
+  },
+  "clar_eb": {
+    "ensemble": {
+      "concert Bb": "G4 (67) sounds A#/Bb4 (70)",
+      "concert A": "F#/Gb4 (66) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds A#/Bb4 (70): open G, set on the barrel",
+      "E3 (52) sounds G3 (55): low E, set on the bell",
+      "B4 (71) sounds D5 (74): B, the twelfth above low E"
+    ]
+  },
+  "contrabassoon": {
+    "ensemble": {
+      "concert Bb": "A#/Bb2 (46) sounds A#/Bb1 (34)",
+      "concert A": "A2 (45) sounds A1 (33)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A#/Bb2 (46) sounds A#/Bb1 (34): low Bb, the band's note two octaves down",
+      "F3 (53) sounds F2 (41): F, the fifth above",
+      "A#/Bb3 (58) sounds A#/Bb2 (46): Bb, the upper register"
+    ]
+  },
+  "cornet_bb": {
+    "ensemble": {
+      "concert Bb": "C5 (72) sounds A#/Bb4 (70)",
+      "concert A": "B4 (71) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds F4 (65): G, where the climb starts",
+      "A4 (69) sounds G4 (67): A",
+      "B4 (71) sounds A4 (69): B",
+      "C5 (72) sounds A#/Bb4 (70): C, where the climb ends"
+    ]
+  },
+  "double_bass": {
+    "ensemble": {
+      "concert Bb": "A#/Bb2 (46) sounds A#/Bb1 (34)",
+      "concert A": "A2 (45) sounds A1 (33)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A2 (45) sounds A1 (33): open A string",
+      "D3 (50) sounds D2 (38): open D string",
+      "G3 (55) sounds G2 (43): open G string",
+      "E2 (40) sounds E1 (28): open E string"
+    ]
+  },
+  "eb_alto": {
+    "ensemble": {
+      "concert Bb": "G5 (79) sounds A#/Bb4 (70)",
+      "concert A": "F#/Gb5 (78) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "F#/Gb5 (78) sounds A4 (69): top-line F#, the saxophone's tuning note",
+      "C#/Db5 (73) sounds E4 (64): middle C#, the open note",
+      "D5 (74) sounds F4 (65): fourth-line D, the register's sharp note"
+    ]
+  },
+  "eb_bari": {
+    "ensemble": {
+      "concert Bb": "G4 (67) sounds A#/Bb2 (46)",
+      "concert A": "F#/Gb4 (66) sounds A2 (45)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "F#/Gb4 (66) sounds A2 (45): bottom-space F#, the baritone's tuning note",
+      "C#/Db5 (73) sounds E3 (52): middle C#, the open note",
+      "D5 (74) sounds F3 (53): fourth-line D, the register's sharp note"
+    ]
+  },
+  "eb_contrabass": {
+    "ensemble": {
+      "concert Bb": "G5 (79) sounds A#/Bb2 (46)",
+      "concert A": "F#/Gb5 (78) sounds A2 (45)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "F#/Gb5 (78) sounds A2 (45): top-line F#, the saxophone's tuning note",
+      "C#/Db5 (73) sounds E2 (40): middle C#, the open note",
+      "D5 (74) sounds F2 (41): fourth-line D, the register's sharp note"
+    ]
+  },
+  "eb_sopranino": {
+    "ensemble": {
+      "concert Bb": "G5 (79) sounds A#/Bb5 (82)",
+      "concert A": "F#/Gb5 (78) sounds A5 (81)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "F#/Gb5 (78) sounds A5 (81): top-line F#, the saxophone's tuning note",
+      "C#/Db5 (73) sounds E5 (76): middle C#, the open note",
+      "D5 (74) sounds F5 (77): fourth-line D, the register's sharp note"
+    ]
+  },
+  "english_horn": {
+    "ensemble": {
+      "concert Bb": "F5 (77) sounds A#/Bb4 (70)",
+      "concert A": "E5 (76) sounds A4 (69)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "E5 (76) sounds A4 (69): concert A, the oboe's note",
+      "F5 (77) sounds A#/Bb4 (70): concert Bb, the band's note",
+      "C5 (72) sounds F4 (65): concert F, the low register"
+    ]
+  },
+  "euph_bc": {
+    "ensemble": {
+      "concert Bb": "A#/Bb2 (46) sounds A#/Bb2 (46)",
+      "concert A": "A2 (45) sounds A2 (45)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb2 (46) sounds A#/Bb2 (46): concert Bb, the band's note",
+      "F3 (53) sounds F3 (53): concert F, the fifth above",
+      "A#/Bb3 (58) sounds A#/Bb3 (58): concert Bb, the upper register"
+    ]
+  },
+  "euph_tc": {
+    "ensemble": {
+      "concert Bb": "C4 (60) sounds A#/Bb2 (46)",
+      "concert A": "B3 (59) sounds A2 (45)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "C4 (60) sounds A#/Bb2 (46): concert Bb, the band's note",
+      "G4 (67) sounds F3 (53): concert F, the fifth above",
+      "C5 (72) sounds A#/Bb3 (58): concert Bb, the upper register"
+    ]
+  },
+  "flugel_bb": {
+    "ensemble": {
+      "concert Bb": "C5 (72) sounds A#/Bb4 (70)",
+      "concert A": "B4 (71) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds F4 (65): G, where the climb starts",
+      "A4 (69) sounds G4 (67): A",
+      "B4 (71) sounds A4 (69): B",
+      "C5 (72) sounds A#/Bb4 (70): C, where the climb ends"
+    ]
+  },
+  "flute_alto_g": {
+    "ensemble": {
+      "concert Bb": "D#/Eb5 (75) sounds A#/Bb4 (70)",
+      "concert A": "D5 (74) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb4 (70) sounds F4 (65): Bb, the band's note",
+      "A4 (69) sounds E4 (64): A, the orchestra's note",
+      "F4 (65) sounds C4 (60): F, the low register"
+    ]
+  },
+  "flute_bass_c": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb3 (58)",
+      "concert A": "A4 (69) sounds A3 (57)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb4 (70) sounds A#/Bb3 (58): Bb, the band's note",
+      "A4 (69) sounds A3 (57): A, the orchestra's note",
+      "F4 (65) sounds F3 (53): F, the low register"
+    ]
+  },
+  "flute_c": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb4 (70) sounds A#/Bb4 (70): Bb, the band's note",
+      "A4 (69) sounds A4 (69): A, the orchestra's note",
+      "F4 (65) sounds F4 (65): F, the low register"
+    ]
+  },
+  "flute_piccolo": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb5 (82)",
+      "concert A": "A4 (69) sounds A5 (81)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb4 (70) sounds A#/Bb5 (82): Bb, the band's note",
+      "A4 (69) sounds A5 (81): A, the orchestra's note",
+      "F4 (65) sounds F5 (77): F, the low register"
+    ]
+  },
+  "guitar": {
+    "ensemble": {
+      "concert Bb": "A#/Bb2 (46) sounds A#/Bb2 (46)",
+      "concert A": "A2 (45) sounds A2 (45)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A2 (45) sounds A2 (45): open A string",
+      "D3 (50) sounds D3 (50): open D string",
+      "G3 (55) sounds G3 (55): open G string",
+      "E4 (64) sounds E4 (64): open high E string"
+    ]
+  },
+  "harp": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A4 (69) sounds A4 (69): concert A in this register",
+      "A3 (57) sounds A3 (57): concert A in this register",
+      "A5 (81) sounds A5 (81): concert A in this register"
+    ]
+  },
+  "horn_bb": {
+    "ensemble": {
+      "concert Bb": "C5 (72) sounds A#/Bb4 (70)",
+      "concert A": "B4 (71) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds F4 (65): concert F, the horn's note",
+      "C4 (60) sounds A#/Bb3 (58): concert Bb, the band's note",
+      "C3 (48) sounds A#/Bb2 (46): concert Bb, the low register"
+    ]
+  },
+  "horn_eb_alto": {
+    "ensemble": {
+      "concert Bb": "G5 (79) sounds A#/Bb4 (70)",
+      "concert A": "F#/Gb5 (78) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "D5 (74) sounds F4 (65): concert F, the horn's note",
+      "G4 (67) sounds A#/Bb3 (58): concert Bb, the band's note",
+      "G3 (55) sounds A#/Bb2 (46): concert Bb, the low register"
+    ]
+  },
+  "horn_f": {
+    "ensemble": {
+      "concert Bb": "F4 (65) sounds A#/Bb3 (58)",
+      "concert A": "E4 (64) sounds A3 (57)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "C5 (72) sounds F4 (65): concert F, the horn's note",
+      "F4 (65) sounds A#/Bb3 (58): concert Bb, the band's note",
+      "F3 (53) sounds A#/Bb2 (46): concert Bb, the low register"
+    ]
+  },
+  "mandolin": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A4 (69) sounds A4 (69): open A course",
+      "D4 (62) sounds D4 (62): open D course",
+      "G3 (55) sounds G3 (55): open G course",
+      "E5 (76) sounds E5 (76): open E course"
+    ]
+  },
+  "mellophone_f": {
+    "ensemble": {
+      "concert Bb": "F5 (77) sounds A#/Bb4 (70)",
+      "concert A": "E5 (76) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "C5 (72) sounds F4 (65): concert F, the horn's note",
+      "F4 (65) sounds A#/Bb3 (58): concert Bb, the band's note",
+      "F5 (77) sounds A#/Bb4 (70): concert Bb, the upper register"
+    ]
+  },
+  "oboe": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A4 (69) sounds A4 (69): concert A, the oboe's note",
+      "A#/Bb4 (70) sounds A#/Bb4 (70): concert Bb, the band's note",
+      "F4 (65) sounds F4 (65): concert F, the low register"
+    ]
+  },
+  "oboe_damore": {
+    "ensemble": {
+      "concert Bb": "C#/Db5 (73) sounds A#/Bb4 (70)",
+      "concert A": "C5 (72) sounds A4 (69)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "C5 (72) sounds A4 (69): concert A, the oboe's note",
+      "C#/Db5 (73) sounds A#/Bb4 (70): concert Bb, the band's note",
+      "G#/Ab4 (68) sounds F4 (65): concert F, the low register"
+    ]
+  },
+  "piano": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A4 (69) sounds A4 (69): concert A in this register",
+      "A3 (57) sounds A3 (57): concert A in this register",
+      "A5 (81) sounds A5 (81): concert A in this register"
+    ]
+  },
+  "rec_alto_f": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A4 (69) sounds A4 (69): concert A in this register",
+      "A5 (81) sounds A5 (81): concert A in this register"
+    ]
+  },
+  "rec_bass_f": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A4 (69) sounds A4 (69): concert A in this register",
+      "A3 (57) sounds A3 (57): concert A in this register"
+    ]
+  },
+  "rec_sopranino_f": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb5 (82)",
+      "concert A": "A4 (69) sounds A5 (81)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A4 (69) sounds A5 (81): concert A in this register",
+      "A5 (81) sounds A6 (93): concert A in this register"
+    ]
+  },
+  "rec_soprano_c": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb5 (82)",
+      "concert A": "A4 (69) sounds A5 (81)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A4 (69) sounds A5 (81): concert A in this register",
+      "A5 (81) sounds A6 (93): concert A in this register"
+    ]
+  },
+  "rec_tenor_c": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A4 (69) sounds A4 (69): concert A in this register",
+      "A5 (81) sounds A5 (81): concert A in this register"
+    ]
+  },
+  "sousaphone_bbb": {
+    "ensemble": {
+      "concert Bb": "A#/Bb1 (34) sounds A#/Bb1 (34)",
+      "concert A": "A1 (33) sounds A1 (33)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb1 (34) sounds A#/Bb1 (34): low Bb, the band's note two octaves down",
+      "F2 (41) sounds F2 (41): F, the fifth above",
+      "A#/Bb2 (46) sounds A#/Bb2 (46): Bb, the upper register"
+    ]
+  },
+  "tbn_alto_eb": {
+    "ensemble": {
+      "concert Bb": "A#/Bb2 (46) sounds A#/Bb2 (46)",
+      "concert A": "A2 (45) sounds A2 (45)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb2 (46) sounds A#/Bb2 (46): concert Bb, the band's note",
+      "F3 (53) sounds F3 (53): concert F, the fifth above",
+      "A#/Bb3 (58) sounds A#/Bb3 (58): concert Bb, the upper register"
+    ]
+  },
+  "tbn_bass": {
+    "ensemble": {
+      "concert Bb": "A#/Bb2 (46) sounds A#/Bb2 (46)",
+      "concert A": "A2 (45) sounds A2 (45)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb2 (46) sounds A#/Bb2 (46): concert Bb, the band's note",
+      "F3 (53) sounds F3 (53): concert F, the fifth above",
+      "A#/Bb3 (58) sounds A#/Bb3 (58): concert Bb, the upper register"
+    ]
+  },
+  "tbn_contrabass": {
+    "ensemble": {
+      "concert Bb": "A#/Bb2 (46) sounds A#/Bb2 (46)",
+      "concert A": "A2 (45) sounds A2 (45)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb2 (46) sounds A#/Bb2 (46): concert Bb, the band's note",
+      "F3 (53) sounds F3 (53): concert F, the fifth above",
+      "A#/Bb3 (58) sounds A#/Bb3 (58): concert Bb, the upper register"
+    ]
+  },
+  "tbn_tenor": {
+    "ensemble": {
+      "concert Bb": "A#/Bb2 (46) sounds A#/Bb2 (46)",
+      "concert A": "A2 (45) sounds A2 (45)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb2 (46) sounds A#/Bb2 (46): concert Bb, the band's note",
+      "F3 (53) sounds F3 (53): concert F, the fifth above",
+      "A#/Bb3 (58) sounds A#/Bb3 (58): concert Bb, the upper register"
+    ]
+  },
+  "trp_a": {
+    "ensemble": {
+      "concert Bb": "C#/Db4 (61) sounds A#/Bb3 (58)",
+      "concert A": "C4 (60) sounds A3 (57)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds E4 (64): G, where the climb starts",
+      "A4 (69) sounds F#/Gb4 (66): A",
+      "B4 (71) sounds G#/Ab4 (68): B",
+      "C5 (72) sounds A4 (69): C, where the climb ends"
+    ]
+  },
+  "trp_bass_bb": {
+    "ensemble": {
+      "concert Bb": "C5 (72) sounds A#/Bb3 (58)",
+      "concert A": "B4 (71) sounds A3 (57)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds F3 (53): G, where the climb starts",
+      "A4 (69) sounds G3 (55): A",
+      "B4 (71) sounds A3 (57): B",
+      "C5 (72) sounds A#/Bb3 (58): C, where the climb ends"
+    ]
+  },
+  "trp_bb": {
+    "ensemble": {
+      "concert Bb": "C5 (72) sounds A#/Bb4 (70)",
+      "concert A": "B4 (71) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds F4 (65): G, where the climb starts",
+      "A4 (69) sounds G4 (67): A",
+      "B4 (71) sounds A4 (69): B",
+      "C5 (72) sounds A#/Bb4 (70): C, where the climb ends"
+    ]
+  },
+  "trp_c": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds G4 (67): G, where the climb starts",
+      "A4 (69) sounds A4 (69): A",
+      "B4 (71) sounds B4 (71): B",
+      "C5 (72) sounds C5 (72): C, where the climb ends"
+    ]
+  },
+  "trp_d": {
+    "ensemble": {
+      "concert Bb": "G#/Ab4 (68) sounds A#/Bb4 (70)",
+      "concert A": "G4 (67) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds A4 (69): G, where the climb starts",
+      "A4 (69) sounds B4 (71): A",
+      "B4 (71) sounds C#/Db5 (73): B",
+      "C5 (72) sounds D5 (74): C, where the climb ends"
+    ]
+  },
+  "trp_e": {
+    "ensemble": {
+      "concert Bb": "F#/Gb4 (66) sounds A#/Bb4 (70)",
+      "concert A": "F4 (65) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds B4 (71): G, where the climb starts",
+      "A4 (69) sounds C#/Db5 (73): A",
+      "B4 (71) sounds D#/Eb5 (75): B",
+      "C5 (72) sounds E5 (76): C, where the climb ends"
+    ]
+  },
+  "trp_eb": {
+    "ensemble": {
+      "concert Bb": "G4 (67) sounds A#/Bb4 (70)",
+      "concert A": "F#/Gb4 (66) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds A#/Bb4 (70): G, where the climb starts",
+      "A4 (69) sounds C5 (72): A",
+      "B4 (71) sounds D5 (74): B",
+      "C5 (72) sounds D#/Eb5 (75): C, where the climb ends"
+    ]
+  },
+  "trp_f": {
+    "ensemble": {
+      "concert Bb": "F4 (65) sounds A#/Bb4 (70)",
+      "concert A": "E4 (64) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds C5 (72): G, where the climb starts",
+      "A4 (69) sounds D5 (74): A",
+      "B4 (71) sounds E5 (76): B",
+      "C5 (72) sounds F5 (77): C, where the climb ends"
+    ]
+  },
+  "trp_piccolo_a": {
+    "ensemble": {
+      "concert Bb": "C#/Db4 (61) sounds A#/Bb4 (70)",
+      "concert A": "C4 (60) sounds A4 (69)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds E5 (76): G, where the climb starts",
+      "A4 (69) sounds F#/Gb5 (78): A",
+      "B4 (71) sounds G#/Ab5 (80): B",
+      "C5 (72) sounds A5 (81): C, where the climb ends"
+    ]
+  },
+  "trp_piccolo_bb": {
+    "ensemble": {
+      "concert Bb": "C5 (72) sounds A#/Bb5 (82)",
+      "concert A": "B4 (71) sounds A5 (81)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "G4 (67) sounds F5 (77): G, where the climb starts",
+      "A4 (69) sounds G5 (79): A",
+      "B4 (71) sounds A5 (81): B",
+      "C5 (72) sounds A#/Bb5 (82): C, where the climb ends"
+    ]
+  },
+  "tuba_bbb": {
+    "ensemble": {
+      "concert Bb": "A#/Bb1 (34) sounds A#/Bb1 (34)",
+      "concert A": "A1 (33) sounds A1 (33)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb1 (34) sounds A#/Bb1 (34): low Bb, the band's note two octaves down",
+      "F2 (41) sounds F2 (41): F, the fifth above",
+      "A#/Bb2 (46) sounds A#/Bb2 (46): Bb, the upper register"
+    ]
+  },
+  "tuba_cc": {
+    "ensemble": {
+      "concert Bb": "A#/Bb1 (34) sounds A#/Bb1 (34)",
+      "concert A": "A1 (33) sounds A1 (33)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb1 (34) sounds A#/Bb1 (34): low Bb, the band's note two octaves down",
+      "F2 (41) sounds F2 (41): F, the fifth above",
+      "A#/Bb2 (46) sounds A#/Bb2 (46): Bb, the upper register"
+    ]
+  },
+  "tuba_eb": {
+    "ensemble": {
+      "concert Bb": "A#/Bb1 (34) sounds A#/Bb1 (34)",
+      "concert A": "A1 (33) sounds A1 (33)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb1 (34) sounds A#/Bb1 (34): low Bb, the band's note two octaves down",
+      "F2 (41) sounds F2 (41): F, the fifth above",
+      "A#/Bb2 (46) sounds A#/Bb2 (46): Bb, the upper register"
+    ]
+  },
+  "tuba_f": {
+    "ensemble": {
+      "concert Bb": "A#/Bb1 (34) sounds A#/Bb1 (34)",
+      "concert A": "A1 (33) sounds A1 (33)"
+    },
+    "preferred": "concert Bb",
+    "check": [
+      "A#/Bb1 (34) sounds A#/Bb1 (34): low Bb, the band's note two octaves down",
+      "F2 (41) sounds F2 (41): F, the fifth above",
+      "A#/Bb2 (46) sounds A#/Bb2 (46): Bb, the upper register"
+    ]
+  },
+  "ukulele": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A4 (69) sounds A4 (69): open A string",
+      "E4 (64) sounds E4 (64): open E string",
+      "C4 (60) sounds C4 (60): open C string",
+      "G4 (67) sounds G4 (67): open G string"
+    ]
+  },
+  "viola": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A4 (69) sounds A4 (69): open A string",
+      "D4 (62) sounds D4 (62): open D string",
+      "G3 (55) sounds G3 (55): open G string",
+      "C3 (48) sounds C3 (48): open C string"
+    ]
+  },
+  "violin": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A4 (69) sounds A4 (69): open A string",
+      "D4 (62) sounds D4 (62): open D string",
+      "G3 (55) sounds G3 (55): open G string",
+      "E5 (76) sounds E5 (76): open E string"
+    ]
+  },
+  "voice": {
+    "ensemble": {
+      "concert Bb": "A#/Bb4 (70) sounds A#/Bb4 (70)",
+      "concert A": "A4 (69) sounds A4 (69)"
+    },
+    "preferred": "concert A",
+    "check": [
+      "A4 (69) sounds A4 (69): concert A in this register",
+      "A3 (57) sounds A3 (57): concert A in this register",
+      "A2 (45) sounds A2 (45): concert A in this register"
+    ]
+  }
+}

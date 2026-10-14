@@ -68,6 +68,10 @@ data class PortableSettings(
     /** "Ignore sounds quieter than", in dBFS. */
     val noiseFloorDb: Int? = null,
     val keepAwake: Boolean? = null,
+    /** EAR-03: the readout hides while a note sounds. */
+    val earsFirst: Boolean? = null,
+    /** TLK-02: settled notes are read by a polite live region. */
+    val announceSettledNotes: Boolean? = null,
     val droneVoice: Voice? = null,
     val clickSound: ClickSound? = null,
     /** Metronome visual offset in milliseconds; positive draws the beat later. */

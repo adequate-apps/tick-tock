@@ -205,11 +205,9 @@ object PersonalConfigCodec {
                 "clickSound" -> enumValue(raw, path, ClickSound.entries, { it.wire }, problems)?.let { settings = settings.copy(clickSound = it) }
                 "noiseFloorDb" -> intIn(raw, path, PortableSettings.NOISE_FLOOR_DB, problems)?.let { settings = settings.copy(noiseFloorDb = it) }
                 "visualOffsetMs" -> intIn(raw, path, PortableSettings.VISUAL_OFFSET_MS, problems)?.let { settings = settings.copy(visualOffsetMs = it) }
-                "keepAwake" -> {
-                    val flag = raw.bool
-                    if (flag == null) problems.add(Problem(path, "expected true or false, found ${describe(raw)}"))
-                    else settings = settings.copy(keepAwake = flag)
-                }
+                "keepAwake" -> flag(raw, path, problems)?.let { settings = settings.copy(keepAwake = it) }
+                "earsFirst" -> flag(raw, path, problems)?.let { settings = settings.copy(earsFirst = it) }
+                "announceSettledNotes" -> flag(raw, path, problems)?.let { settings = settings.copy(announceSettledNotes = it) }
                 else -> {
                     unknown[key] = raw
                     warnings.add("setting \"$key\" is not known to this version and is kept as read")
@@ -226,6 +224,12 @@ object PersonalConfigCodec {
             problems.add(Problem(path, "expected one of ${entries.joinToString { "\"${wire(it)}\"" }}, found ${describe(raw)}"))
         }
         return match
+    }
+
+    private fun flag(raw: JsonValue, path: String, problems: MutableList<Problem>): Boolean? {
+        val value = raw.bool
+        if (value == null) problems.add(Problem(path, "expected true or false, found ${describe(raw)}"))
+        return value
     }
 
     private fun intIn(raw: JsonValue, path: String, range: IntRange, problems: MutableList<Problem>): Int? {
@@ -246,6 +250,8 @@ object PersonalConfigCodec {
         settings.responseMode?.let { obj["responseMode"] = Json.str(it.wire) }
         settings.noiseFloorDb?.let { obj["noiseFloorDb"] = Json.num(it) }
         settings.keepAwake?.let { obj["keepAwake"] = Json.bool(it) }
+        settings.earsFirst?.let { obj["earsFirst"] = Json.bool(it) }
+        settings.announceSettledNotes?.let { obj["announceSettledNotes"] = Json.bool(it) }
         settings.droneVoice?.let { obj["droneVoice"] = Json.str(it.wire) }
         settings.clickSound?.let { obj["clickSound"] = Json.str(it.wire) }
         settings.visualOffsetMs?.let { obj["visualOffsetMs"] = Json.num(it) }
