@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The capture path lives here, so the module declares the one permission it needs; the app's
+         merged manifest still carries RECORD_AUDIO once, which tools/manifest-allowlist-2.0.txt checks. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+</manifest>
