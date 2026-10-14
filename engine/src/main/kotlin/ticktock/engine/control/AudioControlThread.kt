@@ -43,6 +43,11 @@ import ticktock.engine.output.ToolState
  * background policy (OUT-11), watches the audio mode for calls (CAL-01,
  * CAL-02) and classifies the route from the routed device (OUT-12).
  *
+ * The stream's engine lives as long as the tools' state does. A park that
+ * keeps the tools registered keeps the engine too, so a replug or a reopen
+ * in place continues the drone's phase and the metronome's count (OUT-13,
+ * MET-09); a park that drops the tools drops the engine with them.
+ *
  * The platform's own callbacks (device changes, mode changes, stream
  * disconnects) are re-posted here, so every piece of state below is touched
  * by this one thread and needs no lock. The stream itself is reached only
@@ -108,7 +113,8 @@ class AudioControlThread(
         handler.post {
             callWatcher.stop()
             devices.unwatch()
-            registry.clear { closeStream() }
+            registry.clear { closeStream(keepEngine = false) }
+            forgetTools()
         }
         thread.quitSafely()
     }
@@ -140,12 +146,15 @@ class AudioControlThread(
             is OutputCommand.MetroStart,
             is OutputCommand.MetroUpdate,
             OutputCommand.MetroStop,
-            -> {
-                toolState.apply(cmd)
-                stream?.send(cmd)
-                updateSounding()
-            }
+            -> applyToTools(cmd)
         }
+    }
+
+    private fun applyToTools(cmd: OutputCommand) {
+        val open = stream
+        toolState.apply(cmd, delivered = open != null)
+        open?.send(cmd)
+        updateSounding()
     }
 
     private fun register(tool: OutputTool) {
@@ -166,14 +175,14 @@ class AudioControlThread(
 
     private fun unregister(tool: OutputTool) {
         registry.unregister(tool) {
-            closeStream()
+            closeStream(keepEngine = false)
             emit(OutputEvent.Closed)
         }
         // A tool switched off while unplugged stays off when the route returns (OUT-06).
         waitingForRoute = waitingForRoute?.minus(tool)
         if (registry.isEmpty) {
             waitingForRoute = null
-            toolState.clear()
+            forgetTools()
         }
     }
 
@@ -197,7 +206,7 @@ class AudioControlThread(
         }
         // A policy that keeps some tools is v1.1's, under its foreground
         // service; the registry side of it is already in place.
-        park.forEach { registry.unregister(it) { closeStream() } }
+        park.forEach { registry.unregister(it) { closeStream(keepEngine = false) } }
         waitingForRoute = waitingForRoute?.minus(park)
         emit(OutputEvent.Parked(ParkReason.BACKGROUND, park))
     }
@@ -205,9 +214,10 @@ class AudioControlThread(
     // --- the stream ------------------------------------------------------------
 
     /**
-     * Opens the stream and rebuilds the tools in it. [resumed] names the tools
-     * an unplug had parked, for the Resumed event; null means a fresh open.
-     * Returns false after reporting the failure (OUT-17).
+     * Opens the stream and brings the tools back in it. [resumed] names the
+     * tools that were registered when the last stream ended, for the Resumed
+     * event; null means a fresh open, from an empty registry and a fresh
+     * engine. Returns false after reporting the failure (OUT-17).
      */
     private fun open(resumed: Set<OutputTool>?): Boolean {
         val request = StreamRequest(bufferBursts = StreamRequest.INITIAL_BUFFER_BURSTS)
@@ -221,7 +231,7 @@ class AudioControlThread(
         lastXruns = 0
         waitingForRoute = null
         opened.setMuted(muteReasons.muted)
-        toolState.replay().forEach(opened::send)
+        toolState.replay(continuing = resumed != null).forEach(opened::send)
         val current = describe(opened)
         publish(current)
         emit(if (resumed == null) OutputEvent.Opened(current) else OutputEvent.Resumed(resumed, current))
@@ -231,27 +241,38 @@ class AudioControlThread(
         return true
     }
 
-    private fun closeStream() {
+    /**
+     * Ends the stream. With [keepEngine] its engine waits for the next open
+     * to continue it; without, the next open starts from nothing.
+     */
+    private fun closeStream(keepEngine: Boolean) {
         val open = stream ?: return
         stream = null
         handler.removeCallbacks(xrunPoll)
         // The handle is dropped whether or not the platform finished: a stop
         // that hangs must never leave output dead for the rest of the session.
-        if (!open.close()) log("close timed out; the stream handle was dropped")
+        val finished = if (keepEngine) open.park() else open.close()
+        if (!finished) log("close timed out; the stream handle was dropped")
         publish(null)
         updateSounding()
     }
 
+    /** The tools are gone and so is anything an engine held for them. */
+    private fun forgetTools() {
+        toolState.clear()
+        backend.discard()
+    }
+
     /**
-     * Parks the registered tools. An unplug keeps them registered and waits
-     * for the route; every other reason drops them, so nothing restarts until
-     * the player acts (decisions 4 and 12).
+     * Parks the registered tools. An unplug keeps them registered, and their
+     * engine kept, and waits for the route; every other reason drops them,
+     * so nothing restarts until the player acts (decisions 4 and 12).
      */
     private fun parkAll(reason: ParkReason) {
         when (reason) {
             ParkReason.HEADPHONES_DISCONNECTED -> {
                 val tools = registry.registered
-                closeStream()
+                closeStream(keepEngine = true)
                 if (tools.isEmpty()) return
                 waitingForRoute = tools
                 emit(OutputEvent.Parked(reason, tools))
@@ -261,8 +282,8 @@ class AudioControlThread(
             ParkReason.OUTPUT_FAILED,
             -> {
                 waitingForRoute = null
-                val dropped = registry.clear { closeStream() }
-                toolState.clear()
+                val dropped = registry.clear { closeStream(keepEngine = false) }
+                forgetTools()
                 if (dropped.isNotEmpty()) emit(OutputEvent.Parked(reason, dropped))
             }
         }
@@ -278,8 +299,8 @@ class AudioControlThread(
         }
         // The device is still there, so the platform moved the route to a new
         // primary device or restarted the stream: reopen in place, possibly at
-        // another rate (OUT-13).
-        closeStream()
+        // another rate, continuing the engine (OUT-13).
+        closeStream(keepEngine = true)
         log("stream ended with ${routed.name} present; reopened")
         if (!open(resumed = registry.registered)) parkAll(ParkReason.OUTPUT_FAILED)
     }
@@ -389,6 +410,7 @@ class AudioControlThread(
 
         /** How often the underrun count is read while a stream is open (SHM-02). */
         const val XRUN_POLL_MILLIS = 1_000L
+
         private const val EVENT_BUFFER = 256
     }
 }

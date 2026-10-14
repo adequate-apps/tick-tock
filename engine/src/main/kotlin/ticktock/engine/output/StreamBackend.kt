@@ -83,21 +83,38 @@ interface OpenStream {
     fun setBufferBursts(bursts: Int): Int
 
     /**
-     * Stops and closes. Returns false when the platform did not finish in
+     * Stops and closes, and drops the engine behind the stream: the next open
+     * starts from nothing. Returns false when the platform did not finish in
      * time; the control thread drops the handle either way so a hung stop
      * never leaves output dead for the rest of the session (OUT-15).
      */
     fun close(): Boolean
+
+    /**
+     * Stops and closes, keeping the engine behind the stream for the next
+     * open to continue: the drone keeps its phase, the metronome keeps its
+     * beat count and bar, and its next click comes one beat after the first
+     * frame of the new stream (OUT-13, MET-09). Returns false as [close]
+     * does; then nothing is kept.
+     */
+    fun park(): Boolean
 }
 
 /**
  * The seam between the control thread and the JNI bridge. The control thread
- * is the only caller of [open], and it holds at most one [OpenStream] at a
- * time (OUT-01). The bridge implements this over AAudio; the harness
- * implements it with a fake that can refuse, disconnect, change rate and
- * report xruns.
+ * is the only caller, and it holds at most one [OpenStream] at a time
+ * (OUT-01). A backend holds at most one engine: the stream open now, or the
+ * one a [OpenStream.park] kept. The bridge implements this over AAudio; the
+ * harness implements it with a fake that can refuse, disconnect, change rate
+ * and report xruns.
  */
 interface StreamBackend {
-    /** Opens the stream or fails with a [StreamOpenFailure]. */
+    /**
+     * Opens the stream, continuing the parked engine when one is kept, or
+     * fails with a [StreamOpenFailure].
+     */
     fun open(request: StreamRequest, listener: StreamListener): Result<OpenStream>
+
+    /** Drops a parked engine so the next open starts from nothing; nothing kept is nothing to do. */
+    fun discard()
 }

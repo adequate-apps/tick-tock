@@ -3,6 +3,7 @@ package ticktock.engine.output
 
 import ticktock.core.contracts.OutputCommand
 import ticktock.core.contracts.OutputTool
+import ticktock.core.contracts.ParkReason
 import ticktock.core.metro.MetroSetup
 import ticktock.engine.NativeBridge
 import ticktock.engine.NativeCalls
@@ -11,13 +12,16 @@ import ticktock.engine.NativeCalls
  * The [StreamBackend] over the JNI bridge: the one the control thread uses
  * on a device.
  *
- * Every open is its own native handle. The native controller carries a
- * registry and a parked flag of its own; giving each stream a fresh handle
- * means a native park can never outlive the stream it belongs to, and the
- * Kotlin registry in the control thread stays the only registry that
- * decides anything. One fixed [HOLDER] registration keeps the native
- * registry non-empty for the life of the stream, which is all the native
- * side needs from it.
+ * One native handle carries one engine: the render engine with its voices
+ * and its beat generator, and the native controller around it. A close
+ * destroys the handle, so the next open starts from a fresh engine. A park
+ * keeps the handle with the native stream closed and the engine's state
+ * intact, and the next open resumes it: the native side reopens for the
+ * same engine and converts the generator's anchor, which is where MET-09
+ * and OUT-13 are implemented. One fixed [HOLDER] registration keeps the
+ * native registry non-empty for the life of the handle, which is all the
+ * native side needs from it; the Kotlin registry in the control thread is
+ * the only registry that decides anything.
  *
  * What the native side decides on its own, by decision 13: SHARED,
  * LOW_LATENCY, the device's rate and burst, two bursts of buffer grown one
@@ -36,6 +40,9 @@ class NativeStreamBackend(
     @Volatile
     private var current: NativeOpenStream? = null
 
+    /** A handle whose stream is parked, kept for the next open to resume; 0 when none. Control thread only. */
+    private var parked = 0L
+
     /** The native counters of the open stream, or null while none is open. */
     fun diagnostics(): NativeDiagnostics? = current?.diagnostics()
 
@@ -43,33 +50,59 @@ class NativeStreamBackend(
         if (request != HONOURED) {
             return Result.failure(IllegalArgumentException("the bridge opens $HONOURED only; asked for $request"))
         }
-        val handle = native.nativeCreate()
-        native.nativeRegister(handle, HOLDER.ordinal)
-        // The native registry opened the stream inside that call, so its
-        // verdict is already queued: one drain with no wait reads it.
+        val resuming = parked != 0L
+        val handle = if (resuming) parked else native.nativeCreate()
+        parked = 0L
+        // Either call opens the stream inside the native registry, so its
+        // verdict is already queued: one drain with no wait reads it. A
+        // resumed handle may still hold the park it was left with, or beats
+        // from before it; the verdict is the first open outcome after them.
+        if (resuming) native.nativeResume(handle) else native.nativeRegister(handle, HOLDER.ordinal)
         val verdict = object : NativeBridge.Listener {
-            var first: NativeEvent? = null
+            var outcome: NativeEvent? = null
             override fun onEvent(kind: Int, a: Long, b: Long, c: Long, d: Long, tools: Int, ints: IntArray?) {
-                if (first == null) first = NativeEvent.decode(kind, a, b, c, d, tools, ints)
+                if (outcome != null) return
+                val event = NativeEvent.decode(kind, a, b, c, d, tools, ints)
+                if (event is NativeEvent.Opened || event is NativeEvent.Failed) outcome = event
             }
         }
         native.nativeDrainEvents(handle, verdict, 0)
-        return when (val outcome = verdict.first) {
+        return when (val outcome = verdict.outcome) {
             is NativeEvent.Opened -> {
-                val stream = NativeOpenStream(native, handle, outcome, listener, outputs) { current = null }
+                val stream = NativeOpenStream(native, handle, outcome, listener, outputs, ::endStream)
                 current = stream
                 stream.startDraining()
                 Result.success(stream)
             }
             is NativeEvent.Failed -> {
-                native.nativeDestroy(handle)
+                destroy(handle)
                 Result.failure(StreamOpenFailure(deviceName(outcome.deviceId), outcome.refusedRates))
             }
             else -> {
-                native.nativeDestroy(handle)
+                destroy(handle)
                 Result.failure(StreamOpenFailure(UNKNOWN_DEVICE, emptyList()))
             }
         }
+    }
+
+    override fun discard() {
+        val handle = parked
+        parked = 0L
+        if (handle != 0L) destroy(handle)
+    }
+
+    /** The stream's last act: it is no longer current, and its handle meets its fate. */
+    private fun endStream(handle: Long, fate: HandleFate) {
+        current = null
+        when (fate) {
+            HandleFate.KEEP -> parked = handle
+            HandleFate.DESTROY -> destroy(handle)
+            HandleFate.LEAK -> Unit
+        }
+    }
+
+    private fun destroy(handle: Long) {
+        native.nativeDestroy(handle)
     }
 
     private fun deviceName(deviceId: Int): String = outputs().firstOrNull { it.id == deviceId }?.name ?: "output device $deviceId"
@@ -85,7 +118,7 @@ class NativeStreamBackend(
         )
 
         /**
-         * The one tool registered natively per stream. The native registry
+         * The one tool registered natively per handle. The native registry
          * only distinguishes empty from non-empty; which tool is immaterial.
          */
         val HOLDER = OutputTool.TEST_TONE
@@ -98,7 +131,7 @@ class NativeStreamBackend(
 
         const val EVENT_THREAD_NAME = "audio-events"
 
-        /** How long [OpenStream.close] waits for the event thread to leave the library. */
+        /** How long [OpenStream.close] and [OpenStream.park] wait for the event thread to leave the library. */
         const val CLOSE_TIMEOUT_MILLIS = 1_000L
 
         /**
@@ -110,6 +143,15 @@ class NativeStreamBackend(
 
         const val UNKNOWN_DEVICE = "unknown output"
     }
+}
+
+/** What becomes of a native handle when its stream ends. */
+private enum class HandleFate {
+    /** Kept for the next open to resume. */
+    KEEP,
+    DESTROY,
+    /** A thread may still be inside the library with it: neither freed nor reused. */
+    LEAK,
 }
 
 /**
@@ -124,8 +166,8 @@ private class NativeOpenStream(
     opened: NativeEvent.Opened,
     private val listener: StreamListener,
     private val outputs: () -> List<RoutedDevice>,
-    /** Runs first thing in [close], before the handle may go away. */
-    private val onClosing: () -> Unit,
+    /** Runs when the stream ends, with what becomes of its handle. */
+    private val onEnded: (handle: Long, fate: HandleFate) -> Unit,
 ) : OpenStream, NativeBridge.Listener {
     override val sampleRate: Int = opened.sampleRate
     override val framesPerBurst: Int = opened.framesPerBurst
@@ -181,19 +223,31 @@ private class NativeOpenStream(
     /** The render callback grows the buffer itself (decision 13); what it holds now is the answer. */
     override fun setBufferBursts(bursts: Int): Int = diagnostics().bufferBursts.toInt()
 
-    override fun close(): Boolean {
-        onClosing()
+    override fun close(): Boolean = end(keep = false)
+
+    override fun park(): Boolean = end(keep = true)
+
+    private fun end(keep: Boolean): Boolean {
         running = false
-        // Closes the native stream here, on the control thread, as the
-        // AAudio guide asks, and wakes the event thread with the Closed event.
-        native.nativeUnregister(handle, NativeStreamBackend.HOLDER.ordinal)
+        // Closes the native stream here, on the control thread, as the AAudio
+        // guide asks. A park leaves the holder registered so the native
+        // controller keeps the engine for resume(); the native side may
+        // already have parked itself after a stream error, in which case the
+        // call is nothing. Either call wakes the event thread.
+        if (keep) {
+            native.nativePark(handle, ParkReason.HEADPHONES_DISCONNECTED.ordinal)
+        } else {
+            native.nativeUnregister(handle, NativeStreamBackend.HOLDER.ordinal)
+        }
         drainer.join(NativeStreamBackend.CLOSE_TIMEOUT_MILLIS)
         if (drainer.isAlive) {
             // A thread may still be inside the library with this handle;
-            // freeing it under that thread would be worse than the leak.
+            // freeing it, or resuming it, under that thread would be worse
+            // than the leak.
+            onEnded(handle, HandleFate.LEAK)
             return false
         }
-        native.nativeDestroy(handle)
+        onEnded(handle, if (keep) HandleFate.KEEP else HandleFate.DESTROY)
         return true
     }
 
@@ -209,8 +263,8 @@ private class NativeOpenStream(
             // thread decides whether that is an unplug or a reopen in place.
             is NativeEvent.Parked -> listener.onDisconnected(this)
             // Opened and Closed are the control thread's own events, built
-            // from its OutputInfo; the native side is never asked to resume,
-            // and a Failed after open has no stream to belong to.
+            // from its OutputInfo, and a Failed after open has no stream to
+            // belong to.
             is NativeEvent.Opened,
             NativeEvent.Closed,
             is NativeEvent.Failed,
