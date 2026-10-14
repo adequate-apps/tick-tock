@@ -82,6 +82,13 @@ class AudioControlThread(
     private var bufferBursts = StreamRequest.INITIAL_BUFFER_BURSTS
     private var lastXruns = 0
 
+    /**
+     * Streams reopened in place since one last lived a second. A stream that
+     * dies right after every open is output failing, whatever the device
+     * list says, and the player is told so instead of an endless reopen.
+     */
+    private var reopensInPlace = 0
+
     private val eventFlow = MutableSharedFlow<OutputEvent>(
         extraBufferCapacity = EVENT_BUFFER,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -230,6 +237,7 @@ class AudioControlThread(
         bufferBursts = request.bufferBursts
         lastXruns = 0
         waitingForRoute = null
+        if (resumed == null) reopensInPlace = 0
         opened.setMuted(muteReasons.muted)
         toolState.replay(continuing = resumed != null).forEach(opened::send)
         val current = describe(opened)
@@ -297,9 +305,18 @@ class AudioControlThread(
             parkAll(ParkReason.HEADPHONES_DISCONNECTED)
             return
         }
+        if (reopensInPlace >= MAX_REOPENS_IN_PLACE) {
+            // The device is listed and the stream keeps dying on it: that is
+            // output failing, and the player hears it as such (OUT-02).
+            log("stream ended ${reopensInPlace + 1} times with ${routed.name} present; output failed")
+            emit(OutputEvent.Failed(routed.name, emptyList()))
+            parkAll(ParkReason.OUTPUT_FAILED)
+            return
+        }
         // The device is still there, so the platform moved the route to a new
         // primary device or restarted the stream: reopen in place, possibly at
         // another rate, continuing the engine (OUT-13).
+        reopensInPlace++
         closeStream(keepEngine = true)
         log("stream ended with ${routed.name} present; reopened")
         if (!open(resumed = registry.registered)) parkAll(ParkReason.OUTPUT_FAILED)
@@ -338,6 +355,8 @@ class AudioControlThread(
     private val xrunPoll = object : Runnable {
         override fun run() {
             val open = stream ?: return
+            // A stream that lived this long is a working one.
+            reopensInPlace = 0
             val count = open.xrunCount()
             if (count > lastXruns) {
                 lastXruns = count
@@ -410,6 +429,9 @@ class AudioControlThread(
 
         /** How often the underrun count is read while a stream is open (SHM-02). */
         const val XRUN_POLL_MILLIS = 1_000L
+
+        /** Reopens in place a stream may take before the next end counts as output failing. */
+        const val MAX_REOPENS_IN_PLACE = 3
 
         private const val EVENT_BUFFER = 256
     }
