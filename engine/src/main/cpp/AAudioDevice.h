@@ -17,8 +17,9 @@ namespace ticktock {
 
 class AAudioDevice final : public control::OutputDevice {
 public:
-    // `wake` runs after every data callback that left events behind and on
-    // every error, so the control thread can sleep between beats.
+    // `wake` runs after every data callback and on every error; the bridge
+    // behind it posts only when beats or an error wait, so the control thread
+    // can sleep between beats.
     using WakeFn = void (*)(void* context);
 
     AAudioDevice(WakeFn wake, void* context) : wake_(wake), context_(context) {}

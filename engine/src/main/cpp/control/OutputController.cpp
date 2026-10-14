@@ -33,8 +33,9 @@ void OutputController::registerTool(render::OutputTool tool) {
     std::lock_guard<std::mutex> lock(mutex_);
     const bool wasEmpty = registered_ == 0;
     registered_ |= bit(tool);
-    // A tool registered while others are parked waits for the route with
-    // them: reopening here would put the parked tools on the speaker too.
+    // A registration while parked opens nothing: resume() is the one way out
+    // of a park, and the Kotlin control thread, which owns the route policy,
+    // decides when to call it.
     if (wasEmpty && !streamOpen_ && !parked_) {
         if (!openStream(false)) parked_ = true;
     }
@@ -203,14 +204,19 @@ void OutputController::onRender(float* interleaved, std::int32_t frames) {
     engine_.render(interleaved, frames);
     // Decision 13: one more burst per xrun, up to four, each step counted
     // for Diagnostics. Reading the count is a local read on a shared stream.
+    // The device answers with the size it set, clamped to its capacity or 0
+    // on an error; only a size that grew is a step (SHM-02).
     const std::int32_t xruns = device_.xrunCount();
     if (xruns > lastXruns_.load(std::memory_order_relaxed)) {
         lastXruns_.store(xruns, std::memory_order_relaxed);
         const std::int32_t bursts = bursts_.load(std::memory_order_relaxed);
         if (bursts < kMaxBursts) {
-            device_.setBufferBursts(bursts + 1);
-            bursts_.store(bursts + 1, std::memory_order_relaxed);
-            growthSteps_.fetch_add(1, std::memory_order_relaxed);
+            const std::int32_t grantedFrames = device_.setBufferBursts(bursts + 1);
+            const std::int32_t granted = framesPerBurst_ > 0 ? grantedFrames / framesPerBurst_ : 0;
+            if (granted > bursts) {
+                bursts_.store(granted < kMaxBursts ? granted : kMaxBursts, std::memory_order_relaxed);
+                growthSteps_.fetch_add(1, std::memory_order_relaxed);
+            }
         }
     }
 }
@@ -225,9 +231,10 @@ void OutputController::onError(std::int32_t errorCode) {
 void OutputController::push(const ControlEvent& event) {
     if (eventCount_ == kEventCapacity) {
         // The ring is full because nobody drained for seconds; the oldest
-        // event is the least useful one by then.
+        // event is the least useful one by then, and the loss is counted.
         eventHead_ = (eventHead_ + 1) % kEventCapacity;
         --eventCount_;
+        ++evictedEvents_;
     }
     events_[(eventHead_ + eventCount_) % kEventCapacity] = event;
     ++eventCount_;
@@ -272,8 +279,11 @@ bool OutputController::hasEvents() {
 std::int32_t OutputController::drain(ControlEvent* out, std::int32_t max) {
     std::lock_guard<std::mutex> lock(mutex_);
 
+    // Beats move over only while the ring has room for them and for what
+    // follows below; the rest wait in the render queue, whose own overflow
+    // is the droppedBeats figure.
     render::BeatEvent beat;
-    while (engine_.beats().tryPop(beat)) {
+    while (eventCount_ < kEventCapacity - kEventsReserved && engine_.beats().tryPop(beat)) {
         ControlEvent event;
         event.kind = EventKind::Beat;
         event.a = beat.index;
@@ -328,6 +338,7 @@ Diagnostics OutputController::diagnostics() {
     d.growthSteps = growthSteps_.load(std::memory_order_relaxed);
     d.droppedCommands = engine_.droppedCommands();
     d.droppedBeats = engine_.droppedBeats();
+    d.evictedEvents = evictedEvents_;
     d.framesRendered = engine_.position();
     d.sampleRate = sampleRate_;
     d.streamOpen = streamOpen_;

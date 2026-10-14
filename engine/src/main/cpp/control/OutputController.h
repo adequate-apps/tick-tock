@@ -48,6 +48,8 @@ struct Diagnostics {
     std::int32_t growthSteps = 0;
     std::int32_t droppedCommands = 0;
     std::int32_t droppedBeats = 0;
+    // Events the control-side ring let go of unread; a drain that stalled for seconds.
+    std::int32_t evictedEvents = 0;
     std::int64_t framesRendered = 0;
     std::int32_t sampleRate = 0;
     bool streamOpen = false;
@@ -132,9 +134,12 @@ private:
     std::int32_t reportedUnderruns_ = 0;
 
     static constexpr std::int32_t kEventCapacity = 256;
+    // Room a drain keeps for the park and the counters it may push after the beats.
+    static constexpr std::int32_t kEventsReserved = 2;
     ControlEvent events_[kEventCapacity];
     std::int32_t eventHead_ = 0;
     std::int32_t eventCount_ = 0;
+    std::int32_t evictedEvents_ = 0;
 };
 
 }  // namespace ticktock::control
