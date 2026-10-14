@@ -11,7 +11,7 @@ jar staged under `robolectric-deps/`.
 | `install-hooks.sh` | Installs the pre-commit (staged diff) and pre-push (pushed ranges) scans and sets the commit identity. Run once per clone. |
 | `worktree.sh PATH BRANCH [START]` | Creates a task worktree, scans the branch name, sets the identity and installs the hooks. Branch names start with a milestone, `m2/engine-MET-06-reanchor`; git keeps `mN` and `mN/...` from coexisting, in either order, so a milestone-wide branch beside task branches is `mN-<role>`, as `m0-tests` and `m1-integrate`. |
 | `verify.sh [--base REV] [--skip-h]` | The full local gate with one verdict: identity, source guards, U tier, N tier, H tier, lint, debug APK, manifest allowlist, 16 KB alignment. About 20 s warm, a few minutes cold. |
-| `verify-selftest.sh [--only NAME ...]` | Proves `verify.sh` goes red for the right reason on nine planted failures, after a green control run. Rebuilds the tree per case; about fifteen minutes. `--only` runs the control plus the named cases. |
+| `verify-selftest.sh [--only NAME ...]` | Proves `verify.sh` goes red for the right reason on ten planted failures, after a green control run. Rebuilds the tree per case; about fifteen minutes. `--only` runs the control plus the named cases. |
 | `prove-red.sh [--base REV] [--head REV]` | Copies the branch's test files onto the base commit in a scratch worktree and refuses the branch if they pass there. CI runs it on every PR. |
 | `check-manifest.sh [MANIFEST] [ALLOWLIST]` | Compares the merged manifest's permissions with the release's allowlist, `manifest-allowlist-<major.minor>.txt` chosen from `versionName`, exact set match. |
 | `check-alignment.sh [APK_OR_DIR ...]` | Proves every arm64-v8a and x86_64 `.so` in the debug APK (or any APK or directory given) has LOAD segments aligned to 16 KB (DST-03). No library found is a failure. |
@@ -35,9 +35,12 @@ jar staged under `robolectric-deps/`.
   `band-literal-allowlist.txt` with its reason. The BND-04 test in `:core`
   applies the same rule and reads the same allowlist.
 - **Render path.** Files under `engine/src/main/cpp/render/` run inside the
-  audio callback. Heap allocation, standard containers, locks and logging are
-  refused there by a source lint; the host-tests allocation counter adds the
-  runtime check.
+  audio callback, and so do three functions in files that otherwise belong to
+  the control thread: `OutputController::onRender`, `AAudioDevice::onData` and
+  the bridge's `onWake`. Heap allocation, standard containers, locks and
+  logging are refused in all of them by a source lint, which fails if one of
+  the three functions goes missing; the host-tests allocation counter adds the
+  runtime check for the controller's callback.
 
 Every test tier must leave JUnit XML with at least one test case and no
 skipped case; a tier that produced nothing is as red as one that failed.

@@ -7,6 +7,7 @@
 #   1. identity   tools/identity-scan.sh over the tree and the branch's commits
 #   2. sources    skipped-test markers, band thresholds outside CentsBand,
 #                 heap allocation, locking or logging on the render path
+#                 (render/ and the three callback functions outside it)
 #   3. U tier     :core:test
 #   4. N tier     host-tests/ (cmake, ninja, gtest) when present
 #   5. H tier     Robolectric tests, lint, assembleDebug, manifest allowlist,
@@ -169,18 +170,47 @@ echo "no cents threshold outside ${band_file##*/}"
 # The render callback has a deadline: no heap, no locks, no logging (spec 2.6).
 # Everything under engine/src/main/cpp/render is the render path; the engine
 # builder keeps the callback and the synth there and the control thread outside.
+# The callback also passes through three functions in files that otherwise
+# belong to the control thread; those bodies are scanned by the same rule.
+render_hits() {
+    # stdin: file:line:text; prints the lines that reach the heap, a lock or a log.
+    grep -E \
+        -e '\b(new|delete|malloc|calloc|realloc|free|strdup)\b' \
+        -e 'std::(vector|string|map|unordered_map|set|list|deque|function|shared_ptr|unique_ptr|make_shared|make_unique)\b' \
+        -e 'std::(mutex|lock_guard|unique_lock|lock|condition_variable)\b' \
+        -e '__android_log|\bprintf\(|std::(cout|cerr)' || true
+}
+function_body() {
+    # $1 file, $2 the function's name as written at its definition. Prints the
+    # body as file:line:text, from the line that opens it to its closing
+    # brace; fails when the file has no such function, so a rename cannot
+    # leave the callback unscanned.
+    awk -v name="$2" -v file="$1" '
+        !inside && index($0, name "(") && /\{[[:space:]]*$/ { inside = 1; depth = 0; found = 1 }
+        inside {
+            print file ":" NR ":" $0
+            depth += gsub(/\{/, "{") - gsub(/\}/, "}")
+            if (depth <= 0) inside = 0
+        }
+        END { exit found ? 0 : 1 }' "$1"
+}
 render_dir="engine/src/main/cpp/render"
+callback_functions="engine/src/main/cpp/control/OutputController.cpp OutputController::onRender
+engine/src/main/cpp/AAudioDevice.cpp AAudioDevice::onData
+engine/src/main/cpp/JniBridge.cpp onWake"
 if [ -d "$render_dir" ]; then
     render_sources=$(find "$render_dir" -type f \( -name '*.cpp' -o -name '*.cc' -o -name '*.h' -o -name '*.hpp' \) || true)
     if [ -n "$render_sources" ]; then
         # shellcheck disable=SC2086
-        hits=$(code_lines $render_sources | grep -E \
-            -e '\b(new|delete|malloc|calloc|realloc|free|strdup)\b' \
-            -e 'std::(vector|string|map|unordered_map|set|list|deque|function|shared_ptr|unique_ptr|make_shared|make_unique)\b' \
-            -e 'std::(mutex|lock_guard|unique_lock|lock|condition_variable)\b' \
-            -e '__android_log|\bprintf\(|std::(cout|cerr)' || true)
+        hits=$(code_lines $render_sources | render_hits)
         [ -z "$hits" ] || { echo "$hits"; red sources "allocation, locking or logging on the render path"; }
     fi
+    while read -r file name; do
+        [ -f "$file" ] || continue
+        body=$(function_body "$file" "$name") || red sources "$file has no function $name to scan; the callback path moved"
+        hits=$(printf '%s\n' "$body" | grep -E -v '^[^:]*:[0-9]+:[[:space:]]*(//|\*|/\*|#)' | render_hits)
+        [ -z "$hits" ] || { echo "$hits"; red sources "allocation, locking or logging on the render path"; }
+    done <<< "$callback_functions"
     echo "render path is free of allocation, locks and logging"
 else
     echo "render path: $render_dir absent (the engine builder adds it)"
