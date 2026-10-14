@@ -145,9 +145,9 @@ class AudioControlThread(
             is OutputCommand.Register -> register(cmd.tool)
             is OutputCommand.Unregister -> unregister(cmd.tool)
             is OutputCommand.Mute -> setMute(MuteSource.of(cmd.reason), cmd.active)
-            is OutputCommand.VoiceOn,
-            is OutputCommand.VoiceOff,
-            is OutputCommand.VoiceGain,
+            is OutputCommand.VoiceOn -> voiceCommand(cmd, cmd.slot)
+            is OutputCommand.VoiceOff -> voiceCommand(cmd, cmd.slot)
+            is OutputCommand.VoiceGain -> voiceCommand(cmd, cmd.slot)
             is OutputCommand.SetA4,
             is OutputCommand.Duck,
             is OutputCommand.MetroStart,
@@ -155,6 +155,15 @@ class AudioControlThread(
             OutputCommand.MetroStop,
             -> applyToTools(cmd)
         }
+    }
+
+    /** The engine has [VOICE_SLOTS] slots; a command for any other slot would be silently ignored natively, so it is refused here, aloud. */
+    private fun voiceCommand(cmd: OutputCommand, slot: Int) {
+        if (slot !in 0 until VOICE_SLOTS) {
+            log("$cmd refused: slots are 0 to ${VOICE_SLOTS - 1}")
+            return
+        }
+        applyToTools(cmd)
     }
 
     private fun applyToTools(cmd: OutputCommand) {
@@ -212,10 +221,18 @@ class AudioControlThread(
             return
         }
         // A policy that keeps some tools is v1.1's, under its foreground
-        // service; the registry side of it is already in place.
+        // service; the registry side of it is already in place. A parked tool
+        // makes no sound (OUT-02): the metronome stops with its tool, and the
+        // voices stop unless a tool that sounds them stays.
+        if (OutputTool.METRONOME in park) applyToTools(OutputCommand.MetroStop)
+        if (keep.none { it in VOICE_TOOLS }) silenceVoices()
         park.forEach { registry.unregister(it) { closeStream(keepEngine = false) } }
         waitingForRoute = waitingForRoute?.minus(park)
         emit(OutputEvent.Parked(ParkReason.BACKGROUND, park))
+    }
+
+    private fun silenceVoices() {
+        for (slot in 0 until VOICE_SLOTS) applyToTools(OutputCommand.VoiceOff(slot))
     }
 
     // --- the stream ------------------------------------------------------------
@@ -432,6 +449,12 @@ class AudioControlThread(
 
         /** Reopens in place a stream may take before the next end counts as output failing. */
         const val MAX_REOPENS_IN_PLACE = 3
+
+        /** Voice slots the engine offers; mirrors `kVoiceSlots` in the native Commands.h. */
+        const val VOICE_SLOTS = 4
+
+        /** The tools that sound voices; the metronome sounds clicks. */
+        private val VOICE_TOOLS = setOf(OutputTool.DRONE, OutputTool.PITCH_PIPE, OutputTool.TEST_TONE)
 
         private const val EVENT_BUFFER = 256
     }
