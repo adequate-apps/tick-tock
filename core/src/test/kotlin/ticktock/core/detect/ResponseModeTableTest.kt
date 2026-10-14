@@ -7,6 +7,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import ticktock.core.contracts.InputSource
+import ticktock.core.prefs.PrefsSchema
 
 class ResponseModeTableTest {
     @Test
@@ -78,6 +79,26 @@ class ResponseModeTableTest {
         val quiet = 1e-4
         assertEquals(RejectReason.SILENCE, a.step(HopEstimate(440.0, 0.01, quiet), 1).reject)
         assertEquals(RejectReason.SILENCE, b.step(HopEstimate(440.0, 0.01, quiet * SourceLevel.linearFactor(InputSource.VOICE_RECOGNITION)), 1).reject)
+    }
+
+    /**
+     * The top of the player's noise-floor range must leave the gate reachable
+     * under every preset and mode. A full-scale sine is the loudest hop there
+     * is, and the processed presets shift the floor 18 dB up, so the top value
+     * is checked where it bites hardest, with 6 dB of headroom for a forte
+     * that is not slamming the converter.
+     */
+    @Test
+    fun `the top of the noise-floor range keeps a full-scale sine over the gate under every preset and mode`() {
+        val top = PrefsSchema.NOISE_FLOOR_DB.last
+        val fullScaleSineRms = 1.0 / Math.sqrt(2.0)
+        val forte = fullScaleSineRms / 2.0
+        for (mode in ResponseMode.entries) for (source in InputSource.entries) {
+            val floor = Gate.floor(ResponseModeTable.of(mode), source, top)
+            assertTrue("$mode under $source: floor $floor at $top dB leaves no headroom", floor <= forte)
+            val detector = Detector(mode, source, top)
+            assertEquals("$mode under $source", HopClass.VOTE, detector.step(HopEstimate(440.0, 0.01, forte), 0).hopClass)
+        }
     }
 
     @Test
