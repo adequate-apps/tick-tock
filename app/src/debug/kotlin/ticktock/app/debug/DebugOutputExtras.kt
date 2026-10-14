@@ -144,17 +144,23 @@ fun DebugOutputExtras() {
         tag = "debug-output",
     ) {
         Field(Modifier.fillMaxWidth()) {
-            SettingRow(label = stringResource(R.string.debug_row_route), value = route, tag = "debug-route")
+            // Sentences rather than values: stacked under a caption so they wrap as prose.
+            CaptionedLine(caption = stringResource(R.string.debug_row_route), text = route, tag = "debug-route")
             SettingRow(label = stringResource(R.string.debug_row_last_event), value = lastEvent, tag = "debug-last-event")
             SettingRow(label = stringResource(R.string.debug_row_drone), value = drone, tag = "debug-drone")
             SettingRow(label = stringResource(R.string.debug_row_metro), value = metro, tag = "debug-metro")
-            SettingRow(label = stringResource(R.string.debug_row_beats), value = beats, tag = "debug-beats")
+            CaptionedLine(caption = stringResource(R.string.debug_row_beats), text = beats, tag = "debug-beats")
             SettingRow(label = stringResource(R.string.debug_row_output_counters), value = counters, tag = "debug-counters")
-            Column(Modifier.fillMaxWidth().padding(horizontal = GridlineSpacing.sp3, vertical = GridlineSpacing.sp2).testTag("debug-native")) {
-                Caption(text = stringResource(R.string.debug_row_native))
-                GlText(text = nativeLine, style = GridlineType.value, color = GridlineColors.textSecondary, modifier = Modifier.testTag("debug-native-value"))
-            }
+            CaptionedLine(caption = stringResource(R.string.debug_row_native), text = nativeLine, tag = "debug-native")
         }
+    }
+}
+
+@Composable
+private fun CaptionedLine(caption: String, text: String, tag: String) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = GridlineSpacing.sp3, vertical = GridlineSpacing.sp2).testTag(tag)) {
+        Caption(text = caption)
+        GlText(text = text, style = GridlineType.value, color = GridlineColors.textSecondary, modifier = Modifier.testTag("$tag-value"))
     }
 }
 
