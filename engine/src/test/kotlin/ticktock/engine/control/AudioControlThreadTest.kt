@@ -426,6 +426,43 @@ class AudioControlThreadTest {
     }
 
     @Test
+    fun `OUT-02 a stream that keeps ending with its device present is output failing, after three reopens in place`() {
+        start()
+        register(OutputTool.DRONE)
+        send(drone)
+        repeat(AudioControlThread.MAX_REOPENS_IN_PLACE) {
+            checkNotNull(backend.current).disconnect()
+            idle()
+        }
+        assertEquals(AudioControlThread.MAX_REOPENS_IN_PLACE + 1, backend.opened.size)
+        assertEquals(emptyList<OutputEvent.Parked>(), eventsOf<OutputEvent.Parked>())
+
+        checkNotNull(backend.current).disconnect()
+        idle()
+        assertEquals(listOf(OutputEvent.Failed(SPEAKER.name, emptyList())), eventsOf<OutputEvent.Failed>())
+        assertEquals(listOf(OutputEvent.Parked(ParkReason.OUTPUT_FAILED, setOf(OutputTool.DRONE))), eventsOf<OutputEvent.Parked>())
+        assertNull(backend.current)
+        assertEquals(listOf("started", "stopped"), owner.calls)
+    }
+
+    @Test
+    fun `OUT-02 a stream that lives a second is a working one, and the reopen budget starts over`() {
+        start()
+        register(OutputTool.DRONE)
+        repeat(AudioControlThread.MAX_REOPENS_IN_PLACE) {
+            checkNotNull(backend.current).disconnect()
+            idle()
+        }
+        idleFor(AudioControlThread.XRUN_POLL_MILLIS)
+        repeat(AudioControlThread.MAX_REOPENS_IN_PLACE) {
+            checkNotNull(backend.current).disconnect()
+            idle()
+        }
+        assertEquals(emptyList<OutputEvent.Failed>(), eventsOf<OutputEvent.Failed>())
+        assertNotNull(backend.current)
+    }
+
+    @Test
     fun `OUT-12 the route comes from the routed device and an API 37 route change re-classifies without a disconnect`() {
         backend.nextRouted = BLE_HEADSET
         start()
