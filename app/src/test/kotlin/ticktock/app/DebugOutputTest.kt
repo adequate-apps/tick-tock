@@ -18,6 +18,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import ticktock.app.debug.InputSeam
 import ticktock.app.debug.OutputSeam
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -112,6 +113,25 @@ class DebugOutputTest {
             ),
             port.sent.drop(4),
         )
+    }
+
+    @Test
+    fun `TON-02 the A4 extra retunes the engine before the drone strikes`() {
+        OutputSeam.override = port
+        val intent = Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java)
+            .putExtra(OutputSeam.EXTRA_DRONE_MIDI, 69)
+            .putExtra(InputSeam.EXTRA_A4_HZ, 442f)
+        scenario = ActivityScenario.launch(intent)
+        compose.waitUntil(TIMEOUT) { port.sent.size >= 3 }
+        assertEquals(
+            listOf(
+                OutputCommand.Register(OutputTool.DRONE),
+                OutputCommand.SetA4(442.0),
+                OutputCommand.VoiceOn(OutputSeam.DRONE_SLOT, 69, Voice.SINE, OutputSeam.DRONE_GAIN),
+            ),
+            port.sent.toList(),
+        )
+        value("debug-drone").assertTextEquals("A4 (MIDI 69) at A4 = 442 Hz, sine, gain 0.5")
     }
 
     @Test
