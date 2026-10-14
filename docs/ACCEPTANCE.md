@@ -24,7 +24,7 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 | DET-13 | ceiling test | U | 2.0 | YinTest `DET-13` (two tests: 4600 Hz; every 100 Hz from 4600 Hz to 10 kHz, clean and at 10 dB SNR, no sub-harmonic at either rate) + YinTest `DET-08` at 10 dB SNR pinning the other side of the sub-period rule | green |
 | DET-14 | window long enough for the floor | U | 2.0 | YinTest `DET-14` (`Yin.WINDOW_SECONDS` reads `Hop.SECONDS`, the one definition the analyser cuts by) | green |
 | DET-15 | non-finite input | U | 2.0 | YinTest `DET-15`, YinEstimatorTest `DET-15` (no candidate at level 0, counted) and DetectorEndToEndTest `DET-15` (a NaN hop mid-note is skipped and counted, the held note goes on) | green |
-| DET-16 | off the UI thread | H, D | 2.0 | AnalysisThreadTest `DET-16` (decisions arrive on the thread named `analysis`, promoted to audio priority, on audio pushed from another thread); the device half is the emulator readout run, `tools/device/readout.sh --tone 440 --expect A4` | green (H) |
+| DET-16 | off the UI thread | H, D | 2.0 | AnalysisThreadTest `DET-16` (decisions arrive on the thread named `analysis`, promoted to audio priority, on audio pushed from another thread); D: `tools/device/readout.sh --tone 442 --a4 442 --expect A4` on the API 36 emulator reads A4 +0 c 442.0 Hz off the UI thread (screenshot kept outside the tree) | green |
 | DET-17 | per-hop budget | H, D | 2.0 | YinTest `DET-17` prints the JVM per-hop cost (informational: sax-like A4 median about 1.7 ms, white noise about 1.9 ms at 48 kHz); the reference-device figure is the M2 gate | open |
 
 ## Detector policy
@@ -146,7 +146,7 @@ ledgered under their own prefixes below.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| OUT-01 | output-user registry | H | 2.0 (decision 12 removes the focus clause: the registry opens the stream on the first tool and closes it on the last, and its two transitions drive BGH-01) | OutputRegistryTest `OUT-01` (the registry's transitions) and AudioControlThreadTest `OUT-01` (the real control thread opens the fake backend's stream on the first tool and closes it on the last, Opened then Closed) | green |
+| OUT-01 | output-user registry | H | 2.0 (decision 12 removes the focus clause: the registry opens the stream on the first tool and closes it on the last, and its two transitions drive BGH-01) | OutputRegistryTest `OUT-01` (the registry's transitions), AudioControlThreadTest `OUT-01` (the real control thread opens the fake backend's stream on the first tool and closes it on the last, Opened then Closed) and AndroidAudioControlTest `OUT-01` (the same over the native backend and a fake of the bridge: the first tool opens one native handle, the last destroys it); N: `OutputController.theFirstRegistrationOpensSharedLowLatencyAtTwoBurstsAndTheLastCloses`; D: the emulator output run shows Opened on the first Register and Closed on the last Unregister | green |
 | OUT-02 | truthful state | H | 2.0 | engine half: every loss of output is a Parked event carrying its reason: AudioControlThreadTest `OUT-03` (headphones disconnected), `OUT-17` (output failed, with the device and the refused rates), `CAL-02` (incoming call), `OUT-11` (background); the control that shows off with the reason lands in M5 | open |
 | OUT-03 | unplug | H, D | 2.0 | H green: AudioControlThreadTest `OUT-03` (two tests: the noisy broadcast, and a device vanishing without one; every registered tool parks, the stream closes and nothing opens on the speaker; the dead stream's late disconnect is ignored); D: the owner's phone check is pending | open |
 | OUT-04 | drone AUTO on unplug | H | v1.1 | | deferred |
@@ -158,10 +158,10 @@ ledgered under their own prefixes below.
 | OUT-10 | mute reasons | H | 2.0 | MuteReasonsTest `OUT-10` (two tests: overlap in any order, clearing an unset reason) and AudioControlThreadTest `OUT-10` (two tests: a recording mute and the ringing reason overlap on the real stream and the sounding notes empty while muted; a mute set before the stream opens is in force when it opens) | green |
 | OUT-11 | background policy | H | 2.0 (v1 policy: stop everything) | AudioControlThreadTest `OUT-11` (three tests: `BackgroundPolicy.StopEverything` parks every tool with `BACKGROUND` and the foreground restarts nothing; a policy that keeps some tools parks only the rest; the background with nothing registered is nothing) | green |
 | OUT-12 | route from the routed device | H, D | 2.0 | H green: RouteClassifierTest `OUT-12` (four tests over every `AudioDeviceInfo` type: speakers, wired and USB, Bluetooth classic, LE audio and hearing aids, unknowns) and AudioControlThreadTest `OUT-12` (the route class comes from the stream's routed device; an API 37 routing change re-classifies and re-reads latency without a disconnect, SHM-03); D: the owner's phone check is pending | open |
-| OUT-13 | rate change | H | 2.0 | control half: ToolStateTest `OUT-13` (the replay rebuilds A4 first, every voice with its latest gain, then the metronome) and AudioControlThreadTest `OUT-05 and OUT-13` (the rebuilt stream reports the new rate and receives the replayed commands); the generator's anchor conversion through time is MET-09 on the render side | open |
+| OUT-13 | rate change | H | 2.0 | control half: ToolStateTest `OUT-13` (the replay rebuilds A4 first, every voice with its latest gain, then the metronome) and AudioControlThreadTest `OUT-05 and OUT-13` (the rebuilt stream reports the new rate and receives the replayed commands); native half: host-tests `Voices.aHeldVoiceKeepsItsPitchAcrossARateChange` and `Metronome.afterAnOutputSwitchTheNextClickComesOneBeatLater` (MET-09); over the bridge: AndroidAudioControlTest `OUT-13` (a native disconnect with the device still present reopens on a fresh handle at the new rate and replays the tools) | green |
 | OUT-14 | rate peg | H | 2.0 | AudioControlThreadTest `SHM-01 and OUT-14` (the request leaves the rate unspecified; `OutputInfo.sampleRate` is the rate the backend granted, 44.1 kHz in the test) | green |
 | OUT-15 | start and stop never block | H | 2.0 | AudioControlThreadTest `OUT-15` (two tests: with the backend stuck inside open, send has returned and nothing has reached the backend, and the open ran on the `audio-control` thread; a close that times out drops the handle and the next start opens a fresh stream) | green |
-| OUT-16 | render thread | H | 2.0 | | open |
+| OUT-16 | render thread | H | 2.0 | N: host-tests `Allocation.renderNeverAllocatesUnderEveryCommand` and `Allocation.theDeviceCallbackPathNeverAllocates` (a counting `operator new` over `render()` and the device callback path reads zero under every command; `Allocation.theCounterSeesAnAllocation` proves the counter) plus the `tools/verify.sh` render-path source lint (no allocation, containers, locks or logging under `engine/src/main/cpp/render/`); the tier is N rather than H because the render thread is C++ | green |
 | OUT-17 | error names | H | 2.0 | AudioControlThreadTest `OUT-17` (a refused open yields `Failed("USB DAC", [48000, 44100])`, the tool parks with `OUTPUT_FAILED`, and the next start tries again) | green |
 | IN-01 | one owner and release | H | 2.0 | AudioRecordSourceTest `IN-01` (three tests: a recorder that errors mid-stream is released and the failure names the device; a restart replaces the stream with at most one recorder open at any point; a late recorder from a hung open is released) | green |
 | IN-02 | busy or missing | H | 2.0 | AudioRecordSourceTest `IN-02` (Busy names the device and the recorder is released; an absent saved interface is reported as Disconnected by name while the session opens on the built-in microphone) | green |
@@ -174,25 +174,25 @@ ledgered under their own prefixes below.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| MET-01 | sample clock | N | 2.0 | | open |
-| MET-02 | zero drift | N | 2.0 (a muted beat keeps its subdivisions audible, GAP-03) | | open |
-| MET-03 | in-block placement | N | 2.0 | | open |
-| MET-04 | late events | N | 2.0 | | open |
-| MET-05 | exactly once | N | 2.0 | | open |
-| MET-06 | re-anchor on the beat that sounded | N | 2.0 | | open |
-| MET-07 | metre change | N | 2.0 | | open |
-| MET-08 | 64-beat scenarios | N | 2.0 | | open |
-| MET-09 | output switch | N | 2.0 | | open |
-| MET-10 | range and diagnostics | N, H | 2.0 | | open |
+| MET-01 | sample clock | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Metronome.tenThousandBeatsAt300BpmLandOnTheFormulaToTheFrame` (48 k and 44.1 k) and `Metronome.theFirstNonZeroSampleLandsOnTheOnsetFrame` | green |
+| MET-02 | zero drift | N | 2.0 (a muted beat keeps its subdivisions audible, GAP-03) | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Metronome.aFractionalPeriodNeverDrifts` (onset = A + round(k x sr x 60 / bpm), no accumulated error over 10 000 beats); the muted-beat subdivisions are GAP-03 | green |
+| MET-03 | in-block placement | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Metronome.theFirstNonZeroSampleLandsOnTheOnsetFrame` (onsets placed at their exact offset inside the block, block by block) | green |
+| MET-04 | late events | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Metronome.aBeatMoreThanTwoMillisecondsLateIsDroppedAndCounted` and `Metronome.aBeatUnderTwoMillisecondsLatePlaysAtTheNextBlockAndIsNotCounted`; the count reaches Diagnostics as `OutputController.aLateBeatShowsUpInCounters` | green |
+| MET-05 | exactly once | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Metronome.liveEditsNeverDoubleABeatOrBunchClicks` (the generator holds exactly one next beat, so a dispatched beat has no second path) and `Metronome.stopLeavesNoFurtherBeats` | green |
+| MET-06 | re-anchor on the beat that sounded | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Metronome.aTempoChangeReanchorsOnTheBeatThatSounded` | green |
+| MET-07 | metre change | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Metronome.aMetreChangeResetsTheBar` | green |
+| MET-08 | 64-beat scenarios | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Metronome.sixtyFourBeatScenarioMatchesTheExpectedFrames` | green |
+| MET-09 | output switch | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Metronome.afterAnOutputSwitchTheNextClickComesOneBeatLater` (the anchor converts through time on a rate change) and `OutputController.aDisconnectParksOnTheControlThreadAndResumeReopensAtTheNewRate` | green |
+| MET-10 | range and diagnostics | N, H | 2.0 | N: `Metronome.acceptsThirtyToThreeHundredAndClampsOutside` and `OutputController.aLateBeatShowsUpInCounters`; H: AndroidAudioControlTest `MET-10` (the setup reaches the native generator through the bridge with its ordinals and the beats come back as events), NativeStreamBackendTest `MET-10` (the native counters of the open stream are readable); D: `tools/device/output.sh --drone 69 --metro 120` on the API 36 emulator, 17 beats in 8 s spaced exactly 24 000 frames at 48 kHz, 0 late, 0 dropped | green |
 
 ## Drone and pitch pipes follow A4
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | TON-01 | saved A4 at start-up | H | 2.0 | | open |
-| TON-02 | accuracy | N | 2.0 | | open |
-| TON-03 | held notes retune | N | 2.0 | | open |
-| TON-04 | volume is gain | N | 2.0 | | open |
+| TON-02 | accuracy | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Voices.everyVoiceIsInTuneAt442` (7 notes x 3 voices x 2 rates, FFT peak within 0.5 c, sine within 0.1 c) | green |
+| TON-03 | held notes retune | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Voices.aHeldNoteRetunesInPlaceWhenA4Changes` (no gap, no re-strike) and `Voices.aHeldVoiceKeepsItsPitchAcrossARateChange` | green |
+| TON-04 | volume is gain | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Voices.volumeIsAGainChangeAndNotARestrike` (ramped gain, constant voice count) and `Mixer.duckIsARampedGainWithAFloor` | green |
 | TON-05 | sine voice and fallback | N | 2.0 | | open |
 | TON-06 | transposition persists | H | 2.0 | | open |
 
@@ -301,9 +301,9 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| GAP-01 | N bars on, M bars off (the fields and the on/off rule landed in M0: MetroSetupTest; the generator lands in M2) | N, H | 2.0 | | open |
-| GAP-02 | the cycle keeps its bar position across a tempo change | N | 2.0 | | open |
-| GAP-03 | a muted beat keeps its subdivisions | N | 2.0 | | open |
+| GAP-01 | N bars on, M bars off (the fields and the on/off rule landed in M0: MetroSetupTest; the generator lands in M2) | N, H | 2.0 | M0: MetroSetupTest (the fields and the on/off rule); N: `Metronome.gapBarsSilenceWholeBarsWhileBeatsKeepComing` and `Metronome.aSilentBarHasNoSubdivisionClicks` (the generator follows `MetroParams.barSounds`, the mirror of `MetroSetup.barSounds`); the beat row's outline is M5 | green (N; the H half is the beat row, M5) |
+| GAP-02 | the cycle keeps its bar position across a tempo change | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Metronome.gapBarsKeepTheirBarPositionAcrossATempoChange` | green |
+| GAP-03 | a muted beat keeps its subdivisions | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Metronome.aMutedBeatKeepsItsSubdivisionsAudible` and `Metronome.accentLevelsAreGainMultipliersAndMuteIsSilent` | green |
 | GAP-04 | odd-metre presets | H | 2.0 | | open |
 
 ### Calls without audio focus
@@ -328,9 +328,9 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| SHM-01 | SHARED, LOW_LATENCY, two bursts, granted values reported (decision 13) | H, D | 2.0 | H green: AudioControlThreadTest `SHM-01 and OUT-14` (the control thread's `StreamRequest` is SHARED, LOW_LATENCY, rate and frames-per-callback unspecified, two bursts, and `OutputInfo` carries the granted rate, burst, route and latency); the bridge maps the request onto the AAudio builder in the integrate step; D: the granted values on the owner's phone are pending | open |
-| SHM-02 | buffer grows on xruns up to four bursts | H | 2.0 | AudioControlThreadTest `SHM-02` (a rising xrun count grows the buffer one burst at a time, 2 to 3 to 4, then stops; each step is a Diagnostics line and the count is reported) | green |
-| SHM-03 | routing-changed callback on API 37 | H, D | 2.0 | H green: AudioControlThreadTest `OUT-12` (the routing-changed callback re-classifies the route and re-reads latency within the same control-thread turn, with no Parked and no new stream); the callback's registration on API 37 is the bridge's; D: pending | open |
+| SHM-01 | SHARED, LOW_LATENCY, two bursts, granted values reported (decision 13) | H, D | 2.0 | H: AudioControlThreadTest `SHM-01 and OUT-14` (the control thread's `StreamRequest` is SHARED, LOW_LATENCY, rate and frames-per-callback unspecified, two bursts, and `OutputInfo` carries the granted rate, burst, route and latency), NativeStreamBackendTest `SHM-01` (a request the bridge cannot honour is refused before the library is touched); N: `OutputController.theFirstRegistrationOpensSharedLowLatencyAtTwoBurstsAndTheLastCloses` against the fake device; D (emulator, API 36): Opened rate=48000 burst=960 class=SPEAKER, 2 bursts, latency 29 to 57 ms, `verification/2026-10-14/output-*.log`; the owner's phone reading is still listed under the device checks | green (H, N, emulator); phone pending |
+| SHM-02 | buffer grows on xruns up to four bursts | H | 2.0 | H: AudioControlThreadTest `SHM-02` (a rising xrun count grows the buffer one burst at a time, 2 to 3 to 4, then stops; each step is a Diagnostics line and the count is reported); N: `OutputController.theBufferGrowsOneBurstPerXrunUpToFour` (the growth the render callback performs itself, decision 13); the Kotlin side reads what the native side holds (NativeStreamBackendTest `SHM-02`); D: one underrun on the emulator grew the buffer 2 to 3 bursts, shown in the debug output pane | green |
+| SHM-03 | routing-changed callback on API 37 | H, D | 2.0 | H green: AudioControlThreadTest `OUT-12` (the routing-changed callback re-classifies the route and re-reads latency within the same control-thread turn, with no Parked and no new stream); native registration is blocked: NDK 28.2's AAudio.h has no `AAudioStreamBuilder_setRoutingChangedCallback`, so `AAudioDevice` registers none and the bridge never calls `StreamListener.onRoutingChanged`; needs an NDK that exposes it (an install checkpoint) and then a D check on an API 37 device | open (NDK) |
 
 ### Bluetooth calibration
 
