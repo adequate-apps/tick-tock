@@ -1,0 +1,11 @@
+# Normalise line endings so hashes and diffs agree across machines.
+* text=auto eol=lf
+gradlew text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# Binary assets
+*.png binary
+*.jar binary
+*.ttf binary
+*.svg text

@@ -1,0 +1,34 @@
+# Build outputs and caches
+build/
+.gradle/
+.kotlin/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Machine-specific SDK/NDK paths
+local.properties
+
+# Signing material never enters the tree. The release build reads private/signing.properties.
+private/
+
+# IDE state
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Python helpers
+__pycache__/
+*.py[cod]
+
+# Robolectric runtime jar (about 200 MB). The sha256 manifest is committed; the jar is restaged.
+tools/robolectric-deps/*.jar
+
+# Device and emulator evidence stays local
+verification/
+
+# Roborazzi comparison output
+**/build/outputs/roborazzi/
