@@ -28,6 +28,8 @@ class PersonalConfigTest {
             responseMode = ResponseMode.SLOW,
             noiseFloorDb = -50,
             keepAwake = true,
+            earsFirst = true,
+            announceSettledNotes = false,
             droneVoice = Voice.ROOT_FIFTH,
             clickSound = ClickSound.BEEP,
             visualOffsetMs = 15,
@@ -113,8 +115,9 @@ class PersonalConfigTest {
                "text"
              ],
              "settings": {
-               "a4Hz": 429, "displayMode": "sideways", "noiseFloorDb": -5, "keepAwake": "yes",
-               "visualOffsetMs": 2.5, "instrument": "kazoo", "spelling": 3
+               "a4Hz": 414, "displayMode": "sideways", "noiseFloorDb": -5, "keepAwake": "yes",
+               "visualOffsetMs": 2.5, "instrument": "kazoo", "spelling": 3, "earsFirst": "on",
+               "announceSettledNotes": 1
              }}
         """.trimIndent()
         val result = failed(text)
@@ -136,6 +139,8 @@ class PersonalConfigTest {
             "settings.visualOffsetMs",
             "settings.instrument",
             "settings.spelling",
+            "settings.earsFirst",
+            "settings.announceSettledNotes",
         )
         assertEquals(expected.sorted(), paths.sorted())
         val backwards = result.problems.first { it.path == "rangeOverrides.eb_alto" }
@@ -147,11 +152,15 @@ class PersonalConfigTest {
     }
 
     @Test
-    fun `a4 accepts the whole 430 to 450 span and nothing outside it`() {
-        assertEquals(430.0, ok("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 430}}""").config.settings.a4Hz)
-        assertEquals(450.0, ok("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 450}}""").config.settings.a4Hz)
+    fun `A4W-01 a4 accepts the whole 415 to 466 span and nothing outside it`() {
+        // Decision 16: 415 covers baroque pitch, 466 keeps every A4 within a semitone of 440.
+        assertEquals(415.0, ok("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 415}}""").config.settings.a4Hz)
+        assertEquals(466.0, ok("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 466}}""").config.settings.a4Hz)
         assertEquals(442.5, ok("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 442.5}}""").config.settings.a4Hz)
-        assertEquals("settings.a4Hz", failed("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 450.1}}""").problems.single().path)
+        assertEquals("settings.a4Hz", failed("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 466.1}}""").problems.single().path)
+        assertEquals("settings.a4Hz", failed("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 414.9}}""").problems.single().path)
+        val message = failed("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 500}}""").problems.single().message
+        assertTrue(message, message.contains("415 to 466"))
     }
 
     @Test
@@ -207,6 +216,8 @@ class PersonalConfigTest {
                 "Spelling is set to flats.",
                 "Response is set to slow.",
                 "Ignore sounds quieter than is set to -50 dB.",
+                "Ears first is set to on.",
+                "Announce settled notes is set to off.",
                 "Click sound is set to beep.",
                 "Visual offset is set to 15 ms.",
             ),
