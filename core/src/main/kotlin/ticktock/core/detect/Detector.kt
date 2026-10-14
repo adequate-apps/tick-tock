@@ -45,8 +45,8 @@ object NoSoundingNotes : SoundingNotes {
  */
 class Detector(
     mode: ResponseMode = ResponseMode.DEFAULT,
-    val source: InputSource = InputSource.UNPROCESSED,
-    val noiseFloorDb: Int? = null,
+    source: InputSource = InputSource.UNPROCESSED,
+    noiseFloorDb: Int? = null,
     a4: A4Generation = A4Generation(),
     private val sounding: SoundingNotes = NoSoundingNotes,
     /** False for an output source that cannot act on a duck (POL-29). */
@@ -58,6 +58,15 @@ class Detector(
         private set
     var params: ModeParams = ResponseModeTable.of(mode)
         private set
+
+    /** The capture preset the gate is scaled for (SRC-03); the analyser sets it from the input that opened. */
+    var source: InputSource = source
+        private set
+
+    /** The player's "ignore sounds quieter than" setting, in dBFS on the UNPROCESSED scale, or null for the mode's floor alone. */
+    var noiseFloorDb: Int? = noiseFloorDb
+        private set
+
     private var floor = Gate.floor(params, source, noiseFloorDb)
 
     private var window = VoteWindow(params.voteWindow)
@@ -85,6 +94,23 @@ class Detector(
         floor = Gate.floor(params, source, noiseFloorDb)
         window = VoteWindow(params.voteWindow)
         reset()
+    }
+
+    /**
+     * The preset the input actually opened with, known only after the capture
+     * chain has fallen through UNPROCESSED, VOICE_RECOGNITION and MIC. The
+     * floor moves with it; the held note does not, because the preset says
+     * nothing about pitch.
+     */
+    fun setSource(newSource: InputSource) {
+        source = newSource
+        floor = Gate.floor(params, source, noiseFloorDb)
+    }
+
+    /** The player's noise-floor setting changed; the gate follows it from the next hop. */
+    fun setNoiseFloor(db: Int?) {
+        noiseFloorDb = db
+        floor = Gate.floor(params, source, noiseFloorDb)
     }
 
     /**

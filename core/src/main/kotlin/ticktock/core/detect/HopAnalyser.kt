@@ -85,7 +85,7 @@ class HopAnalyser(
         resetCounters()
         val sink: AudioSink = { samples, frames -> deliver(mine, samples, frames) }
         val result = input.start(sink)
-        result.onSuccess { info -> configure(info.sampleRate) }
+        result.onSuccess { info -> configure(info) }
         this.input = input.takeIf { result.isSuccess }
         return result
     }
@@ -117,12 +117,14 @@ class HopAnalyser(
         nextHop = 0
     }
 
-    private fun configure(rate: Int) {
-        sampleRate = rate
-        hopFrames = Hop.frames(rate)
+    private fun configure(info: InputInfo) {
+        sampleRate = info.sampleRate
+        hopFrames = Hop.frames(sampleRate)
         previous = FloatArray(hopFrames)
         current = FloatArray(hopFrames)
         window = FloatArray(hopFrames * Hop.WINDOW_HOPS)
+        // The preset is whatever the chain managed to open; the gate is scaled for it (SRC-03).
+        detector.setSource(info.source)
         detector.reset()
         ring = HopRing(hopFrames * ringHops)
     }
