@@ -20,6 +20,10 @@ public:
     std::int32_t deviceId = 7;
     bool refuseAll = false;
     bool refuseUnspecified = false;
+    // The most bursts the device will size its buffer to; a request beyond it is clamped, as AAudio clamps to the capacity.
+    std::int32_t maxBursts = 64;
+    // When set, a buffer request errors, which AAudioDevice reports as 0.
+    bool refuseBufferChanges = false;
 
     // Observations.
     std::vector<control::DeviceRequest> requests;
@@ -60,7 +64,8 @@ public:
     void close() override { ++closes; open_ = false; listener_ = nullptr; }
     std::int32_t setBufferBursts(std::int32_t bursts) override {
         if (burstsCount < 64) burstsRecorded[burstsCount++] = bursts;
-        return bursts * framesPerBurst;
+        if (refuseBufferChanges) return 0;
+        return (bursts < maxBursts ? bursts : maxBursts) * framesPerBurst;
     }
     std::vector<std::int32_t> bufferBurstsSet() const {
         return std::vector<std::int32_t>(burstsRecorded, burstsRecorded + burstsCount);

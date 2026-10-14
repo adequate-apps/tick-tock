@@ -126,6 +126,76 @@ TEST(OutputController, theBufferGrowsOneBurstPerXrunUpToFour) {
     EXPECT_TRUE(drainAll(c).empty()) << "counters are reported when they change";
 }
 
+// SHM-02: a step counts when the device took it. A stream clamped at two
+// bursts refuses every growth, and Diagnostics says two bursts and no steps;
+// one that allows three takes one step and refuses the next.
+TEST(OutputController, bufferGrowthCountsOnlyTheStepsTheDeviceGranted) {
+    FakeDevice device;
+    device.maxBursts = 2;
+    OutputController c(device);
+    c.registerTool(OutputTool::Drone);
+    drainAll(c);
+    for (int xruns = 1; xruns <= 5; ++xruns) {
+        device.xruns = xruns;
+        pull(device, 192);
+    }
+    Diagnostics d = c.diagnostics();
+    EXPECT_EQ(2, d.bufferBursts);
+    EXPECT_EQ(0, d.growthSteps);
+    EXPECT_EQ(5, d.underruns);
+    EXPECT_EQ((std::vector<std::int32_t>{2, 3, 3, 3, 3, 3}), device.bufferBurstsSet()) << "asked once per xrun, refused each time";
+
+    device.maxBursts = 3;
+    device.xruns = 6;
+    pull(device, 192);
+    d = c.diagnostics();
+    EXPECT_EQ(3, d.bufferBursts);
+    EXPECT_EQ(1, d.growthSteps);
+    device.xruns = 7;
+    pull(device, 192);
+    d = c.diagnostics();
+    EXPECT_EQ(3, d.bufferBursts);
+    EXPECT_EQ(1, d.growthSteps);
+    EXPECT_EQ(4, device.bufferBurstsSet().back());
+
+    // A device that errors on the request grows nothing either.
+    device.maxBursts = 4;
+    device.refuseBufferChanges = true;
+    device.xruns = 8;
+    pull(device, 192);
+    EXPECT_EQ(3, c.diagnostics().bufferBursts);
+    EXPECT_EQ(1, c.diagnostics().growthSteps);
+}
+
+// Beats wait in the render queue until the event ring has room, so a slow
+// drain loses none of them and the drop counter stays honest.
+TEST(OutputController, aSlowDrainLosesNoBeats) {
+    FakeDevice device;
+    OutputController c(device);
+    c.registerTool(OutputTool::Metronome);
+    drainAll(c);
+    for (int i = 0; i < 1000; ++i) {
+        render::BeatEvent beat;
+        beat.index = i;
+        beat.frame = 100LL * i;
+        ASSERT_TRUE(c.engine().beats().tryPush(beat));
+    }
+    std::vector<ControlEvent> all;
+    for (int round = 0; round < 40 && all.size() < 1000; ++round) {
+        ControlEvent buffer[64];
+        const std::int32_t n = c.drain(buffer, 64);
+        for (std::int32_t i = 0; i < n; ++i) all.push_back(buffer[i]);
+    }
+    ASSERT_EQ(1000u, all.size());
+    for (std::size_t i = 0; i < all.size(); ++i) {
+        ASSERT_EQ(EventKind::Beat, all[i].kind) << "event " << i;
+        ASSERT_EQ(static_cast<std::int64_t>(i), all[i].a) << "event " << i;
+    }
+    EXPECT_EQ(0, c.diagnostics().droppedBeats);
+    EXPECT_EQ(0, c.diagnostics().evictedEvents);
+    EXPECT_TRUE(drainAll(c).empty());
+}
+
 TEST(OutputController, aDisconnectParksOnTheControlThreadAndResumeReopensAtTheNewRate) {
     FakeDevice device;
     OutputController c(device);
@@ -239,7 +309,9 @@ TEST(OutputController, unregisteringTheLastParkedToolClosesWithoutAStream) {
     EXPECT_EQ(2, device.opens);
 }
 
-TEST(OutputController, aRegistrationWhileParkedWaitsForTheRoute) {
+// The native registry never opens on its own while parked: resume() is the
+// one way out of a park, and the control thread decides when to call it.
+TEST(OutputController, aRegistrationWhileParkedOpensNothingUntilResume) {
     FakeDevice device;
     OutputController c(device);
     c.registerTool(OutputTool::Metronome);
@@ -248,7 +320,7 @@ TEST(OutputController, aRegistrationWhileParkedWaitsForTheRoute) {
     drainAll(c);
     c.registerTool(OutputTool::Drone);
     EXPECT_TRUE(drainAll(c).empty());
-    EXPECT_EQ(1, device.opens) << "the speaker stays silent until the route returns";
+    EXPECT_EQ(1, device.opens) << "nothing opens until the control thread resumes";
     c.resume();
     auto events = drainAll(c);
     ASSERT_EQ(1u, events.size());
