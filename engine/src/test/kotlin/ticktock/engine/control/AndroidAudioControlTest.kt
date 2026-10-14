@@ -194,6 +194,24 @@ class AndroidAudioControlTest {
     }
 
     @Test
+    fun `OUT-03 an input device appearing is not a replug, so parked tools never come out on the speaker`() {
+        val speaker = startWithSpeaker()
+        send(OutputCommand.Register(OutputTool.DRONE))
+        shadowOf(audioManager).removeOutputDevice(speaker, false)
+        native.single.disconnect()
+        await("parked") { eventsOf<OutputEvent.Parked>().isNotEmpty() }
+
+        val microphone = AudioDeviceInfoBuilder.newBuilder().setType(AudioDeviceInfo.TYPE_USB_DEVICE).build()
+        shadowOf(audioManager).addInputDevice(microphone, true)
+        idle()
+        Thread.sleep(50)
+        idle()
+        assertEquals(emptyList<OutputEvent.Resumed>(), eventsOf<OutputEvent.Resumed>())
+        assertTrue(native.single.parked)
+        assertEquals(emptyList<Call>(), native.single.calls("resume"))
+    }
+
+    @Test
     fun `OUT-13 a native disconnect with the device still present resumes the same handle at the new rate and the tools carry on`() {
         startWithSpeaker()
         send(
