@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import ticktock.core.contracts.Voice
+import ticktock.core.detect.ResponseMode
 import ticktock.core.json.Json
 import ticktock.core.metro.ClickSound
 import ticktock.core.ranges.UserRangeOverride
@@ -113,7 +114,7 @@ class PersonalConfigTest {
                "text"
              ],
              "settings": {
-               "a4Hz": 429, "displayMode": "sideways", "noiseFloorDb": -5, "keepAwake": "yes",
+               "a4Hz": 414, "displayMode": "sideways", "noiseFloorDb": -5, "keepAwake": "yes",
                "visualOffsetMs": 2.5, "instrument": "kazoo", "spelling": 3
              }}
         """.trimIndent()
@@ -147,11 +148,13 @@ class PersonalConfigTest {
     }
 
     @Test
-    fun `a4 accepts the whole 430 to 450 span and nothing outside it`() {
-        assertEquals(430.0, ok("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 430}}""").config.settings.a4Hz)
-        assertEquals(450.0, ok("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 450}}""").config.settings.a4Hz)
+    fun `a4 accepts the whole 415 to 466 span and nothing outside it`() {
+        // A4W-01, decision 16: the portable file carries the same range as the stepper.
+        assertEquals(415.0, ok("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 415}}""").config.settings.a4Hz)
+        assertEquals(466.0, ok("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 466}}""").config.settings.a4Hz)
         assertEquals(442.5, ok("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 442.5}}""").config.settings.a4Hz)
-        assertEquals("settings.a4Hz", failed("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 450.1}}""").problems.single().path)
+        assertEquals("settings.a4Hz", failed("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 466.1}}""").problems.single().path)
+        assertEquals("settings.a4Hz", failed("""{"format": "ticktock-personal-config", "version": 1, "settings": {"a4Hz": 414.9}}""").problems.single().path)
     }
 
     @Test
