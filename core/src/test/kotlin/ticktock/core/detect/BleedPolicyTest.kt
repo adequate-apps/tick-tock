@@ -2,6 +2,7 @@
 package ticktock.core.detect
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -144,6 +145,81 @@ class BleedPolicyTest {
         assertNull(drive.detector.bleedState.admitted)
         assertEquals(0, drive.saved.size)
         assertNull(drive.detector.shownNote)
+    }
+
+    /** Unison from a cold start until the policy admits [midi]; returns the level it measured before the duck. */
+    private fun admit(drive: Drive, midi: Int): Double {
+        val hz = Pitch.hzFromMidi(midi, Pitch.A4_DEFAULT_HZ)
+        drive.tone(hz, BleedPolicy.SUSPECT_HOPS + BleedPolicy.RAMP_HOPS - 1, rms = level)
+        drive.tone(hz, BleedPolicy.UNISON_HOPS, rms = level)
+        assertEquals(midi, drive.detector.bleedState.admitted)
+        return drive.detector.bleedState.preDuckLevel
+    }
+
+    @Test
+    fun `POL-28 leakage after the player stops is never saved and the admission lapses`() {
+        val (drive, _) = drive(d4)
+        val preDuck = admit(drive, d4)
+        val hz = Pitch.hzFromMidi(d4, Pitch.A4_DEFAULT_HZ)
+        drive.tone(hz, 20, rms = level)
+        val savedWhilePlaying = drive.saved.size
+        assertTrue(savedWhilePlaying > 0)
+
+        // The player stops. The ducked drone leaks on at the floor, far above
+        // the RMS floor, and every one of these hops would read the drone's note.
+        val leak = drive.tone(hz, Hop.count(10.0), rms = preDuck * BleedPolicy.DUCK_FLOOR)
+        assertTrue(leak.all { it.hopClass == HopClass.SKIP })
+        assertEquals(savedWhilePlaying, drive.saved.size)
+        assertNull(drive.detector.bleedState.admitted)
+        assertNull(drive.detector.shownNote)
+        // The note ends within a few hops of the player going, well before a
+        // unison could be proven again.
+        val release = leak.mapNotNull { it.release }.single()
+        assertEquals(ReleaseCause.BLEED, release.cause)
+        assertTrue("released at hop ${release.hop}", release.hop < leak.first().hop + BleedPolicy.UNISON_HOPS)
+    }
+
+    @Test
+    fun `POL-27 one weak hop in unison is skipped and the held note survives, three end it`() {
+        val (drive, _) = drive(d4)
+        val preDuck = admit(drive, d4)
+        val hz = Pitch.hzFromMidi(d4, Pitch.A4_DEFAULT_HZ)
+        val leakLevel = preDuck * BleedPolicy.DUCK_FLOOR
+        drive.tone(hz, 20, rms = level)
+        assertEquals(d4, drive.detector.shownNote)
+        val saved = drive.saved.size
+        val pending = drive.detector.pendingCount
+
+        // A breath or a dip in the player's level: the hop is unproven and is
+        // skipped, and the held note and its pending readings stay (POL-25).
+        val dip = drive.tone(hz, 1, rms = leakLevel).single()
+        assertEquals(HopClass.SKIP, dip.hopClass)
+        assertNull(dip.saved)
+        assertNull(dip.release)
+        assertEquals(d4, drive.detector.shownNote)
+        assertEquals(d4, drive.detector.bleedState.admitted)
+        assertEquals(pending, drive.detector.pendingCount)
+
+        // Back in unison, the next hop is saved at once with no new attack.
+        val back = drive.tone(hz, 1, rms = level).single()
+        assertEquals(HopClass.VOTE, back.hopClass)
+        assertNotNull(back.saved)
+        assertEquals(1, drive.attacks.size)
+
+        // Three weak hops in a row, as many as suspect or clear a leak, are the
+        // player gone: the admission lapses, the note ends and its tail is discarded.
+        val gone = drive.tone(hz, 3, rms = leakLevel)
+        assertEquals(listOf(null, null, ReleaseCause.BLEED), gone.map { it.release?.cause })
+        assertEquals(pending, gone.last().release!!.discardedPending)
+        assertNull(drive.detector.bleedState.admitted)
+        assertNull(drive.detector.shownNote)
+        assertEquals(saved + 1, drive.saved.size)
+
+        // The note has to be earned again on five strong hops.
+        val again = drive.tone(hz, BleedPolicy.UNISON_HOPS, rms = level)
+        assertTrue(again.dropLast(1).all { it.hopClass == HopClass.SKIP })
+        assertEquals(HopClass.VOTE, again.last().hopClass)
+        assertEquals(d4, drive.detector.bleedState.admitted)
     }
 
     @Test
