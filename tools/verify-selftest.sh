@@ -95,6 +95,11 @@ run_case() {
         results+=("ok    $name: $verdict, '$want_text' seen")
     else
         results+=("FAIL  $name: got '${verdict:-no verdict}', wanted $want_verdict with '$want_text' (see ${log#"$root"/})")
+        # CI keeps no artifacts, so the stage that went red and any failed
+        # tests travel with the result line.
+        while IFS= read -r line; do
+            results+=("        $line")
+        done < <(grep -E -e '^verify: RED' -e ' FAILED$' -e 'AssertionError|timed out waiting' "$log" | head -n 12)
         failed=1
     fi
     drop_scratch
