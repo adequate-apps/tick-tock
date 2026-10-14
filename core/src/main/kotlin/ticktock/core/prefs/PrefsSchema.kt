@@ -56,7 +56,14 @@ object PrefsSchema {
     /** Decision 16: the A4 reference range, defined once in [Pitch]. */
     val A4_HZ: ClosedFloatingPointRange<Double> = Pitch.A4_HZ
 
-    val NOISE_FLOOR_DB: IntRange = -80..-10
+    /**
+     * The "ignore sounds quieter than" setting, in dBFS on the UNPROCESSED
+     * scale. The processed presets shift the gate 18 dB up (SRC-03), so the
+     * top is where a full-scale sine still clears the gate with 6 dB to spare
+     * under every preset: -30 dB becomes -12 dBFS under MIC, against a
+     * full-scale sine's -3 dBFS.
+     */
+    val NOISE_FLOOR_DB: IntRange = -80..-30
     val VISUAL_OFFSET_MS: IntRange = -500..500
     val BEAT_UNITS: List<Int> = listOf(2, 4, 8, 16)
 
