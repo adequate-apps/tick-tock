@@ -79,6 +79,9 @@ class Detector(
     /** Consecutive hops rejected as silence; anything else sounding resets it. */
     private var silentHops = 0
 
+    /** The hop most recently classified, -1 before the first; a release raised between hops is stamped with it. */
+    private var lastHop = -1L
+
     /** The note the readout shows, or null for a blank readout. */
     val shownNote: Int? get() = incumbent
 
@@ -87,13 +90,17 @@ class Detector(
 
     val bleedState: BleedState get() = bleed
 
-    /** A mode change forgets the held note and its pending readings (POL-05). */
-    fun setMode(newMode: ResponseMode) {
+    /**
+     * A mode change forgets the held note and its pending readings (POL-05).
+     * Returns the release of the note it forgot, so an attack never goes
+     * unpaired, or null when nothing was held.
+     */
+    fun setMode(newMode: ResponseMode): Release? {
         mode = newMode
         params = ResponseModeTable.of(newMode)
         floor = Gate.floor(params, source, noiseFloorDb)
         window = VoteWindow(params.voteWindow)
-        reset()
+        return forget(ReleaseCause.MODE_CHANGE)
     }
 
     /**
@@ -116,20 +123,25 @@ class Detector(
     /**
      * A new reference, a new generation, and nothing graded against the old one
      * survives (POL-20, POL-21). The same value still turns the generation.
+     * Returns the release of the note it forgot, or null when nothing was held.
      */
-    fun setA4(hz: Double) {
+    fun setA4(hz: Double): Release? {
         a4 = a4.changedTo(hz)
-        reset()
+        return forget(ReleaseCause.A4_CHANGE)
     }
 
-    /** Forgets the held note, its pending readings and the vote window. The bleed state is about the output and stays. */
-    fun reset() {
-        pending.clear()
-        incumbent = null
-        edgeRemaining = 0
-        awaitingSettle = false
-        silentHops = 0
+    /**
+     * Forgets the held note, its pending readings and the vote window, as
+     * when the stream restarts. The bleed state is about the output and
+     * stays. Returns the release of the note it forgot, or null.
+     */
+    fun reset(): Release? = forget(ReleaseCause.RESTART)
+
+    private fun forget(cause: ReleaseCause): Release? {
+        val release = if (incumbent != null) endNote(lastHop, cause) else null
         window.clear()
+        silentHops = 0
+        return release
     }
 
     /**
@@ -138,6 +150,7 @@ class Detector(
      * gain that passes (POL-12).
      */
     fun step(estimate: HopEstimate, hop: Long, micGain: Double = 1.0): Decision {
+        lastHop = hop
         val level = estimate.rms * micGain
         var reason: RejectReason? = when {
             level < floor -> RejectReason.SILENCE

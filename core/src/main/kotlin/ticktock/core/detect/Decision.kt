@@ -41,9 +41,19 @@ enum class ReleaseCause {
     UNCONFIRMED_NOTES,
     /** The output started sounding the same note and the player is not yet proven to hold it. */
     BLEED,
+    /** The reference changed; the note was graded against the old one (POL-20). */
+    A4_CHANGE,
+    /** The response mode changed; the note was confirmed on the old mode's terms (POL-05). */
+    MODE_CHANGE,
+    /** The detector was reset from outside, as when the input stream restarts (POL-17). */
+    RESTART,
 }
 
-/** A held note ended (POL-07); [discardedPending] readings never reached history. */
+/**
+ * A held note ended (POL-07); [discardedPending] readings never reached
+ * history. A release from a change outside the hop stream (A4, mode, reset)
+ * is stamped with the last hop classified, the last time the note was heard.
+ */
 data class Release(
     val hop: Long,
     val midiSounding: Int,
