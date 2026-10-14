@@ -51,6 +51,45 @@ class HopAnalyserTest {
     }
 
     @Test
+    fun `DET-17 a window under the gate's floor never reaches the estimator, and is the same silence reject with its level`() {
+        var calls = 0
+        val counting = PitchEstimator { window, frames, sampleRate ->
+            calls++
+            ZeroCrossingEstimator().estimate(window, frames, sampleRate)
+        }
+        val analyser = HopAnalyser(Detector(ResponseMode.NORMAL), counting)
+        val input = FakeAudioInput(sampleRate = rate)
+        analyser.attach(input).getOrThrow()
+
+        // Three hops of silence, then three of a tone far under any floor.
+        input.push(Synth.silence(hopFrames * 3))
+        val faint = Sine(440.0, 1e-5, rate)
+        input.push(faint.next(hopFrames * 3))
+        val quiet = analyser.drain()
+        assertEquals(0, calls)
+        assertEquals(6, quiet.size)
+        for (decision in quiet) {
+            assertEquals(HopClass.REJECT, decision.hopClass)
+            assertEquals(RejectReason.SILENCE, decision.reject)
+        }
+        assertEquals(1e-5 / Math.sqrt(2.0), quiet.last().level, 1e-7)
+
+        // A tone over the floor reaches the estimator; the window that
+        // straddles the faint hop and the first loud one is over it too.
+        input.push(Sine(440.0, 0.1, rate).next(hopFrames * 3))
+        val loud = analyser.drain()
+        assertEquals(3, loud.size)
+        assertEquals(3, calls)
+        assertTrue(loud.all { it.hopClass == HopClass.VOTE })
+
+        // The gain the gate sees is the analyser's: enough of it lifts the faint tone over the floor.
+        analyser.micGain = 1_000.0
+        input.push(faint.next(hopFrames * 2))
+        analyser.drain()
+        assertEquals(5, calls)
+    }
+
+    @Test
     fun `POL-15 a block of k hops is exactly k windows and no hop is analysed twice`() {
         val analyser = analyser()
         val input = FakeAudioInput(sampleRate = rate)
