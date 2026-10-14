@@ -38,21 +38,32 @@ fun assertNote(label: String, expectedMidi: Int, toleranceCents: Double, note: N
 }
 
 class YinTest {
+    /**
+     * DET-01 with the sweep ends of decision 16: the band clears A0 at
+     * A4 = 415 by the half semitone the nearest-note window needs below, and
+     * C8 at A4 = 466 by the same above, so a player inside the window at
+     * either end of the A4 range still gets a reading.
+     */
     @Test
-    fun `DET-01 the lag search covers 25,5 Hz to 4500 Hz at both rates`() {
-        assertEquals(25.5, Yin.LOW_HZ, 0.0)
-        assertEquals(4500.0, Yin.HIGH_HZ, 0.0)
+    fun `DET-01 the lag search covers 25 Hz to 4570 Hz at both rates, half a semitone past A0 at 415 and C8 at 466`() {
+        assertEquals(25.0, Yin.LOW_HZ, 0.0)
+        assertEquals(4570.0, Yin.HIGH_HZ, 0.0)
+        val halfSemitone = Math.pow(2.0, 50.0 / 1200.0)
+        val lowestA0 = Pitch.hzFromMidi(21, Pitch.A4_HZ.start)
+        val highestC8 = Pitch.hzFromMidi(108, Pitch.A4_HZ.endInclusive)
+        assertTrue("A0 at ${Pitch.A4_HZ.start} is $lowestA0 Hz; the floor must sit half a semitone under it", Yin.LOW_HZ <= lowestA0 / halfSemitone)
+        assertTrue("C8 at ${Pitch.A4_HZ.endInclusive} is $highestC8 Hz; the ceiling must sit half a semitone over it", Yin.HIGH_HZ >= highestC8 * halfSemitone)
         for (rate in RATES) {
             val yin = Yin(rate)
-            assertEquals("minLag at $rate", floor(rate / 4500.0).toInt(), yin.minLag)
-            assertEquals("maxLag at $rate", ceil(rate / 25.5).toInt(), yin.maxLag)
-            assertTrue("the longest lag is below the ceiling at $rate", rate.toDouble() / yin.maxLag <= 25.5)
-            assertTrue("the shortest lag is above the ceiling at $rate", rate.toDouble() / yin.minLag >= 4500.0)
+            assertEquals("minLag at $rate", floor(rate / Yin.HIGH_HZ).toInt(), yin.minLag)
+            assertEquals("maxLag at $rate", ceil(rate / Yin.LOW_HZ).toInt(), yin.maxLag)
+            assertTrue("the longest lag is below the floor at $rate", rate.toDouble() / yin.maxLag <= Yin.LOW_HZ)
+            assertTrue("the shortest lag is above the ceiling at $rate", rate.toDouble() / yin.minLag >= Yin.HIGH_HZ)
 
             val frames = yin.windowFrames
-            assertEquals("26 Hz at $rate", 26.0, yin.hz(TestTones.sine(26.0, rate, frames)), 26.0 * 0.6 / 1731.0)
-            assertEquals("4450 Hz at $rate", 4450.0, yin.hz(TestTones.sine(4450.0, rate, frames)), 4450.0 * 0.6 / 1731.0)
-            assertEquals("25 Hz is below the floor at $rate", YinResult.NoPeriod, yin.analyse(TestTones.sine(25.0, rate, frames), NORMAL_THRESHOLD))
+            assertEquals("25.5 Hz at $rate", 25.5, yin.hz(TestTones.sine(25.5, rate, frames)), 25.5 * 0.6 / 1731.0)
+            assertEquals("4500 Hz at $rate", 4500.0, yin.hz(TestTones.sine(4500.0, rate, frames)), 4500.0 * 0.6 / 1731.0)
+            assertEquals("24.5 Hz is below the floor at $rate", YinResult.NoPeriod, yin.analyse(TestTones.sine(24.5, rate, frames), NORMAL_THRESHOLD))
         }
     }
 
@@ -175,20 +186,44 @@ class YinTest {
     }
 
     @Test
-    fun `DET-10 A0 reads within 0,6 c at every A4 from 430 to 450`() {
-        for (a4 in doubleArrayOf(430.0, 435.0, 440.0, 442.0, 445.0, 450.0)) for (rate in RATES) {
+    fun `DET-10 A0 reads within 0,6 c at every A4 from 415 to 466`() {
+        for (a4 in doubleArrayOf(415.0, 430.0, 435.0, 440.0, 442.0, 445.0, 450.0, 466.0)) for (rate in RATES) {
             val yin = Yin(rate)
             val note = yin.reading(TestTones.window(Timbre.SINE, 21, a4, rate), a4)
             assertNote("A0 at A4 = $a4, $rate Hz", 21, 0.6, note)
         }
     }
 
+    /** The lowest end of the sweep: a flat A0 at A4 = 415 is still inside the nearest-note window and must read. */
     @Test
-    fun `DET-11 C8 at A4 = 450 reads within 0,6 c`() {
+    fun `DET-10 A0 at A4 = 415 reads 40 c flat within 0,6 c`() {
         for (rate in RATES) {
             val yin = Yin(rate)
-            val note = yin.reading(TestTones.window(Timbre.SINE, 108, 450.0, rate), 450.0)
-            assertNote("C8 at A4 = 450, $rate Hz", 108, 0.6, note)
+            val hz = Pitch.hzFromMidi(21 - 0.40, 415.0)
+            val note = yin.reading(TestTones.sine(hz, rate, yin.windowFrames), 415.0)
+            assertNote("A0 -40 c at A4 = 415, $rate Hz", 21, 40.6, note)
+            assertEquals("A0 -40 c at A4 = 415, $rate Hz", -40.0, note.cents, 0.6)
+        }
+    }
+
+    @Test
+    fun `DET-11 C8 at A4 = 450 and at A4 = 466 reads within 0,6 c`() {
+        for (a4 in doubleArrayOf(450.0, 466.0)) for (rate in RATES) {
+            val yin = Yin(rate)
+            val note = yin.reading(TestTones.window(Timbre.SINE, 108, a4, rate), a4)
+            assertNote("C8 at A4 = $a4, $rate Hz", 108, 0.6, note)
+        }
+    }
+
+    /** The highest end of the sweep: a sharp C8 at A4 = 466 is still inside the nearest-note window and must read. */
+    @Test
+    fun `DET-11 C8 at A4 = 466 reads 40 c sharp within 0,6 c`() {
+        for (rate in RATES) {
+            val yin = Yin(rate)
+            val hz = Pitch.hzFromMidi(108 + 0.40, 466.0)
+            val note = yin.reading(TestTones.sine(hz, rate, yin.windowFrames), 466.0)
+            assertNote("C8 +40 c at A4 = 466, $rate Hz", 108, 40.6, note)
+            assertEquals("C8 +40 c at A4 = 466, $rate Hz", 40.0, note.cents, 0.6)
         }
     }
 
@@ -264,7 +299,7 @@ class YinTest {
     fun `DET-14 the window is fixed in milliseconds and covers two periods of the floor`() {
         assertEquals(2048.0 / 44100.0, Yin.HOP_SECONDS, 0.0)
         assertEquals(2.0 * Yin.HOP_SECONDS, Yin.WINDOW_SECONDS, 0.0)
-        assertTrue("two periods of 25.5 Hz are 78.4 ms", Yin.WINDOW_SECONDS >= 2.0 / 25.5)
+        assertTrue("two periods of the floor, ${1000.0 * 2.0 / Yin.LOW_HZ} ms", Yin.WINDOW_SECONDS >= 2.0 / Yin.LOW_HZ)
         assertEquals(4096, Yin.windowFrames(44100))
         assertEquals(4458, Yin.windowFrames(48000))
         assertEquals(2048, Yin.hopFrames(44100))
