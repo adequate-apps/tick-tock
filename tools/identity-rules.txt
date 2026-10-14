@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Built-in identity rules for tools/identity-scan.sh. One rule per line:
+# a short name, whitespace, then a POSIX extended regular expression that is
+# matched case-insensitively against every scanned line. Blank lines and lines
+# starting with # are ignored.
+#
+# Every pattern here is safe to publish: it names a class of leak, never a
+# specific private value. Private values live in the out-of-repo denylist,
+# which the scanner reads at run time and never prints.
+#
+# The scanner skips this file when applying these rules (a rule would match
+# its own definition); the denylist is still applied to it.
+
+# Paths that name a machine or an account.
+home-path          (^|[^A-Za-z0-9_])/home/[A-Za-z0-9_.-]+
+users-path         (^|[^A-Za-z0-9_])/Users/[A-Za-z0-9_.-]+
+windows-users      [A-Za-z]:\\+Users\\+
+root-home          (^|[^A-Za-z0-9_])/root/[A-Za-z0-9_.-]+
+
+# Tailnet host names and domains.
+tailnet-domain     \.ts\.net\b
+tailnet-name       \btail[0-9a-f]{4,}\b
+
+# Attribution trailers, session links and assistant or model names.
+coauthor-trailer   ^[[:space:]]*co-authored-by[[:space:]]*:
+session-trailer    ^[[:space:]]*[a-z-]*session[[:space:]]*:[[:space:]]*https?://
+session-link       \bsession_[0-9A-Za-z]{20,}\b
+assistant-name     \b(claude|codex|anthropic|openai|chatgpt|gpt|fable|copilot)\b
+
+# Names of the review roles used outside this repository.
+reviewer-role      \b(sauron|gandalf|frodo|telchar|uruk-?hai|worf)\b
+
+# Personal mailbox addresses; the only identity in this repository is the
+# owner's noreply address.
+personal-mailbox   [A-Za-z0-9._%+-]+@(gmail|googlemail|outlook|hotmail|yahoo|proton|protonmail|icloud)\.
+
+# Indicators from the 2026 npm worm campaign. None of these belongs in a
+# Kotlin and C++ tree; any hit is a planted file or a copied payload.
+worm-ioc           setup\.mjs|math_symbol\.js|math_init\.js|npm-cache\.com|shai-hulud|gh-token-monitor|_node_runtime_init|bun-dl-|ifyoublockthisapikey|169\.254\.169\.254|tmp\.dpkg_14527
