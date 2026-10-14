@@ -162,7 +162,16 @@ class HopAnalyser(
             }
             System.arraycopy(previous, 0, window, 0, hopFrames)
             System.arraycopy(current, 0, window, hopFrames, hopFrames)
-            val estimate = try {
+            val rms = HopEstimate.rms(window, window.size)
+            val estimate = if (detector.belowFloor(rms, micGain)) {
+                // The gate rejects the window as silence before it reads any
+                // period, so the estimator's work could change nothing; its
+                // level still reaches the meter. Most hops of a practice
+                // session are silent, and this is where that costs nothing
+                // (DET-17). A non-finite window is never below the floor and
+                // goes to the estimator, which counts it (DET-15).
+                HopEstimate.none(rms)
+            } else try {
                 estimator.estimate(window, window.size, sampleRate)
             } catch (failure: RuntimeException) {
                 // One bad hop is skipped and counted; the stream goes on (ERR-07).

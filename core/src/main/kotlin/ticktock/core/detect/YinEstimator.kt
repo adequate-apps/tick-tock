@@ -3,7 +3,6 @@ package ticktock.core.detect
 
 import ticktock.core.yin.Yin
 import ticktock.core.yin.YinResult
-import kotlin.math.sqrt
 
 /**
  * The production [PitchEstimator]: YIN behind the detector's seam.
@@ -52,8 +51,8 @@ class YinEstimator(private val threshold: () -> Double) : PitchEstimator {
         // valid prefix is copied so YIN only ever sees valid samples.
         val view = if (window.size == frames) window else window.copyInto(scratch, 0, 0, frames)
         return when (val result = engine.analyse(view, threshold())) {
-            is YinResult.Period -> HopEstimate(result.hz, result.aperiodicity, rms(window, frames))
-            YinResult.NoPeriod -> HopEstimate.none(rms(window, frames))
+            is YinResult.Period -> HopEstimate(result.hz, result.aperiodicity, HopEstimate.rms(window, frames))
+            YinResult.NoPeriod -> HopEstimate.none(HopEstimate.rms(window, frames))
             YinResult.NonFinite -> {
                 nonFiniteWindows++
                 HopEstimate.none(0.0)
@@ -69,11 +68,5 @@ class YinEstimator(private val threshold: () -> Double) : PitchEstimator {
         scratch = FloatArray(fresh.windowFrames)
         sampleRate = rate
         return fresh
-    }
-
-    private fun rms(samples: FloatArray, frames: Int): Double {
-        var sum = 0.0
-        for (i in 0 until frames) sum += samples[i].toDouble() * samples[i]
-        return sqrt(sum / frames)
     }
 }

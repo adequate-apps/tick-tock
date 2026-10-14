@@ -145,6 +145,13 @@ class Detector(
     }
 
     /**
+     * Whether a window at this RMS is silence to the gate, under [micGain]:
+     * [step] rejects such a window before it reads anything else about it,
+     * so an estimator need not be run on it (DET-17).
+     */
+    fun belowFloor(rms: Double, micGain: Double = 1.0): Boolean = rms * micGain < floor
+
+    /**
      * Classifies one hop. [micGain] scales the gate and the meter only; the
      * estimate's frequency is what it is, so cents are the same for every
      * gain that passes (POL-12).
@@ -153,7 +160,7 @@ class Detector(
         lastHop = hop
         val level = estimate.rms * micGain
         var reason: RejectReason? = when {
-            level < floor -> RejectReason.SILENCE
+            belowFloor(estimate.rms, micGain) -> RejectReason.SILENCE
             !estimate.hasCandidate -> RejectReason.NO_CANDIDATE
             estimate.aperiodicity > params.aperiodicityCeiling -> RejectReason.APERIODIC
             else -> null

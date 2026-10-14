@@ -2,6 +2,7 @@
 package ticktock.core.detect
 
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /**
  * The analysis step (spec 0.3). The hop is fixed in seconds so a reading
@@ -45,6 +46,13 @@ data class HopEstimate(
     companion object {
         /** A window with no period in it; [rms] still feeds the level meter. */
         fun none(rms: Double): HopEstimate = HopEstimate(Double.NaN, 1.0, rms)
+
+        /** The level of the first [frames] of [samples], full scale 1. */
+        fun rms(samples: FloatArray, frames: Int): Double {
+            var sum = 0.0
+            for (i in 0 until frames) sum += samples[i].toDouble() * samples[i]
+            return sqrt(sum / frames)
+        }
     }
 }
 
