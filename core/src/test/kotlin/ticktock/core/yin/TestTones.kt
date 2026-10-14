@@ -70,4 +70,13 @@ object TestTones {
         val random = Random(seed)
         return FloatArray(frames) { ((random.nextDouble() * 2.0 - 1.0) * peak).toFloat() }
     }
+
+    /** [signal] with white noise added at [snrDb] below its own RMS, deterministic for [seed]. */
+    fun withNoise(signal: FloatArray, snrDb: Double, seed: Long = 3L): FloatArray {
+        val noise = noise(signal.size, peak = 1.0, seed = seed)
+        val gain = rms(signal) / rms(noise) / Math.pow(10.0, snrDb / 20.0)
+        return FloatArray(signal.size) { signal[it] + (noise[it] * gain).toFloat() }
+    }
+
+    private fun rms(samples: FloatArray): Double = Math.sqrt(samples.sumOf { it.toDouble() * it } / samples.size)
 }

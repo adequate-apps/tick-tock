@@ -214,6 +214,52 @@ class YinTest {
         }
     }
 
+    /**
+     * DET-13 across the whole octave above the band. A tone whose period is
+     * shorter than the shortest lag searched still repeats at every multiple
+     * of that period, and the first multiple inside the band is a dip as deep
+     * as the true one; reading it would be the sub-harmonic the criterion
+     * names. "No reading" is [YinResult.NoPeriod], or a deepest dip that misses
+     * the threshold, which the detector then rejects (POL-10).
+     */
+    @Test
+    fun `DET-13 every sine from 4600 Hz to 10 kHz gives no reading and no sub-harmonic, clean and at 10 dB SNR`() {
+        val failures = ArrayList<String>()
+        for (rate in RATES) {
+            val yin = Yin(rate)
+            var hz = 4600.0
+            while (hz <= 10_000.0) {
+                val clean = TestTones.sine(hz, rate, yin.windowFrames)
+                val cases = listOf("clean" to clean) + (1L..2L).map { seed -> "at 10 dB SNR, seed $seed" to TestTones.withNoise(clean, snrDb = 10.0, seed = seed) }
+                for ((label, window) in cases) {
+                    val result = yin.analyse(window, NORMAL_THRESHOLD)
+                    val reading = result is YinResult.Period && result.meetsThreshold
+                    if (reading) failures.add("${"%.0f".format(hz)} Hz $label at $rate Hz read $result")
+                }
+                hz += 100.0
+            }
+        }
+        assertEquals(emptyList<String>(), failures)
+    }
+
+    /**
+     * The other side of the sub-harmonic rule: a note inside the band whose
+     * fundamental is weak still has a fundamental, so its half-period dip is
+     * measurably shallower than its period's, and it keeps reading as itself
+     * under noise. A regression pin for DET-08 at the SNR where the DET-13
+     * sweep above is proven.
+     */
+    @Test
+    fun `DET-08 the two-partial C8 still reads C8 at 10 dB SNR`() {
+        for (rate in RATES) for (seed in 1L..3L) {
+            val yin = Yin(rate)
+            val hz = Pitch.hzFromMidi(108, 440.0)
+            val clean = TestTones.harmonic(hz, rate, yin.windowFrames, doubleArrayOf(0.1, 1.0), seed = 5L)
+            val note = yin.reading(TestTones.withNoise(clean, snrDb = 10.0, seed = seed))
+            assertNote("two-partial C8 at $rate, 10 dB SNR, seed $seed", 108, 1.0, note)
+        }
+    }
+
     @Test
     fun `DET-14 the window is fixed in milliseconds and covers two periods of the floor`() {
         assertEquals(2048.0 / 44100.0, Yin.HOP_SECONDS, 0.0)
