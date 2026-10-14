@@ -13,7 +13,9 @@ import kotlinx.coroutines.launch
 
 /**
  * Gridline's only press feedback: the raised bevel flips to pressed while the
- * finger is down. No ripple, no tint, no animation beyond the swap.
+ * finger is down. No ripple, no tint, no animation beyond the swap. Installed
+ * by [GridlineTheme] as the default indication, so any clickable that does
+ * not draw its own bevel still answers a touch the Gridline way.
  */
 object PressIndication : IndicationNodeFactory {
     override fun create(interactionSource: InteractionSource): DelegatableNode = PressNode(interactionSource)
@@ -38,12 +40,8 @@ object PressIndication : IndicationNodeFactory {
 
         override fun ContentDrawScope.draw() {
             drawContent()
-            val w = GridlineSpacing.line.toPx()
-            if (pressed) {
-                bevelLines(w, GridlineColors.bevelDark, GridlineColors.bevelLight)
-            } else {
-                bevelLines(w, GridlineColors.bevelLight, GridlineColors.bevelDark)
-            }
+            val bevel = if (pressed) GridlineRelief.reliefPressed else GridlineRelief.reliefRaised
+            bevelLines(GridlineMetrics.line.toPx(), bevel.topLeft, bevel.bottomRight)
         }
     }
 }
