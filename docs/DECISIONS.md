@@ -186,3 +186,13 @@ questions below.
 - Trademark: no filing until a clearance search covers the live ADEQUATE RECORDS registration in
   class 9. The product launches under the owner's own name without a registered mark.
 
+## 18. Kotlin Multiplatform, iOS after Android 2.0
+
+- `:core` becomes a Kotlin Multiplatform module before M3. Its `commonMain` holds the detector,
+  pitch detection, ranges, catalogue, settings schema, portable configuration and statistics, with no
+  `java.*` APIs.
+- The C++ audio engine stays portable; only its AAudio layer is Android-specific.
+- The screens move to Compose Multiplatform when iOS work starts, after Android 2.0.
+- iOS ships under the same brand and price. Any contributor signs a licence agreement first, because
+  App Store terms conflict with the GPL for code the owner does not hold.
+
