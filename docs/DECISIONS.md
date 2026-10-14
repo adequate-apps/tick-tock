@@ -59,9 +59,10 @@ it free, and a metronome that stops when the screen locks is the likeliest one-s
 - Named sessions and saving the table ship in 2.0. Recordings in sessions and the shareable package
   ship in v1.1 together with the recording deck.
 
-## 6. Application id is a deliberate placeholder
+## 6. Application id: a placeholder until the brand was chosen
 
-The id is `com.example.ticktock.placeholder`. Stores reject the `com.example` namespace, so an
+Superseded on 2026-10-14 by decision 17: the id is now `com.adequateapps.metronome`. Until then the
+id was `com.example.ticktock.placeholder`. Stores reject the `com.example` namespace, so an
 unfinished build cannot ship by accident, and `app/build.gradle.kts` fails every release build while
 the id starts with `com.example`. The owner sets the real id, in their own namespace, before the
 first release; it is permanent once published.
@@ -77,9 +78,9 @@ first release; it is permanent once published.
 
 ## 8. Name
 
-TickTock is the working name and will be workshopped later. It replaces the earlier name in all
-user-facing text; the bell icon stays for now. The name lives in exactly one string resource and one
-Kotlin constant so a rename is a two-line change.
+The product is **Adequate Metronome**, by **AdequateApps** (decision 17). TickTock stays the codename
+for the repository, the Kotlin packages and internal documents. The user-visible name lives in
+exactly one string resource and one Kotlin constant, so a rename is a two-line change.
 
 ## 12. No audio focus; a call is detected and parks the tools
 
@@ -171,3 +172,17 @@ questions below.
   phone at M2, with a C++ move behind the same interface as the fallback.
 - **Storage engine.** Framework SQLite with hand-written migrations and one JSON prefs file. Room
   and DataStore are the upgrade path if the schema ever passes about six tables.
+
+## 17. Brand: AdequateApps, product: Adequate Metronome
+
+- The company brand is **AdequateApps** (adequateapps.com); this app is **Adequate Metronome**, served
+  at adequateapps.com/metronome. Later products follow the pattern "Adequate X".
+- Play store title: "Adequate Metronome & Tuner" (26 of 30 characters). The short description carries
+  "drone" and the joke, followed by the features.
+- Play developer name: "AdequateApps". Another studio already publishes as "Adequate".
+- Application id: `com.adequateapps.metronome`, permanent once published. The com.example release
+  guard stays, and CI proves it with a planted id.
+- The handles are `adequate-apps` on GitHub and @adequateapps elsewhere.
+- Trademark: no filing until a clearance search covers the live ADEQUATE RECORDS registration in
+  class 9. The product launches under the owner's own name without a registered mark.
+

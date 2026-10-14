@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <resources>
     <!-- The user-visible name lives here and in AppIdentity.NAME, nowhere else. -->
-    <string name="app_name">TickTock</string>
+    <string name="app_name">Adequate Metronome</string>
 
     <!-- Title strip -->
     <string name="state_idle">Idle</string>

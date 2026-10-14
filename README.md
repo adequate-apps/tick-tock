@@ -1,6 +1,6 @@
-# TickTock
+# Adequate Metronome
 
-TickTock (working name) is a native Android practice app for wind players: a tuner that keeps
+Adequate Metronome, by AdequateApps (codename TickTock), is a native Android practice app for wind players: a tuner that keeps
 per-note intonation statistics, a drone and reference tones, and a metronome. This repository is a
 ground-up rebuild in Kotlin, Jetpack Compose Foundation and a small C++ audio engine.
 
