@@ -47,6 +47,24 @@ class LiveCaptureTest {
     }
 
     @Test
+    fun `POL-19 the capture's A4 is the detector's, so a 442 Hz sine reads A4 at 0 cents at A4 = 442 and +8 at 440`() {
+        val at442 = LiveCapture(a4Hz = 442.0, promote = {})
+        val input = FakeAudioInput(sampleRate = rate)
+        at442.start(input)
+        val sine = Sine(442.0, 0.1, rate)
+        repeat(8) { input.push(sine.next(Hop.frames(rate))) }
+        awaitUntil("note read at 442") { at442.state.value.readout.note == "A4" }
+        assertEquals(0, at442.state.value.readout.cents)
+        assertEquals(442.0, at442.state.value.readout.hz ?: 0.0, 0.5)
+        at442.stop()
+
+        capture.start(input)
+        repeat(8) { input.push(sine.next(Hop.frames(rate))) }
+        awaitUntil("note read at 440") { capture.state.value.readout.note == "A4" && capture.state.value.readout.cents != null }
+        assertEquals(8, capture.state.value.readout.cents)
+    }
+
+    @Test
     fun `silence after a note blanks the readout and the level falls to the floor`() {
         val input = FakeAudioInput(sampleRate = rate)
         capture.start(input)
