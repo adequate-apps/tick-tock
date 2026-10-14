@@ -36,12 +36,15 @@ rollback.
   versioned, documented file and imports on another device. An import shows what it will change
   before applying.
 
-## 4. Background playback ships in v1.2, with a media-style notification
+## 4. Background playback ships in v1.1, with a media-style notification
+
+Moved from v1.2 to v1.1 on 2026-10-14 when the scope revision was adopted: competing metronomes ship
+it free, and a metronome that stops when the screen locks is the likeliest one-star review.
 
 - The app coexists with music players: someone may play along with a track while tuning or using
   the metronome or drone. TickTock requests no exclusive audio focus and never treats another app's
   playback as a reason to stop.
-- An incoming call still stops output.
+- An incoming call still stops output (decision 12 has the detail).
 - In 2.0, moving to the background stops sound and the microphone, and nothing resumes on its own.
 
 ## 5. Storage, sessions and sharing
