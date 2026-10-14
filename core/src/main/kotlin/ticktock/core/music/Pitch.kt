@@ -16,11 +16,14 @@ object Pitch {
 
     const val MIDI_A4 = 69
 
-    /** Spelling-neutral label such as "A#/Bb3" or "C4"; octave numbers follow C4 = 60. */
-    fun label(midi: Int): String = NAMES[Math.floorMod(midi, 12)] + octave(midi)
+    const val A4_DEFAULT_HZ = 440.0
 
-    /** Scientific octave number: 60 is C4, 59 is B3. */
-    fun octave(midi: Int): Int = Math.floorDiv(midi, 12) - 1
+    /**
+     * The selectable concert-pitch reference (owner decision 16). 415 covers
+     * baroque pitch; 466 is the top that keeps every A4 within a semitone of
+     * 440, so a note name never flips between two references.
+     */
+    val A4_HZ: ClosedFloatingPointRange<Double> = 415.0..466.0
 
     /** Equal-tempered frequency of a (possibly fractional) MIDI number against [a4Hz]. */
     fun hzFromMidi(midi: Double, a4Hz: Double): Double = a4Hz * 2.0.pow((midi - MIDI_A4) / 12.0)
@@ -42,6 +45,20 @@ object Pitch {
         val note = floor(midi + 0.5).toInt()
         return NearestNote(note, (midi - note) * 100.0)
     }
+
+    /**
+     * Signed cents of [hz] from a given [midi] at [a4Hz]. The table re-derives
+     * stored readings through this when it shows them against a different A4
+     * than they were graded with (POL-23). A semitone is 100 cents by
+     * definition; the figure is a unit, never a threshold.
+     */
+    fun centsFrom(hz: Double, midi: Int, a4Hz: Double): Double = (midiFromHz(hz, a4Hz) - midi) * 100.0
+
+    /** Spelling-neutral label such as "A#/Bb3" or "C4"; octave numbers follow C4 = 60. */
+    fun label(midi: Int): String = NAMES[Math.floorMod(midi, 12)] + octave(midi)
+
+    /** Scientific octave number: 60 is C4, 59 is B3. */
+    fun octave(midi: Int): Int = Math.floorDiv(midi, 12) - 1
 
     private val NAMES = arrayOf(
         "C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B",

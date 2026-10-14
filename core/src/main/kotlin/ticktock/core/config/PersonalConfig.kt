@@ -2,8 +2,10 @@
 package ticktock.core.config
 
 import ticktock.core.contracts.Voice
+import ticktock.core.detect.ResponseMode
 import ticktock.core.json.JsonValue
 import ticktock.core.metro.ClickSound
+import ticktock.core.music.Pitch
 import ticktock.core.ranges.UserRangeOverride
 
 /**
@@ -31,11 +33,12 @@ data class HornProfile(val id: String, val instrumentKey: String, val nickname: 
 
 enum class DisplayMode(val wire: String) { WRITTEN("written"), CONCERT("concert") }
 enum class Spelling(val wire: String) { AUTO("auto"), SHARPS("sharps"), FLATS("flats") }
-enum class ResponseMode(val wire: String) { FAST("fast"), NORMAL("normal"), SLOW("slow") }
+
 /**
  * File spellings of the engine's own enums. The config layer names the voices
  * and clicks the engine plays, so it reuses those types rather than keeping
- * a second list that could drift from them.
+ * a second list that could drift from them. The response mode is the
+ * detector's [ResponseMode] for the same reason.
  */
 val Voice.wire: String
     get() = when (this) {
@@ -73,7 +76,8 @@ data class PortableSettings(
     val unknownFields: Map<String, JsonValue> = emptyMap(),
 ) {
     companion object {
-        val A4_HZ: ClosedFloatingPointRange<Double> = 430.0..450.0
+        /** Decision 16; the one definition lives in [Pitch]. */
+        val A4_HZ: ClosedFloatingPointRange<Double> = Pitch.A4_HZ
         val NOISE_FLOOR_DB: IntRange = -80..-10
         val VISUAL_OFFSET_MS: IntRange = -500..500
     }

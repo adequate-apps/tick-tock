@@ -2,6 +2,7 @@
 package ticktock.core.config
 
 import ticktock.core.contracts.Voice
+import ticktock.core.detect.ResponseMode
 import ticktock.core.metro.ClickSound
 import ticktock.core.catalogue.Catalogue
 import ticktock.core.json.Json

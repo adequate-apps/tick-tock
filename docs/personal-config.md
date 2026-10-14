@@ -62,7 +62,7 @@ added. Profiles are never removed by an import.
 | Field | Type | Allowed values |
 |---|---|---|
 | `instrument` | text | a catalogue key |
-| `a4Hz` | number | 430 to 450 inclusive |
+| `a4Hz` | number | 415 to 466 inclusive |
 | `displayMode` | text | `written`, `concert` |
 | `spelling` | text | `auto`, `sharps`, `flats` |
 | `responseMode` | text | `fast`, `normal`, `slow` |
@@ -94,7 +94,7 @@ whole file, and every problem is listed at once with the path it was found at, f
 
 ```
 rangeOverrides.eb_alto: keyedLow F#/Gb6 is above keyedHigh A#/Bb3
-settings.a4Hz: expected a number from 430 to 450, found 429
+settings.a4Hz: expected a number from 415 to 466, found 414
 hornProfiles[1].id: id "a" appears more than once
 ```
 
