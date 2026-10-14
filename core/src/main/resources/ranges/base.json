@@ -1,0 +1,1017 @@
+{
+  "schema": "ticktock-range-base",
+  "version": 1,
+  "credit": "Instrument ranges from MuseScore's instruments.xml, licensed GPL-3.0. Keyed tier = early-amateur range (aPitchRange); extended tier = professional range (pPitchRange). Values are sounding MIDI, inclusive, copied without interpretation.",
+  "generator": "tools/gen-ranges/gen_ranges.py",
+  "sourceSha256": "bce483373e0193fe27479230ec7e6d23f1476ffdc59cb5c7b0f95237672cb7fe",
+  "instruments": {
+    "eb_sopranino": {
+      "musescoreId": "sopranino-saxophone",
+      "musescoreName": "Sopranino Saxophone",
+      "musescoreFamily": "saxophones",
+      "transposeChromatic": 3,
+      "soundingKeyed": [
+        61,
+        87
+      ],
+      "soundingExtended": [
+        61,
+        90
+      ]
+    },
+    "bb_soprano": {
+      "musescoreId": "soprano-saxophone",
+      "musescoreName": "Soprano Saxophone",
+      "musescoreFamily": "saxophones",
+      "transposeChromatic": -2,
+      "soundingKeyed": [
+        56,
+        87
+      ],
+      "soundingExtended": [
+        56,
+        91
+      ]
+    },
+    "eb_alto": {
+      "musescoreId": "alto-saxophone",
+      "musescoreName": "Alto Saxophone",
+      "musescoreFamily": "saxophones",
+      "transposeChromatic": -9,
+      "soundingKeyed": [
+        49,
+        80
+      ],
+      "soundingExtended": [
+        49,
+        92
+      ]
+    },
+    "bb_tenor": {
+      "musescoreId": "tenor-saxophone",
+      "musescoreName": "Tenor Saxophone",
+      "musescoreFamily": "saxophones",
+      "transposeChromatic": -14,
+      "soundingKeyed": [
+        44,
+        75
+      ],
+      "soundingExtended": [
+        44,
+        87
+      ]
+    },
+    "eb_bari": {
+      "musescoreId": "baritone-saxophone",
+      "musescoreName": "Baritone Saxophone",
+      "musescoreFamily": "saxophones",
+      "transposeChromatic": -21,
+      "soundingKeyed": [
+        36,
+        68
+      ],
+      "soundingExtended": [
+        36,
+        80
+      ]
+    },
+    "bb_bass": {
+      "musescoreId": "bass-saxophone",
+      "musescoreName": "Bass Saxophone",
+      "musescoreFamily": "saxophones",
+      "transposeChromatic": -26,
+      "soundingKeyed": [
+        32,
+        65
+      ],
+      "soundingExtended": [
+        32,
+        70
+      ]
+    },
+    "eb_contrabass": {
+      "musescoreId": "contrabass-saxophone",
+      "musescoreName": "Contrabass Saxophone",
+      "musescoreFamily": "saxophones",
+      "transposeChromatic": -33,
+      "soundingKeyed": [
+        25,
+        53
+      ],
+      "soundingExtended": [
+        25,
+        56
+      ]
+    },
+    "clar_eb": {
+      "musescoreId": "eb-clarinet",
+      "musescoreName": "Clarinet",
+      "musescoreFamily": "clarinets",
+      "transposeChromatic": 3,
+      "soundingKeyed": [
+        55,
+        94
+      ],
+      "soundingExtended": [
+        55,
+        99
+      ]
+    },
+    "clar_d": {
+      "musescoreId": "d-clarinet",
+      "musescoreName": "Clarinet",
+      "musescoreFamily": "clarinets",
+      "transposeChromatic": 2,
+      "soundingKeyed": [
+        54,
+        93
+      ],
+      "soundingExtended": [
+        54,
+        98
+      ]
+    },
+    "clar_c": {
+      "musescoreId": "c-clarinet",
+      "musescoreName": "Clarinet",
+      "musescoreFamily": "clarinets",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        52,
+        89
+      ],
+      "soundingExtended": [
+        52,
+        94
+      ]
+    },
+    "clar_bb": {
+      "musescoreId": "bb-clarinet",
+      "musescoreName": "Clarinet",
+      "musescoreFamily": "clarinets",
+      "transposeChromatic": -2,
+      "soundingKeyed": [
+        50,
+        89
+      ],
+      "soundingExtended": [
+        50,
+        94
+      ]
+    },
+    "clar_a": {
+      "musescoreId": "a-clarinet",
+      "musescoreName": "Clarinet",
+      "musescoreFamily": "clarinets",
+      "transposeChromatic": -3,
+      "soundingKeyed": [
+        49,
+        88
+      ],
+      "soundingExtended": [
+        49,
+        93
+      ]
+    },
+    "clar_basset_f": {
+      "musescoreId": "basset-horn",
+      "musescoreName": "Basset Horn",
+      "musescoreFamily": "clarinets",
+      "transposeChromatic": -7,
+      "soundingKeyed": [
+        41,
+        84
+      ],
+      "soundingExtended": [
+        41,
+        86
+      ]
+    },
+    "clar_alto_eb": {
+      "musescoreId": "alto-clarinet",
+      "musescoreName": "Alto Clarinet",
+      "musescoreFamily": "clarinets",
+      "transposeChromatic": -9,
+      "soundingKeyed": [
+        43,
+        80
+      ],
+      "soundingExtended": [
+        43,
+        84
+      ]
+    },
+    "clar_bass_bb": {
+      "musescoreId": "bb-bass-clarinet",
+      "musescoreName": "Bass Clarinet",
+      "musescoreFamily": "clarinets",
+      "transposeChromatic": -14,
+      "soundingKeyed": [
+        37,
+        75
+      ],
+      "soundingExtended": [
+        34,
+        82
+      ]
+    },
+    "clar_contraalto_eb": {
+      "musescoreId": "contra-alto-clarinet",
+      "musescoreName": "Contra-alto Clarinet",
+      "musescoreFamily": "clarinets",
+      "transposeChromatic": -21,
+      "soundingKeyed": [
+        30,
+        70
+      ],
+      "soundingExtended": [
+        30,
+        75
+      ]
+    },
+    "clar_contrabass_bb": {
+      "musescoreId": "contrabass-clarinet",
+      "musescoreName": "Contrabass Clarinet",
+      "musescoreFamily": "clarinets",
+      "transposeChromatic": -26,
+      "soundingKeyed": [
+        25,
+        65
+      ],
+      "soundingExtended": [
+        22,
+        70
+      ]
+    },
+    "flute_piccolo": {
+      "musescoreId": "piccolo",
+      "musescoreName": "Piccolo",
+      "musescoreFamily": "flutes",
+      "transposeChromatic": 12,
+      "soundingKeyed": [
+        74,
+        105
+      ],
+      "soundingExtended": [
+        74,
+        108
+      ]
+    },
+    "flute_c": {
+      "musescoreId": "flute",
+      "musescoreName": "Flute",
+      "musescoreFamily": "flutes",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        60,
+        93
+      ],
+      "soundingExtended": [
+        59,
+        98
+      ]
+    },
+    "flute_alto_g": {
+      "musescoreId": "alto-flute",
+      "musescoreName": "Alto Flute",
+      "musescoreFamily": "flutes",
+      "transposeChromatic": -5,
+      "soundingKeyed": [
+        55,
+        88
+      ],
+      "soundingExtended": [
+        55,
+        91
+      ]
+    },
+    "flute_bass_c": {
+      "musescoreId": "bass-flute",
+      "musescoreName": "Bass Flute",
+      "musescoreFamily": "flutes",
+      "transposeChromatic": -12,
+      "soundingKeyed": [
+        48,
+        77
+      ],
+      "soundingExtended": [
+        48,
+        81
+      ]
+    },
+    "trp_piccolo_bb": {
+      "musescoreId": "bb-piccolo-trumpet",
+      "musescoreName": "Piccolo Trumpet",
+      "musescoreFamily": "trumpets",
+      "transposeChromatic": 10,
+      "soundingKeyed": [
+        59,
+        86
+      ],
+      "soundingExtended": [
+        59,
+        89
+      ]
+    },
+    "trp_piccolo_a": {
+      "musescoreId": "a-piccolo-trumpet",
+      "musescoreName": "Piccolo Trumpet",
+      "musescoreFamily": "trumpets",
+      "transposeChromatic": 9,
+      "soundingKeyed": [
+        58,
+        85
+      ],
+      "soundingExtended": [
+        58,
+        88
+      ]
+    },
+    "trp_f": {
+      "musescoreId": "f-trumpet",
+      "musescoreName": "Trumpet",
+      "musescoreFamily": "trumpets",
+      "transposeChromatic": 5,
+      "soundingKeyed": [
+        65,
+        82
+      ],
+      "soundingExtended": [
+        59,
+        91
+      ]
+    },
+    "trp_e": {
+      "musescoreId": "e-trumpet",
+      "musescoreName": "Trumpet",
+      "musescoreFamily": "trumpets",
+      "transposeChromatic": 4,
+      "soundingKeyed": [
+        58,
+        85
+      ],
+      "soundingExtended": [
+        58,
+        88
+      ]
+    },
+    "trp_eb": {
+      "musescoreId": "eb-trumpet",
+      "musescoreName": "Trumpet",
+      "musescoreFamily": "trumpets",
+      "transposeChromatic": 3,
+      "soundingKeyed": [
+        57,
+        84
+      ],
+      "soundingExtended": [
+        57,
+        87
+      ]
+    },
+    "trp_d": {
+      "musescoreId": "d-trumpet",
+      "musescoreName": "Trumpet",
+      "musescoreFamily": "trumpets",
+      "transposeChromatic": 2,
+      "soundingKeyed": [
+        56,
+        83
+      ],
+      "soundingExtended": [
+        56,
+        86
+      ]
+    },
+    "trp_c": {
+      "musescoreId": "c-trumpet",
+      "musescoreName": "Trumpet",
+      "musescoreFamily": "trumpets",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        54,
+        82
+      ],
+      "soundingExtended": [
+        54,
+        85
+      ]
+    },
+    "trp_bb": {
+      "musescoreId": "bb-trumpet",
+      "musescoreName": "Trumpet",
+      "musescoreFamily": "trumpets",
+      "transposeChromatic": -2,
+      "soundingKeyed": [
+        52,
+        80
+      ],
+      "soundingExtended": [
+        52,
+        85
+      ]
+    },
+    "trp_a": {
+      "musescoreId": "a-trumpet",
+      "musescoreName": "Trumpet",
+      "musescoreFamily": "trumpets",
+      "transposeChromatic": -3,
+      "soundingKeyed": [
+        51,
+        79
+      ],
+      "soundingExtended": [
+        51,
+        84
+      ]
+    },
+    "trp_bass_bb": {
+      "musescoreId": "bb-bass-trumpet",
+      "musescoreName": "Bass Trumpet",
+      "musescoreFamily": "trumpets",
+      "transposeChromatic": -14,
+      "soundingKeyed": [
+        40,
+        67
+      ],
+      "soundingExtended": [
+        40,
+        70
+      ]
+    },
+    "cornet_bb": {
+      "musescoreId": "bb-cornet",
+      "musescoreName": "Cornet",
+      "musescoreFamily": "cornets",
+      "transposeChromatic": -2,
+      "soundingKeyed": [
+        52,
+        79
+      ],
+      "soundingExtended": [
+        52,
+        82
+      ]
+    },
+    "flugel_bb": {
+      "musescoreId": "flugelhorn",
+      "musescoreName": "Flugelhorn",
+      "musescoreFamily": "flugelhorns",
+      "transposeChromatic": -2,
+      "soundingKeyed": [
+        52,
+        79
+      ],
+      "soundingExtended": [
+        52,
+        82
+      ]
+    },
+    "horn_f": {
+      "musescoreId": "horn",
+      "musescoreName": "Horn",
+      "musescoreFamily": "horns",
+      "transposeChromatic": -7,
+      "soundingKeyed": [
+        41,
+        69
+      ],
+      "soundingExtended": [
+        31,
+        77
+      ]
+    },
+    "horn_bb": {
+      "musescoreId": "bb-horn-alto",
+      "musescoreName": "Horn",
+      "musescoreFamily": "horns",
+      "transposeChromatic": -2,
+      "soundingKeyed": [
+        44,
+        77
+      ],
+      "soundingExtended": [
+        40,
+        82
+      ]
+    },
+    "horn_eb_alto": {
+      "musescoreId": "eb-alto-horn",
+      "musescoreName": "Alto Horn",
+      "musescoreFamily": "alto-horns",
+      "transposeChromatic": -9,
+      "soundingKeyed": [
+        45,
+        72
+      ],
+      "soundingExtended": [
+        45,
+        75
+      ]
+    },
+    "mellophone_f": {
+      "musescoreId": "mellophone",
+      "musescoreName": "Mellophone",
+      "musescoreFamily": "bugles",
+      "transposeChromatic": -7,
+      "soundingKeyed": [
+        47,
+        74
+      ],
+      "soundingExtended": [
+        47,
+        77
+      ]
+    },
+    "tbn_alto_eb": {
+      "musescoreId": "alto-trombone",
+      "musescoreName": "Alto Trombone",
+      "musescoreFamily": "trombones",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        45,
+        74
+      ],
+      "soundingExtended": [
+        45,
+        77
+      ]
+    },
+    "tbn_tenor": {
+      "musescoreId": "trombone",
+      "musescoreName": "Trombone",
+      "musescoreFamily": "trombones",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        40,
+        71
+      ],
+      "soundingExtended": [
+        36,
+        74
+      ]
+    },
+    "tbn_bass": {
+      "musescoreId": "bass-trombone",
+      "musescoreName": "Bass Trombone",
+      "musescoreFamily": "trombones",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        32,
+        65
+      ],
+      "soundingExtended": [
+        21,
+        77
+      ]
+    },
+    "tbn_contrabass": {
+      "musescoreId": "contrabass-trombone",
+      "musescoreName": "Contrabass Trombone",
+      "musescoreFamily": "trombones",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        28,
+        62
+      ],
+      "soundingExtended": [
+        18,
+        72
+      ]
+    },
+    "euph_bc": {
+      "musescoreId": "euphonium",
+      "musescoreName": "Euphonium",
+      "musescoreFamily": "euphoniums",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        40,
+        70
+      ],
+      "soundingExtended": [
+        40,
+        74
+      ]
+    },
+    "euph_tc": {
+      "musescoreId": "euphonium-treble",
+      "musescoreName": "Euphonium",
+      "musescoreFamily": "euphoniums",
+      "transposeChromatic": -14,
+      "soundingKeyed": [
+        40,
+        70
+      ],
+      "soundingExtended": [
+        40,
+        74
+      ]
+    },
+    "baritone_bc": {
+      "musescoreId": "baritone-horn",
+      "musescoreName": "Baritone Horn",
+      "musescoreFamily": "baritone-horns",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        40,
+        67
+      ],
+      "soundingExtended": [
+        40,
+        70
+      ]
+    },
+    "baritone_tc": {
+      "musescoreId": "baritone-horn-treble",
+      "musescoreName": "Baritone Horn",
+      "musescoreFamily": "baritone-horns",
+      "transposeChromatic": -14,
+      "soundingKeyed": [
+        40,
+        67
+      ],
+      "soundingExtended": [
+        40,
+        70
+      ]
+    },
+    "tuba_f": {
+      "musescoreId": "f-tuba",
+      "musescoreName": "f-tuba",
+      "musescoreFamily": "tubas",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        26,
+        64
+      ],
+      "soundingExtended": [
+        24,
+        72
+      ]
+    },
+    "tuba_eb": {
+      "musescoreId": "eb-tuba",
+      "musescoreName": "eb-tuba",
+      "musescoreFamily": "tubas",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        26,
+        64
+      ],
+      "soundingExtended": [
+        24,
+        72
+      ]
+    },
+    "tuba_cc": {
+      "musescoreId": "c-tuba",
+      "musescoreName": "C Contrabass Tuba",
+      "musescoreFamily": "tubas",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        26,
+        60
+      ],
+      "soundingExtended": [
+        24,
+        72
+      ]
+    },
+    "tuba_bbb": {
+      "musescoreId": "bb-tuba",
+      "musescoreName": "B♭ Contrabass Tuba",
+      "musescoreFamily": "tubas",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        28,
+        58
+      ],
+      "soundingExtended": [
+        22,
+        72
+      ]
+    },
+    "sousaphone_bbb": {
+      "musescoreId": "bb-sousaphone",
+      "musescoreName": "Sousaphone",
+      "musescoreFamily": "sousaphones",
+      "transposeChromatic": -14,
+      "soundingKeyed": [
+        30,
+        60
+      ],
+      "soundingExtended": [
+        24,
+        74
+      ]
+    },
+    "oboe": {
+      "musescoreId": "oboe",
+      "musescoreName": "Oboe",
+      "musescoreFamily": "oboes",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        58,
+        87
+      ],
+      "soundingExtended": [
+        58,
+        96
+      ]
+    },
+    "oboe_damore": {
+      "musescoreId": "oboe-d'amore",
+      "musescoreName": "Oboe d’amore",
+      "musescoreFamily": "oboes",
+      "transposeChromatic": -3,
+      "soundingKeyed": [
+        56,
+        84
+      ],
+      "soundingExtended": [
+        56,
+        87
+      ]
+    },
+    "english_horn": {
+      "musescoreId": "english-horn",
+      "musescoreName": "English Horn",
+      "musescoreFamily": "oboes",
+      "transposeChromatic": -7,
+      "soundingKeyed": [
+        52,
+        81
+      ],
+      "soundingExtended": [
+        52,
+        83
+      ]
+    },
+    "bassoon": {
+      "musescoreId": "bassoon",
+      "musescoreName": "Bassoon",
+      "musescoreFamily": "bassoons",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        34,
+        69
+      ],
+      "soundingExtended": [
+        34,
+        76
+      ]
+    },
+    "contrabassoon": {
+      "musescoreId": "contrabassoon",
+      "musescoreName": "Contrabassoon",
+      "musescoreFamily": "bassoons",
+      "transposeChromatic": -12,
+      "soundingKeyed": [
+        22,
+        57
+      ],
+      "soundingExtended": [
+        22,
+        60
+      ]
+    },
+    "rec_sopranino_f": {
+      "musescoreId": "sopranino-recorder",
+      "musescoreName": "Sopranino Recorder",
+      "musescoreFamily": "recorders",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        77,
+        100
+      ],
+      "soundingExtended": [
+        77,
+        103
+      ]
+    },
+    "rec_soprano_c": {
+      "musescoreId": "soprano-recorder",
+      "musescoreName": "Soprano Recorder",
+      "musescoreFamily": "recorders",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        72,
+        93
+      ],
+      "soundingExtended": [
+        72,
+        103
+      ]
+    },
+    "rec_alto_f": {
+      "musescoreId": "alto-recorder",
+      "musescoreName": "Alto Recorder",
+      "musescoreFamily": "recorders",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        65,
+        88
+      ],
+      "soundingExtended": [
+        64,
+        96
+      ]
+    },
+    "rec_tenor_c": {
+      "musescoreId": "tenor-recorder",
+      "musescoreName": "Tenor Recorder",
+      "musescoreFamily": "recorders",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        60,
+        81
+      ],
+      "soundingExtended": [
+        60,
+        91
+      ]
+    },
+    "rec_bass_f": {
+      "musescoreId": "bass-recorder",
+      "musescoreName": "Bass Recorder",
+      "musescoreFamily": "recorders",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        53,
+        74
+      ],
+      "soundingExtended": [
+        53,
+        77
+      ]
+    },
+    "violin": {
+      "musescoreId": "violin",
+      "musescoreName": "Violin",
+      "musescoreFamily": "orchestral-strings",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        55,
+        88
+      ],
+      "soundingExtended": [
+        55,
+        103
+      ]
+    },
+    "viola": {
+      "musescoreId": "viola",
+      "musescoreName": "Viola",
+      "musescoreFamily": "orchestral-strings",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        48,
+        79
+      ],
+      "soundingExtended": [
+        48,
+        93
+      ]
+    },
+    "cello": {
+      "musescoreId": "violoncello",
+      "musescoreName": "Violoncello",
+      "musescoreFamily": "orchestral-strings",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        36,
+        67
+      ],
+      "soundingExtended": [
+        36,
+        90
+      ]
+    },
+    "double_bass": {
+      "musescoreId": "contrabass",
+      "musescoreName": "Contrabass",
+      "musescoreFamily": "orchestral-strings",
+      "transposeChromatic": -12,
+      "soundingKeyed": [
+        28,
+        62
+      ],
+      "soundingExtended": [
+        24,
+        67
+      ]
+    },
+    "mandolin": {
+      "musescoreId": "mandolin",
+      "musescoreName": "Mandolin",
+      "musescoreFamily": "mandolins",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        55,
+        85
+      ],
+      "soundingExtended": [
+        55,
+        100
+      ]
+    },
+    "guitar": {
+      "musescoreId": "guitar-steel",
+      "musescoreName": "Acoustic Guitar",
+      "musescoreFamily": "guitars",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        40,
+        83
+      ],
+      "soundingExtended": [
+        40,
+        84
+      ]
+    },
+    "bass_guitar": {
+      "musescoreId": "bass-guitar",
+      "musescoreName": "Bass Guitar",
+      "musescoreFamily": "bass-guitars",
+      "transposeChromatic": -12,
+      "soundingKeyed": [
+        28,
+        65
+      ],
+      "soundingExtended": [
+        28,
+        67
+      ]
+    },
+    "ukulele": {
+      "musescoreId": "ukulele",
+      "musescoreName": "Ukulele",
+      "musescoreFamily": "ukuleles",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        60,
+        81
+      ],
+      "soundingExtended": [
+        60,
+        81
+      ]
+    },
+    "banjo": {
+      "musescoreId": "banjo",
+      "musescoreName": "Banjo",
+      "musescoreFamily": "banjos",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        48,
+        87
+      ],
+      "soundingExtended": [
+        48,
+        87
+      ]
+    },
+    "harp": {
+      "musescoreId": "harp",
+      "musescoreName": "Harp",
+      "musescoreFamily": "harps",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        23,
+        104
+      ],
+      "soundingExtended": [
+        23,
+        104
+      ]
+    },
+    "voice": {
+      "musescoreId": "voice",
+      "musescoreName": "Voice",
+      "musescoreFamily": "voices",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        41,
+        79
+      ],
+      "soundingExtended": [
+        38,
+        84
+      ]
+    },
+    "piano": {
+      "musescoreId": "piano",
+      "musescoreName": "Piano",
+      "musescoreFamily": "keyboards",
+      "transposeChromatic": 0,
+      "soundingKeyed": [
+        21,
+        108
+      ],
+      "soundingExtended": [
+        21,
+        108
+      ]
+    }
+  }
+}

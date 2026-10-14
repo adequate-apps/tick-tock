@@ -9,8 +9,10 @@ The keyed and extended instrument ranges in the catalogue are generated from the
 definitions published by the MuseScore project (`instruments.xml`), licensed under the GNU General
 Public License version 3. The keyed range comes from its early-amateur tier and the extended range
 from its professional tier; corrections are recorded with a reason in the project's own overlay
-file. The generated module's header cites MuseScore and the generator. The MuseScore XML itself is
-a build input and is kept outside this repository.
+file (`core/src/main/resources/ranges/overlay.json`). The generated base layer
+(`core/src/main/resources/ranges/base.json`) carries a header crediting MuseScore and naming the
+generator (`tools/gen-ranges/gen_ranges.py`) and the sha256 of the XML it was built from. The
+MuseScore XML itself is a build input and is kept outside this repository.
 
 Licence: GPL-3.0. <https://musescore.org/>
 

@@ -1,0 +1,126 @@
+{
+  "schema": "ticktock-range-overlay",
+  "version": 1,
+  "note": "App-wide corrections to the base layer, in written MIDI. A keyed entry replaces the keyed tier; an extended entry replaces the extended tier; the resolver then widens extended to cover keyed. Decisions record why a wide professional top was accepted.",
+  "keyed": {
+    "eb_sopranino": {
+      "low": 58,
+      "high": 90,
+      "reason": "saxophone keywork: written low Bb to high F#, as manufacturer key specifications list it; MuseScore's amateur top is a playing level, not a key; the sopranino top is not confirmed against a maker's page"
+    },
+    "bb_soprano": {
+      "low": 58,
+      "high": 90,
+      "reason": "saxophone keywork: written low Bb to high F#, as manufacturer key specifications list it; MuseScore's amateur top is a playing level, not a key"
+    },
+    "eb_alto": {
+      "low": 58,
+      "high": 90,
+      "reason": "saxophone keywork: written low Bb to high F#, as manufacturer key specifications list it; MuseScore's amateur top is a playing level, not a key"
+    },
+    "bb_tenor": {
+      "low": 58,
+      "high": 90,
+      "reason": "saxophone keywork: written low Bb to high F#, as manufacturer key specifications list it; MuseScore's amateur top is a playing level, not a key"
+    },
+    "eb_bari": {
+      "low": 57,
+      "high": 90,
+      "reason": "saxophone keywork: written low Bb to high F#, as manufacturer key specifications list it; MuseScore's amateur top is a playing level, not a key; the baritone adds the low A key"
+    },
+    "bb_bass": {
+      "low": 58,
+      "high": 90,
+      "reason": "saxophone keywork: written low Bb to high F#, as manufacturer key specifications list it; MuseScore's amateur top is a playing level, not a key; MuseScore's amateur top G6 is above the high F# key"
+    },
+    "eb_contrabass": {
+      "low": 58,
+      "high": 90,
+      "reason": "saxophone keywork: written low Bb to high F#, as manufacturer key specifications list it; MuseScore's amateur top is a playing level, not a key; the contrabass top is not confirmed against a maker's page"
+    },
+    "clar_eb": {
+      "low": 52,
+      "high": 96,
+      "reason": "clarinet written compass E3 to C7, as VSL, the Iowa recordings and Buffet give it; MuseScore's amateur top is lower"
+    },
+    "clar_d": {
+      "low": 52,
+      "high": 96,
+      "reason": "clarinet written compass E3 to C7, as VSL, the Iowa recordings and Buffet give it; MuseScore's amateur top is lower"
+    },
+    "clar_c": {
+      "low": 52,
+      "high": 96,
+      "reason": "clarinet written compass E3 to C7, as VSL, the Iowa recordings and Buffet give it; MuseScore's amateur top is lower"
+    },
+    "clar_bb": {
+      "low": 52,
+      "high": 96,
+      "reason": "clarinet written compass E3 to C7, as VSL, the Iowa recordings and Buffet give it; MuseScore's amateur top is lower"
+    },
+    "clar_a": {
+      "low": 52,
+      "high": 96,
+      "reason": "clarinet written compass E3 to C7, as VSL, the Iowa recordings and Buffet give it; MuseScore's amateur top is lower"
+    },
+    "clar_basset_f": {
+      "low": 48,
+      "high": 96,
+      "reason": "basset extension down to written C3, clarinet compass up to C7"
+    },
+    "clar_bass_bb": {
+      "low": 48,
+      "high": 96,
+      "reason": "keyed down to written low C (Buffet BC1193); top C7 as VSL and the Iowa recordings give it"
+    },
+    "clar_contraalto_eb": {
+      "low": 48,
+      "high": 91,
+      "reason": "low C extension reported by a player; MuseScore stops at written low Eb"
+    },
+    "clar_contrabass_bb": {
+      "low": 48,
+      "high": 91,
+      "reason": "keyed down to written low C, which MuseScore's professional range also reaches"
+    },
+    "c": {
+      "low": 48,
+      "high": 79,
+      "reason": "generic concert-pitch entry with no instrument to look up; a two-and-a-half-octave middle range seeds the guide rows"
+    }
+  },
+  "extended": {
+    "bb_soprano": {
+      "low": 58,
+      "high": 101,
+      "reason": "altissimo to written F7, as MuseScore gives the alto, tenor and baritone; its soprano stops at A6"
+    },
+    "tbn_contrabass": {
+      "low": 21,
+      "high": 72,
+      "reason": "MuseScore's professional low end, F#0, sounds below A0, the lowest note the detector reads"
+    }
+  },
+  "decisions": {
+    "eb_alto": "altissimo to written F7 is standard saxophone technique; MuseScore's professional top accepted",
+    "bb_tenor": "altissimo to written F7 is standard saxophone technique; MuseScore's professional top accepted",
+    "eb_bari": "altissimo to written F7 is standard saxophone technique; MuseScore's professional top accepted",
+    "trp_f": "MuseScore's professional top accepted; the F trumpet's amateur span is a narrow orchestral part",
+    "horn_f": "MuseScore's professional top C6 accepted, as the spec lists for horn in F",
+    "tbn_bass": "MuseScore's professional top accepted, as the spec lists for trombones",
+    "tbn_contrabass": "MuseScore's professional top accepted; the low end is clamped to the detector window instead",
+    "tuba_f": "MuseScore's professional top accepted, as the spec lists for tubas",
+    "tuba_eb": "MuseScore's professional top accepted, as the spec lists for tubas",
+    "tuba_cc": "MuseScore's professional top accepted, as the spec lists for tubas",
+    "tuba_bbb": "MuseScore's professional top accepted, as the spec lists for tubas",
+    "sousaphone_bbb": "MuseScore's professional top accepted; the sousaphone shares the BBb tuba's compass",
+    "oboe": "MuseScore's professional top accepted, as the spec lists for oboe",
+    "rec_soprano_c": "MuseScore's professional top accepted; the third register is reachable with half-holing",
+    "rec_alto_f": "MuseScore's professional top accepted; the third register is reachable with half-holing",
+    "rec_tenor_c": "MuseScore's professional top accepted; the third register is reachable with half-holing",
+    "violin": "MuseScore's professional top G7 accepted, as the spec lists for violin",
+    "viola": "MuseScore's professional top accepted; high positions on the A string reach it",
+    "cello": "MuseScore's professional top F#6 accepted, as the spec lists for cello",
+    "mandolin": "MuseScore's professional top accepted; the E string reaches it in high positions"
+  }
+}
