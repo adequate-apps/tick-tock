@@ -16,7 +16,9 @@ import java.util.TreeMap
  * Two pictures are kept: what the tools want, and what the engine holds.
  * They drift apart while no stream is open, because a command then reaches
  * only the first; a continued engine is brought from the second to the
- * first by [replay].
+ * first by [replay]. A4 outlives the tools: it is the player's reference,
+ * set once and valid for every stream that follows (TON-01), so [clear]
+ * keeps it.
  *
  * Only the control thread touches an instance.
  */
@@ -102,10 +104,9 @@ class ToolState {
         if (v.voice == Voice.ROOT_FIFTH) listOf(v.midi, v.midi + FIFTH_SEMITONES) else listOf(v.midi)
     }.distinct().sorted().toIntArray()
 
-    /** Forgets the tools and the engine that held them. */
+    /** Forgets the tools and the engine that held them; A4 stays (TON-01). */
     fun clear() {
         voices.clear()
-        a4 = null
         metro = null
         engineSlots.clear()
         engineMetro = false

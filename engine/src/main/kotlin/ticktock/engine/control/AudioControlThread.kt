@@ -257,7 +257,7 @@ class AudioControlThread(
         updateSounding()
     }
 
-    /** The tools are gone and so is anything an engine held for them. */
+    /** The tools are gone and so is anything an engine held for them; A4 stays (TON-01). */
     private fun forgetTools() {
         toolState.clear()
         backend.discard()
