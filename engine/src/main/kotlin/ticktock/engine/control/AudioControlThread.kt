@@ -379,7 +379,10 @@ class AudioControlThread(
                 lastXruns = count
                 if (bufferBursts < StreamRequest.MAX_BUFFER_BURSTS) {
                     val granted = open.setBufferBursts(bufferBursts + 1)
-                    log("$count underruns: buffer $bufferBursts to $granted bursts")
+                    // One line per step, however many the render callback took
+                    // since the last poll (SHM-02); none when the device refused.
+                    for (bursts in bufferBursts + 1..granted) log("$count underruns: buffer ${bursts - 1} to $bursts bursts")
+                    if (granted == bufferBursts) log("$count underruns: buffer stays at $bufferBursts bursts")
                     bufferBursts = granted
                 }
                 diagnosticsFlow.update { it.copy(bufferBursts = bufferBursts, xruns = count) }
