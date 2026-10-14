@@ -85,7 +85,9 @@ check_results() {
     # $1 tier label, $2 results directory. Counts the <testsuite> headers.
     local tier="$1" dir="$2" summary
     [ -d "$dir" ] || red "$tier" "missing tier output: no results directory at ${dir#"$root"/}"
-    summary=$(cat "$dir"/TEST-*.xml 2>/dev/null | awk '
+    # Records split at '>' so a <testsuite> tag whose attributes span lines
+    # (ctest's JUnit writer) counts the same as a one-line tag (Gradle's).
+    summary=$(cat "$dir"/TEST-*.xml 2>/dev/null | awk 'BEGIN { RS = ">" }
         /<testsuite / {
             match($0, /tests="[0-9]+"/);    t += substr($0, RSTART + 7, RLENGTH - 8)
             match($0, /skipped="[0-9]+"/);  s += substr($0, RSTART + 9, RLENGTH - 10)
