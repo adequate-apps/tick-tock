@@ -63,10 +63,15 @@ gradle_flags=(--console=plain)
 [ -n "${CI:-}" ] || gradle_flags+=(--offline)
 
 run_gradle() {
-    # $1 log name, rest: tasks. Prints the log tail on failure.
+    # $1 log name, rest: tasks. On failure prints every failed test with its
+    # first message line, then the log tail. The tail alone is not enough: a
+    # JUnit stack trace plus Gradle's epilogue can push the "FAILED" line and
+    # its reason above any fixed tail length, and the self-test reads the
+    # reason from this output.
     local log="$logdir/$1.log"; shift
     echo "./gradlew ${gradle_flags[*]} $*"
     if ! ./gradlew "${gradle_flags[@]}" "$@" > "$log" 2>&1; then
+        grep -E -A1 '^[^ ].* > .* FAILED$' "$log" || true
         tail -60 "$log"
         return 1
     fi
