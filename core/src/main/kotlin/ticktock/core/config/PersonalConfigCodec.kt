@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.core.config
 
+import ticktock.core.contracts.Voice
+import ticktock.core.metro.ClickSound
 import ticktock.core.catalogue.Catalogue
 import ticktock.core.json.Json
 import ticktock.core.json.JsonParseException
@@ -198,7 +200,7 @@ object PersonalConfigCodec {
                 "displayMode" -> enumValue(raw, path, DisplayMode.entries, { it.wire }, problems)?.let { settings = settings.copy(displayMode = it) }
                 "spelling" -> enumValue(raw, path, Spelling.entries, { it.wire }, problems)?.let { settings = settings.copy(spelling = it) }
                 "responseMode" -> enumValue(raw, path, ResponseMode.entries, { it.wire }, problems)?.let { settings = settings.copy(responseMode = it) }
-                "droneVoice" -> enumValue(raw, path, DroneVoice.entries, { it.wire }, problems)?.let { settings = settings.copy(droneVoice = it) }
+                "droneVoice" -> enumValue(raw, path, Voice.entries, { it.wire }, problems)?.let { settings = settings.copy(droneVoice = it) }
                 "clickSound" -> enumValue(raw, path, ClickSound.entries, { it.wire }, problems)?.let { settings = settings.copy(clickSound = it) }
                 "noiseFloorDb" -> intIn(raw, path, PortableSettings.NOISE_FLOOR_DB, problems)?.let { settings = settings.copy(noiseFloorDb = it) }
                 "visualOffsetMs" -> intIn(raw, path, PortableSettings.VISUAL_OFFSET_MS, problems)?.let { settings = settings.copy(visualOffsetMs = it) }

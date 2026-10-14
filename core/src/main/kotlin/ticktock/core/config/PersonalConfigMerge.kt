@@ -2,12 +2,13 @@
 package ticktock.core.config
 
 import ticktock.core.catalogue.Catalogue
+import ticktock.core.json.JsonValue
 import ticktock.core.music.Pitch
 import ticktock.core.ranges.WrittenRange
 
 /** One line of "what this import will change", with the values before and after. */
 data class ImportChange(val section: Section, val key: String, val before: String?, val after: String, val sentence: String) {
-    enum class Section { RANGE_OVERRIDE, HORN_PROFILE, SETTING }
+    enum class Section { RANGE_OVERRIDE, HORN_PROFILE, SETTING, NEWER_VERSION }
 }
 
 /** Everything an import would change, shown to the player before anything is applied. */
@@ -82,8 +83,20 @@ object PersonalConfigMerge {
         settingChange(changes, "clickSound", current.settings.clickSound, incoming.settings.clickSound, "Click sound") { it.wire }
         settingChange(changes, "visualOffsetMs", current.settings.visualOffsetMs, incoming.settings.visualOffsetMs, "Visual offset") { "$it ms" }
 
+        // Fields this version does not know are merged as they are, so the
+        // player is told how many, since their meaning cannot be shown.
+        val unknown = replacedUnknown(current.unknownFields, incoming.unknownFields) +
+            replacedUnknown(current.settings.unknownFields, incoming.settings.unknownFields)
+        if (unknown > 0) {
+            val count = if (unknown == 1) "1 field" else "$unknown fields"
+            changes.add(ImportChange(ImportChange.Section.NEWER_VERSION, "unknownFields", null, count, "$count from a newer version of the app will be replaced or added."))
+        }
+
         return ImportDiff(changes)
     }
+
+    private fun replacedUnknown(current: Map<String, JsonValue>, incoming: Map<String, JsonValue>): Int =
+        incoming.count { (key, value) -> current[key] != value }
 
     private fun mergeSettings(current: PortableSettings, incoming: PortableSettings): PortableSettings {
         val unknown = LinkedHashMap(current.unknownFields)

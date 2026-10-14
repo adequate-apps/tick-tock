@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.core.config
 
+import ticktock.core.contracts.Voice
 import ticktock.core.json.JsonValue
+import ticktock.core.metro.ClickSound
 import ticktock.core.ranges.UserRangeOverride
 
 /**
@@ -30,8 +32,24 @@ data class HornProfile(val id: String, val instrumentKey: String, val nickname: 
 enum class DisplayMode(val wire: String) { WRITTEN("written"), CONCERT("concert") }
 enum class Spelling(val wire: String) { AUTO("auto"), SHARPS("sharps"), FLATS("flats") }
 enum class ResponseMode(val wire: String) { FAST("fast"), NORMAL("normal"), SLOW("slow") }
-enum class DroneVoice(val wire: String) { SINE("sine"), WARM("warm"), ROOT_FIFTH("root-fifth") }
-enum class ClickSound(val wire: String) { WOOD("wood"), CLICK("click"), BEEP("beep") }
+/**
+ * File spellings of the engine's own enums. The config layer names the voices
+ * and clicks the engine plays, so it reuses those types rather than keeping
+ * a second list that could drift from them.
+ */
+val Voice.wire: String
+    get() = when (this) {
+        Voice.SINE -> "sine"
+        Voice.WARM -> "warm"
+        Voice.ROOT_FIFTH -> "root-fifth"
+    }
+
+val ClickSound.wire: String
+    get() = when (this) {
+        ClickSound.WOOD -> "wood"
+        ClickSound.CLICK -> "click"
+        ClickSound.BEEP -> "beep"
+    }
 
 /**
  * Settings worth carrying between devices. Null means "the file says nothing
@@ -47,7 +65,7 @@ data class PortableSettings(
     /** "Ignore sounds quieter than", in dBFS. */
     val noiseFloorDb: Int? = null,
     val keepAwake: Boolean? = null,
-    val droneVoice: DroneVoice? = null,
+    val droneVoice: Voice? = null,
     val clickSound: ClickSound? = null,
     /** Metronome visual offset in milliseconds; positive draws the beat later. */
     val visualOffsetMs: Int? = null,

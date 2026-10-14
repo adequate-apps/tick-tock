@@ -111,8 +111,11 @@ Range for Alto saxophone in Eb: A#/Bb3..F#/Gb6 becomes A3..A6.
 Horn profile "Shop tenor" (Tenor saxophone in Bb) is added.
 A4: 440 Hz becomes 442 Hz.
 Keep screen awake is set to on.
+2 fields from a newer version of the app will be replaced or added.
 ```
 
+The last line appears only when the file carries fields this version does not know whose values
+differ from what the device holds; they are merged as they are, so the diff can only count them.
 When the file changes nothing, the list is the single sentence "Nothing will change."
 Applying the same file twice produces an empty diff the second time.
 

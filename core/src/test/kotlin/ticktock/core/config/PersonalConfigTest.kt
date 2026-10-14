@@ -4,7 +4,9 @@ package ticktock.core.config
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ticktock.core.contracts.Voice
 import ticktock.core.json.Json
+import ticktock.core.metro.ClickSound
 import ticktock.core.ranges.UserRangeOverride
 import ticktock.core.ranges.WrittenRange
 
@@ -26,7 +28,7 @@ class PersonalConfigTest {
             responseMode = ResponseMode.SLOW,
             noiseFloorDb = -50,
             keepAwake = true,
-            droneVoice = DroneVoice.ROOT_FIFTH,
+            droneVoice = Voice.ROOT_FIFTH,
             clickSound = ClickSound.BEEP,
             visualOffsetMs = 15,
         ),
@@ -190,7 +192,7 @@ class PersonalConfigTest {
         val current = PersonalConfig(
             rangeOverrides = linkedMapOf("eb_alto" to UserRangeOverride(WrittenRange(58, 90))),
             hornProfiles = listOf(HornProfile("h1", "eb_alto", "Old alto")),
-            settings = PortableSettings(a4Hz = 440.0, keepAwake = true, droneVoice = DroneVoice.ROOT_FIFTH),
+            settings = PortableSettings(a4Hz = 440.0, keepAwake = true, droneVoice = Voice.ROOT_FIFTH),
         )
         val diff = PersonalConfigMerge.diff(current, full)
         assertEquals(
