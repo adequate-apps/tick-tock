@@ -21,27 +21,47 @@ import ticktock.engine.input.InputListener
 import ticktock.engine.input.RecordingState
 import kotlin.math.log10
 import kotlin.math.max
+import kotlin.math.roundToLong
 
-/** What the readout shows after the newest hop. Values hold while the note holds (POL-02). */
+/**
+ * What the readout shows after the newest hop. Values hold while the note
+ * holds (POL-02), and they change only when what the readout prints changes:
+ * [hz] is kept to the tenth the readout shows, so the sub-tenth motion of a
+ * held note moves nothing (POL-31).
+ */
 data class Readout(
     /** Spelling-neutral note label, or null for a blank readout. */
     val note: String? = null,
     /** Whole cents as the UI prints them, null when the readout is blank. */
     val cents: Int? = null,
+    /** Frequency to the tenth of a hertz, null when the readout is blank. */
     val hz: Double? = null,
-    /** Level of the newest hop in dBFS after mic gain, floored at [LEVEL_FLOOR_DB]. */
-    val levelDb: Double = LEVEL_FLOOR_DB,
 ) {
+    companion object {
+        private const val TENTHS = 10.0
+
+        fun shownHz(hz: Double): Double = (hz * TENTHS).roundToLong() / TENTHS
+    }
+}
+
+/** The newest hop's level, in dBFS after mic gain, floored at [LEVEL_FLOOR_DB]. The one thing that moves at hop rate (POL-31). */
+data class Level(val hop: Long = -1, val db: Double = LEVEL_FLOOR_DB) {
     companion object {
         const val LEVEL_FLOOR_DB = -90.0
         private const val DB_PER_DECADE = 20.0
 
-        fun levelDb(level: Double): Double =
+        fun db(level: Double): Double =
             if (level <= 0.0) LEVEL_FLOOR_DB else max(LEVEL_FLOOR_DB, DB_PER_DECADE * log10(level))
     }
 }
 
-/** The capture session as a screen sees it: one object, one state flow, no hop-rate callbacks. */
+/** The analysis counters and the cost of the last hop, sampled about once a second (POL-18, DET-17). */
+data class CaptureDiagnostics(
+    val counters: AnalysisCounters = AnalysisCounters(),
+    val lastHopNanos: Long = 0,
+)
+
+/** The capture session as a screen sees it: one object, one state flow that moves only when the readout does. */
 data class CaptureState(
     val info: InputInfo? = null,
     /** Why the stream is stopped, null while it runs or before it started. */
@@ -50,18 +70,19 @@ data class CaptureState(
     val absentDevice: InputFailure.Disconnected? = null,
     val recording: RecordingState? = null,
     val readout: Readout = Readout(),
-    val counters: AnalysisCounters = AnalysisCounters(),
-    val lastHopNanos: Long = 0,
 ) {
     val isListening: Boolean get() = info != null && failure == null
 }
 
 /**
  * Wires the M1 detector to an [AudioInput] on the analysis thread and folds
- * everything a screen wants into one conflated [state]. The readout is
- * updated once per drained batch, so the UI observes nothing at hop rate
- * (POL-31). Pass this object as the input's [InputListener] so stream
- * failures and recoveries land in the same state.
+ * what a screen wants into three flows: [state], which moves when the
+ * readout or the stream does and otherwise holds; [level], which moves
+ * every hop for the meter and for nothing else; and [diagnostics], sampled
+ * every [DIAGNOSTICS_HOPS] hops. A screen that observes [state] alone is
+ * redrawn when the note, the cents or the shown tenth of a hertz change,
+ * and a held note redraws nothing (POL-31). Pass this object as the input's
+ * [InputListener] so stream failures and recoveries land in the same state.
  */
 class LiveCapture(
     mode: ResponseMode = ResponseMode.NORMAL,
@@ -74,9 +95,19 @@ class LiveCapture(
     private val thread = AnalysisThread(HopAnalyser(detector, YinEstimator(detector)), promote, ::onDecisions)
     private val stateFlow = MutableStateFlow(CaptureState())
     val state: StateFlow<CaptureState> = stateFlow
+    private val levelFlow = MutableStateFlow(Level())
+    val level: StateFlow<Level> = levelFlow
+    private val diagnosticsFlow = MutableStateFlow(CaptureDiagnostics())
+    val diagnostics: StateFlow<CaptureDiagnostics> = diagnosticsFlow
+
+    /** Hops since the diagnostics were last sampled; the analysis thread's alone. */
+    private var hopsSinceDiagnostics = 0
 
     fun start(input: AudioInput) {
         val result = thread.start(input)
+        hopsSinceDiagnostics = 0
+        levelFlow.value = Level()
+        diagnosticsFlow.value = CaptureDiagnostics()
         stateFlow.value = result.fold(
             onSuccess = { info -> CaptureState(info = info, absentDevice = stateFlow.value.absentDevice) },
             onFailure = { error ->
@@ -90,6 +121,8 @@ class LiveCapture(
     fun stop() {
         thread.stop()
         stateFlow.value = CaptureState()
+        levelFlow.value = Level()
+        diagnosticsFlow.value = CaptureDiagnostics()
     }
 
     /** The platform's recording report, from the source's flow; the screen forwards it here. */
@@ -111,26 +144,34 @@ class LiveCapture(
 
     private fun onDecisions(decisions: List<Decision>) {
         val newest = decisions.last()
+        levelFlow.value = Level(newest.hop, Level.db(newest.level))
         val previous = stateFlow.value
-        stateFlow.value = previous.copy(
-            readout = previous.readout.after(newest),
-            counters = thread.counters,
-            lastHopNanos = thread.lastHopNanos,
-        )
+        val readout = previous.readout.after(newest)
+        // Equal values would conflate in the flow anyway; the comparison
+        // saves the copy on the hops, most of them, that change nothing.
+        if (readout != previous.readout) stateFlow.value = previous.copy(readout = readout)
+        hopsSinceDiagnostics += decisions.size
+        if (hopsSinceDiagnostics >= DIAGNOSTICS_HOPS) {
+            hopsSinceDiagnostics = 0
+            diagnosticsFlow.value = CaptureDiagnostics(thread.counters, thread.lastHopNanos)
+        }
     }
 
     private fun Readout.after(decision: Decision): Readout {
         val note = decision.incumbent?.let(Pitch::label)
         val reading = decision.display
         return when {
-            note == null -> Readout(levelDb = Readout.levelDb(decision.level))
-            reading != null -> Readout(note, Cents.shown(reading.cents, reading.hz), reading.hz, Readout.levelDb(decision.level))
+            note == null -> Readout()
+            reading != null -> Readout(note, Cents.shown(reading.cents, reading.hz), Readout.shownHz(reading.hz))
             // The readout holds its last value while the note is held and this hop added nothing.
-            else -> copy(note = note, levelDb = Readout.levelDb(decision.level))
+            else -> copy(note = note)
         }
     }
 
-    private companion object {
-        const val UNKNOWN_DEVICE = "Microphone"
+    companion object {
+        private const val UNKNOWN_DEVICE = "Microphone"
+
+        /** About one second of hops: 22 at the 46.44 ms hop. */
+        const val DIAGNOSTICS_HOPS = 22
     }
 }

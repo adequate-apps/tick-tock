@@ -23,6 +23,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ticktock.app.R
 import ticktock.app.audio.CaptureState
+import ticktock.app.audio.Level
 import ticktock.app.audio.LiveCapture
 import ticktock.core.contracts.InputFailure
 import ticktock.core.music.Cents
@@ -75,24 +76,16 @@ fun DebugTuneExtras() {
     val note = readout.note ?: Cents.NO_READING
     val cents = readout.cents?.let { "${Cents.format(it)} c" } ?: Cents.NO_READING
     val hz = readout.hz?.let { String.format(Locale.US, "%.1f Hz", it) } ?: Cents.NO_READING
-    val level = String.format(Locale.US, "%.0f dBFS", readout.levelDb)
     val a4 = String.format(Locale.US, "%.0f Hz", capture.a4Hz)
     val source = state.info?.let { "${it.source} at ${it.sampleRate} Hz, ${it.deviceName}" } ?: stringResource(R.string.debug_no_input)
     val platform = state.recording?.let { report ->
         val effects = if (report.effects.isEmpty()) stringResource(R.string.debug_no_effects) else report.effects.joinToString()
         if (report.reported) "${report.source}, $effects" else stringResource(R.string.debug_not_reported)
     } ?: Cents.NO_READING
-    val counters = String.format(
-        Locale.US,
-        "%d hops, %d dropped, %d errors, %.1f ms per hop",
-        state.counters.hopsAnalysed,
-        state.counters.droppedHops,
-        state.counters.analysisErrors,
-        state.lastHopNanos / NANOS_PER_MILLI,
-    )
     LaunchedEffect(note, cents, hz, source) {
-        // One line per change for tools/device/readout.sh, never one per hop.
-        Log.i(LOG_TAG, "readout note=$note cents=$cents hz=$hz level=$level a4=$a4 source=$source")
+        // One line per change for tools/device/readout.sh, never one per hop;
+        // the level is read as it stands, not observed, so it moves no line.
+        Log.i(LOG_TAG, "readout note=$note cents=$cents hz=$hz level=${levelText(capture.level.value)} a4=$a4 source=$source")
     }
 
     Pane(
@@ -105,15 +98,39 @@ fun DebugTuneExtras() {
             SettingRow(label = stringResource(R.string.debug_row_note), value = note, tag = "debug-note")
             SettingRow(label = stringResource(R.string.debug_row_cents), value = cents, tag = "debug-cents")
             SettingRow(label = stringResource(R.string.debug_row_hz), value = hz, tag = "debug-hz")
-            SettingRow(label = stringResource(R.string.debug_row_level), value = level, tag = "debug-level")
+            LevelRow(capture)
             SettingRow(label = stringResource(R.string.debug_row_a4), value = a4, tag = "debug-a4")
             // Sentences rather than values: stacked under a caption so they wrap as prose.
             CaptionedLine(caption = stringResource(R.string.debug_row_source), text = source, tag = "debug-source")
             CaptionedLine(caption = stringResource(R.string.debug_row_platform), text = platform, tag = "debug-platform")
-            CaptionedLine(caption = stringResource(R.string.debug_row_counters), text = counters, tag = "debug-counters")
+            DiagnosticsLine(capture)
         }
     }
 }
+
+/** The one row that moves at hop rate, so the hop rate reaches this composable and no other (POL-31). */
+@Composable
+private fun LevelRow(capture: LiveCapture) {
+    val level by capture.level.collectAsStateWithLifecycle()
+    SettingRow(label = stringResource(R.string.debug_row_level), value = levelText(level), tag = "debug-level")
+}
+
+/** The analysis counters, as the capture samples them about once a second. */
+@Composable
+private fun DiagnosticsLine(capture: LiveCapture) {
+    val diagnostics by capture.diagnostics.collectAsStateWithLifecycle()
+    val counters = String.format(
+        Locale.US,
+        "%d hops, %d dropped, %d errors, %.1f ms per hop",
+        diagnostics.counters.hopsAnalysed,
+        diagnostics.counters.droppedHops,
+        diagnostics.counters.analysisErrors,
+        diagnostics.lastHopNanos / NANOS_PER_MILLI,
+    )
+    CaptionedLine(caption = stringResource(R.string.debug_row_counters), text = counters, tag = "debug-counters")
+}
+
+private fun levelText(level: Level): String = String.format(Locale.US, "%.0f dBFS", level.db)
 
 @Composable
 private fun CaptionedLine(caption: String, text: String, tag: String) {
