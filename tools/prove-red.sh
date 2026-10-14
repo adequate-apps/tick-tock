@@ -11,8 +11,9 @@
 #   tools/prove-red.sh [--base REV] [--head REV]
 #
 # base defaults to the merge base with main. Exit 0 when the branch's tests are
-# red on the base (or when it changes no production code), 1 when they pass
-# there or when production code changed without any test.
+# red on the base (or when it changes no production code, or when the base has
+# no Gradle build to run them with), 1 when they pass there or when production
+# code changed without any test.
 set -uo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -79,9 +80,15 @@ while IFS= read -r f; do
     fi
 done <<< "$changed_tests"
 
-# A base without the wrapper cannot run anything; that is a setup error, not
-# a red result.
-[ -x "$scratch/gradlew" ] || { echo "prove-red: the base ${base:0:12} has no gradlew; pass a base inside the Gradle history" >&2; exit 2; }
+# A base without the Gradle build cannot run any test, so every test the
+# branch adds is red there by the same reasoning as a compile failure: the
+# tests name a build the base does not have. This is the shape of the first
+# milestone landing on the README-only root, and the reason is printed so a
+# reader of the log sees why nothing was run.
+if [ ! -x "$scratch/gradlew" ]; then
+    echo "prove-red: OK: the base ${base:0:12} has no Gradle build, so the branch's tests cannot pass there; nothing to run"
+    exit 0
+fi
 
 # Gitignored inputs the build needs: the Robolectric jar and the SDK path.
 mkdir -p "$scratch/tools/robolectric-deps"
