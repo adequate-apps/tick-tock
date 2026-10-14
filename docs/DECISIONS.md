@@ -82,6 +82,9 @@ Kotlin constant so a rename is a two-line change.
 
 - **Signing.** 1.x was never on a store and had no release keystore, so 2.0 starts with a new
   upload key under the new application id. 1.x users uninstall the old app.
+  Custody of that key (where the keystore lives, its two encrypted copies and the name of the CI
+  secret that carries it) is an owner action still to be recorded here; the M0 exit criterion
+  "upload-key custody recorded" stays open until it is.
 - **Data migration from 1.x.** None. A new application id cannot read the old app's private storage,
   and the old history carried breath noise and four wrong transpositions.
 - **A4 range** stays 430–450 Hz. **Half-cent rounding** is away from zero. **Sine voice:** an output
