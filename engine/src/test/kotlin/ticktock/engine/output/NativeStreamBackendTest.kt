@@ -86,12 +86,10 @@ class NativeStreamBackendTest {
     }
 
     @Test
-    fun `the routed device is read from the platform each time, by the stream's device id`() {
+    fun `OUT-03 the routed device is the one present at open, so a removal still matches after the platform has dropped it`() {
         val opened = open()
         present.clear()
-        assertNull(opened.routedDevice())
-        present += speaker.copy(name = "Renamed speaker")
-        assertEquals("Renamed speaker", opened.routedDevice()?.name)
+        assertEquals(speaker, opened.routedDevice())
     }
 
     @Test

@@ -160,6 +160,18 @@ class AndroidAudioControlTest {
     }
 
     @Test
+    fun `OUT-03 the platform reporting the device removed parks the same way, with no noisy broadcast and no stream error`() {
+        val speaker = startWithSpeaker()
+        send(OutputCommand.Register(OutputTool.DRONE))
+        shadowOf(audioManager).removeOutputDevice(speaker, true)
+        await("parked") { eventsOf<OutputEvent.Parked>().isNotEmpty() }
+        assertEquals(ParkReason.HEADPHONES_DISCONNECTED, eventsOf<OutputEvent.Parked>().single().reason)
+        assertEquals(listOf(Call("park", listOf(ParkReason.HEADPHONES_DISCONNECTED.ordinal))), native.single.calls("park"))
+        assertFalse(native.single.streamOpen)
+        assertTrue(native.single.parked)
+    }
+
+    @Test
     fun `OUT-05 and MET-09 a replug resumes the parked handle, so the engine continues instead of restarting`() {
         val speaker = startWithSpeaker()
         send(OutputCommand.Register(OutputTool.METRONOME), OutputCommand.MetroStart(setup))
