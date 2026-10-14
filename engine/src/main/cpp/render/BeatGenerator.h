@@ -9,9 +9,11 @@
 // A tempo change re-anchors on the frame the last beat actually sounded
 // (MET-06); a metre change resets the bar (MET-07); a stream restart places
 // the next beat one period after the first frame of the new stream (MET-09).
-// Gap bars silence whole bars while the beat events keep coming (GAP-01), a
-// muted beat keeps its subdivisions audible (GAP-03), and an onset more than
-// 2 ms in the past is dropped and counted instead of played late (MET-04).
+// Any edit re-grids the subdivisions under the last beat, and the next one
+// is the first point of the new grid still to come (MET-05). Gap bars
+// silence whole bars while the beat events keep coming (GAP-01), a muted
+// beat keeps its subdivisions audible (GAP-03), and an onset more than 2 ms
+// in the past is dropped and counted instead of played late (MET-04).
 #pragma once
 
 #include <cstdint>
@@ -36,8 +38,9 @@ public:
     // after the command arrived.
     void start(const MetroParams& params, std::int64_t frame);
 
-    // Live edit (MET-05, MET-06, MET-07).
-    void update(const MetroParams& params);
+    // Live edit (MET-05, MET-06, MET-07). `frame` is the first frame still
+    // to be rendered, where the new grid's subdivisions take over.
+    void update(const MetroParams& params, std::int64_t frame);
 
     void stop() { running_ = false; }
 
@@ -52,7 +55,10 @@ public:
                         std::int32_t maxEvents);
 
     bool running() const { return running_; }
+    // Beats dropped for being more than 2 ms late (MET-04), the Diagnostics figure.
     std::int32_t lateDropped() const { return lateDropped_; }
+    // Subdivision clicks dropped the same way, kept apart from the beats.
+    std::int32_t lateSubdivisionsDropped() const { return lateSubdivisionsDropped_; }
     std::int64_t nextIndex() const { return nextIndex_; }
 
     // The frame where beat `index` falls under the current anchor.
@@ -65,6 +71,7 @@ public:
 private:
     void placeBeat(std::int64_t frame);
     std::int64_t nextSubOnset() const;
+    void regridSubdivisions(std::int64_t frame);
 
     MetroParams params_{};
     double sampleRate_ = 48000.0;
@@ -87,6 +94,7 @@ private:
     std::int32_t sub_ = 1;
 
     std::int32_t lateDropped_ = 0;
+    std::int32_t lateSubdivisionsDropped_ = 0;
 };
 
 }  // namespace ticktock::render

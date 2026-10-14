@@ -59,7 +59,7 @@ void BeatGenerator::start(const MetroParams& params, std::int64_t frame) {
     sub_ = params_.subdivision;
 }
 
-void BeatGenerator::update(const MetroParams& params) {
+void BeatGenerator::update(const MetroParams& params, std::int64_t frame) {
     const MetroParams next = sanitised(params);
     const bool tempoChanged = next.bpm != params_.bpm || next.compoundPulse != params_.compoundPulse;
     const bool metreChanged = next.beatsPerBar != params_.beatsPerBar;
@@ -77,7 +77,27 @@ void BeatGenerator::update(const MetroParams& params) {
         if (beatInBar_ != 0) ++bar_;
         beatInBar_ = 0;
     }
-    if (sub_ > params_.subdivision) sub_ = params_.subdivision;
+    regridSubdivisions(frame);
+}
+
+void BeatGenerator::regridSubdivisions(std::int64_t frame) {
+    // The next subdivision is the first point of the new grid, under the beat
+    // that sounded last, that is still to come. Keeping the old ordinal would
+    // re-fire a point that already sounded when the subdivision rises, and
+    // play or count as late a point the old grid never scheduled when it
+    // falls or the tempo moves (MET-05, MET-04).
+    if (!haveLast_) {
+        sub_ = params_.subdivision;
+        return;
+    }
+    const double period = periodFrames();
+    std::int32_t s = 1;
+    while (s < params_.subdivision) {
+        const std::int64_t onset = lastFrame_ + std::llround(static_cast<double>(s) / params_.subdivision * period);
+        if (onset >= frame) break;
+        ++s;
+    }
+    sub_ = s;
 }
 
 void BeatGenerator::onStreamStart(double sampleRate, std::int64_t frame) {
@@ -132,8 +152,15 @@ std::int32_t BeatGenerator::render(std::int64_t blockStart, std::int32_t frames,
 
         if (onset < blockStart - lateFrames) {
             // MET-04: never played late; counted so Diagnostics can show it.
-            ++lateDropped_;
-            if (isSub) ++sub_; else placeBeat(onset);
+            // A subdivision is counted apart, so the beat figure stays a
+            // figure about beats.
+            if (isSub) {
+                ++lateSubdivisionsDropped_;
+                ++sub_;
+            } else {
+                ++lateDropped_;
+                placeBeat(onset);
+            }
             continue;
         }
         const std::int32_t offset = onset < blockStart ? 0 : static_cast<std::int32_t>(onset - blockStart);
