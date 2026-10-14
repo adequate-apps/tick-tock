@@ -9,30 +9,30 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| DET-01 | search band | U | 2.0 | | open |
-| DET-02 | interpolation on the raw difference function | U | 2.0 | | open |
-| DET-03 | multi-period refinement | U | 2.0 | | open |
-| DET-04 | interpolated threshold | U | 2.0 | | open |
-| DET-05 | FFT length | U | 2.0 | | open |
-| DET-06 | full-range sweep, sine | U | 2.0 | | open |
-| DET-07 | full-range sweep, instrument-like timbres | U | 2.0 | | open |
-| DET-08 | weak-fundamental high C | U | 2.0 | | open |
-| DET-09 | top octave, regression pin | U | 2.0 | | open |
-| DET-10 | low A at 430 | U | 2.0 | | open |
-| DET-11 | C8 at 450 | U | 2.0 | | open |
-| DET-12 | rate invariance | U | 2.0 | | open |
-| DET-13 | ceiling test | U | 2.0 | | open |
-| DET-14 | window long enough for the floor | U | 2.0 | | open |
-| DET-15 | non-finite input | U | 2.0 | | open |
+| DET-01 | search band | U | 2.0 | YinTest `DET-01` | green |
+| DET-02 | interpolation on the raw difference function | U | 2.0 | YinTest `DET-02` (`Yin.parabolicOffset` on the raw difference function, three-positive guard) | green |
+| DET-03 | multi-period refinement | U | 2.0 | YinTest `DET-03` | green |
+| DET-04 | interpolated threshold | U | 2.0 | YinTest `DET-04` | green |
+| DET-05 | FFT length | U | 2.0 | FftTest `DET-05` | green |
+| DET-06 | full-range sweep, sine | U | 2.0 | YinSweepTest `reads the note within tolerance[DET-06 sine MIDI n (label) at rate Hz]`, 176 cases, every one within 0.6 c | green |
+| DET-07 | full-range sweep, instrument-like timbres | U | 2.0 | YinSweepTest `reads the note within tolerance[DET-07 sax-like ...]` and `[DET-07 weak-fundamental ...]`, 352 cases, every one within 1 c, no strict gap; plus DetectorEndToEndTest (the real YIN behind HopAnalyser and Detector on frames from FakeAudioInput): a 33-note chromatic sax-like run at A4 = 442 at both rates, every saved reading on the right note within 1 c of its detune | green |
+| DET-08 | weak-fundamental high C | U | 2.0 | YinTest `DET-08` | green |
+| DET-09 | top octave, regression pin | U | 2.0 | YinTest `DET-09` | green |
+| DET-10 | low A at 430 | U | 2.0 | YinTest `DET-10` (A4 = 430, 435, 440, 442, 445, 450) | green |
+| DET-11 | C8 at 450 | U | 2.0 | YinTest `DET-11` | green |
+| DET-12 | rate invariance | U | 2.0 | YinTest `DET-12` | green |
+| DET-13 | ceiling test | U | 2.0 | YinTest `DET-13` | green |
+| DET-14 | window long enough for the floor | U | 2.0 | YinTest `DET-14` (`Yin.WINDOW_SECONDS` reads `Hop.SECONDS`, the one definition the analyser cuts by) | green |
+| DET-15 | non-finite input | U | 2.0 | YinTest `DET-15`, YinEstimatorTest `DET-15` (no candidate at level 0, counted) and DetectorEndToEndTest `DET-15` (a NaN hop mid-note is skipped and counted, the held note goes on) | green |
 | DET-16 | off the UI thread | H, D | 2.0 | | open |
-| DET-17 | per-hop budget | H, D | 2.0 | | open |
+| DET-17 | per-hop budget | H, D | 2.0 | YinTest `DET-17` prints the JVM per-hop cost (informational: sax-like A4 median about 1.7 ms, white noise about 1.9 ms at 48 kHz); the reference-device figure is the M2 gate | open |
 
 ## Detector policy
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | POL-01 | first-reading latency | U | 2.0 | DetectorPolicyTest `POL-01` | green |
-| POL-02 | legato note-change latency | U | 2.0 | DetectorPolicyTest `POL-02` | green |
+| POL-02 | legato note-change latency | U | 2.0 | DetectorPolicyTest `POL-02`; DetectorEndToEndTest holds the readout non-blank across 32 legato changes on real audio | green |
 | POL-03 | no long-memory vote | U | 2.0 | DetectorPolicyTest `POL-03` | green |
 | POL-04 | unknown mode | U | 2.0 | ResponseModeTableTest `POL-04` (`ResponseMode.fromStored`) + PrefsSchemaTest `POL-04` (the normaliser reads an unknown mode as Normal; the Response control shows the normalised value) | green |
 | POL-05 | mode switch resets | U | 2.0 | DetectorPolicyTest `POL-05` | green |
@@ -40,7 +40,7 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 | POL-07 | release edge | U | 2.0 | DetectorPolicyTest `POL-07` (two tests: silence, note change) | green |
 | POL-08 | re-attack of the same note | U | 2.0 | DetectorPolicyTest `POL-08` | green |
 | POL-09 | time in hops | U | 2.0 | HopAnalyserTest `POL-09` (400 hops in bursts of 8 with 0–200 ms of fake-clock jitter) | green |
-| POL-10 | aperiodicity on every path | U | 2.0 | DetectorPolicyTest `POL-10` (two tests) + HopAnalyserTest `POL-10` (white noise on frames) | green |
+| POL-10 | aperiodicity on every path | U | 2.0 | DetectorPolicyTest `POL-10` (two tests) + HopAnalyserTest `POL-10` (white noise on frames) + DetectorEndToEndTest `POL-10` (10 s of white noise through the real YIN: nothing saved, no note shown) | green |
 | POL-11 | RMS gate | U | 2.0 | DetectorPolicyTest `POL-11` | green |
 | POL-12 | mic gain scope | U | 2.0 | DetectorPolicyTest `POL-12` + HopAnalyserTest `POL-12` (the window reaches the estimator unscaled) | green |
 | POL-13 | detector window gate | U | 2.0 | DetectorPolicyTest `POL-13` | green |
@@ -136,9 +136,9 @@ ledgered under their own prefixes below.
 | SES-08 | summaries and indexes | H | 2.0 | | open |
 | SES-09 | retention | H | 2.0 | | open |
 | SES-10 | storage budget | H | 2.0 | | open |
-| SES-11 | one writer | H | 2.0 (the field table and the normaliser derived from it: PrefsSchemaTest `SES-11`; the one writer lands with `PrefsStore` in M3) | | open |
-| SES-12 | unknown and newer fields | H | 2.0 (the normaliser's round trip of unknown and newer-version fields: PrefsSchemaTest `SES-12`; the store's half lands in M3) | | open |
-| SES-13 | zero stays zero | H | 2.0 (the normaliser keeps a gain of 0: PrefsSchemaTest `SES-13`; the restart path lands in M3) | | open |
+| SES-11 | one writer | H | 2.0 | the field table and the normaliser derived from it: PrefsSchemaTest `SES-11`; the one writer lands with `PrefsStore` in M3 | open |
+| SES-12 | unknown and newer fields | H | 2.0 | the normaliser's round trip of unknown and newer-version fields: PrefsSchemaTest `SES-12`; the store's half lands in M3 | open |
+| SES-13 | zero stays zero | H | 2.0 | the normaliser keeps a gain of 0: PrefsSchemaTest `SES-13`; the restart path lands in M3 | open |
 | SES-14 | golden stored data | H | 2.0 | | open |
 | SES-15 | CSV and TXT export | H | v1.1 | | deferred |
 
@@ -239,7 +239,7 @@ revision document; the IDs are claimed here like any other.
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | CAP-01 | paused capture drives the needle and reaches no store | H | 2.0 | | open |
-| CAP-02 | paused state survives process death | H | 2.0 (prefs field `capturePaused`, device-bound) | | open |
+| CAP-02 | paused state survives process death | H | 2.0 | prefs field `capturePaused`, device-bound | open |
 | CAP-03 | a run opened while paused counts skipped readings | H | 2.0 | | open |
 
 ### Attacks as the unit
@@ -257,7 +257,7 @@ revision document; the IDs are claimed here like any other.
 |---|---|---|---|---|---|
 | CTX-01 | context and target columns | H | 2.0 | | open |
 | CTX-02 | drone start and stop open runs | H | 2.0 | | open |
-| CTX-03 | drone runs enter All-history by toggle only | H | 2.0 (prefs field `includeDroneRuns`, default off) | | open |
+| CTX-03 | drone runs enter All-history by toggle only | H | 2.0 | prefs field `includeDroneRuns`, default off | open |
 | CTX-04 | no 2.0 path writes `just` | H | 2.0 | | open |
 
 ### Equipment
@@ -265,15 +265,15 @@ revision document; the IDs are claimed here like any other.
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | EQP-01 | equipment column | H | 2.0 | | open |
-| EQP-02 | equipment field on the session sheet | H | 2.0 (prefs field `lastEquipment` for the prefill) | | open |
+| EQP-02 | equipment field on the session sheet | H | 2.0 | prefs field `lastEquipment` for the prefill | open |
 
 ### Tuning presets
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| CHK-01 | ensemble and check-set pads marked | H | 2.0 (the marks per pad: TuningNotesTest `CHK-01`; the grid lands in M5) | | open |
+| CHK-01 | ensemble and check-set pads marked | H | 2.0 | the marks per pad: TuningNotesTest `CHK-01`; the grid lands in M5 | open |
 | CHK-02 | check sets per instrument, golden over all 73 keys | U | 2.0 | TuningNotesTest `CHK-02` (four tests) + `core/src/test/resources/catalogue/tuning-notes-golden.json` | green |
-| CHK-03 | Next check retunes in place | N, H | 2.0 (the walk through the set: TuningNotesTest `CHK-03`; the retune is TON-03 in M2) | | open |
+| CHK-03 | Next check retunes in place | N, H | 2.0 | the walk through the set: TuningNotesTest `CHK-03`; the retune is TON-03 in M2 | open |
 
 ### A4 range
 
@@ -287,7 +287,7 @@ revision document; the IDs are claimed here like any other.
 |---|---|---|---|---|---|
 | EAR-01 | readout hidden, capture unchanged | H | 2.0 | | open |
 | EAR-02 | reveal after the note | H | 2.0 | | open |
-| EAR-03 | setting persists | H | 2.0 (prefs field `earsFirst`, portable) | | open |
+| EAR-03 | setting persists | H | 2.0 | prefs field `earsFirst`, portable | open |
 
 ### Pitch trace
 
@@ -337,14 +337,14 @@ revision document; the IDs are claimed here like any other.
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | BTC-01 | tap calibration on Bluetooth routes | H, D | 2.0 | | open |
-| BTC-02 | one offset per route class | H | 2.0 (prefs fields `visualOffsetMs` for wired and speaker, `bluetoothVisualOffsetMs` for Bluetooth) | | open |
+| BTC-02 | one offset per route class | H | 2.0 | prefs fields `visualOffsetMs` for wired and speaker, `bluetoothVisualOffsetMs` for Bluetooth | open |
 
 ### TalkBack
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | TLK-01 | needle state description, read on focus only | H | 2.0 | | open |
-| TLK-02 | opt-in settled-note live region | H | 2.0 (prefs field `announceSettledNotes`, default off, portable) | | open |
+| TLK-02 | opt-in settled-note live region | H | 2.0 | prefs field `announceSettledNotes`, default off, portable | open |
 | TLK-03 | table rows read as sentences | H | 2.0 | | open |
 | TLK-04 | beats never announced; stepper actions | H | 2.0 | | open |
 
