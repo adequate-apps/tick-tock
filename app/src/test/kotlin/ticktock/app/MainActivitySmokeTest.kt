@@ -10,7 +10,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** The empty app boots to a Gridline frame: title strip, one pane, status bar. */
+/** The empty app boots to a Gridline frame: title strip, tabs, one pane, status bar. */
 @RunWith(AndroidJUnit4::class)
 class MainActivitySmokeTest {
     @get:Rule
@@ -29,7 +29,8 @@ class MainActivitySmokeTest {
     }
 
     @Test
-    fun `the work area holds one empty pane`() {
-        compose.onNodeWithTag("empty-ready", useUnmergedTree = true).assertTextEquals("Ready.")
+    fun `the work area opens on the Tune pane`() {
+        compose.onNodeWithTag("tune-pane-titlebar-title", useUnmergedTree = true).assertTextEquals("Tune")
+        compose.onNodeWithTag("tune-empty", useUnmergedTree = true).assertIsDisplayed()
     }
 }

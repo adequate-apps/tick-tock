@@ -8,32 +8,38 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.Dp
 
 /**
- * Gridline relief: one-unit inset lines, light on two edges and dark on the
- * other two, drawn behind the content. Raised faces are light top-left;
- * pressed and inset fields are the reverse. There is no shadow anywhere.
+ * A one-unit bevel: light on two edges and dark on the other two. Raised faces
+ * are light top-left; pressed and inset faces are the reverse. This is the
+ * whole of Gridline's depth cue; there is no shadow anywhere.
  */
-fun Modifier.reliefRaised(): Modifier = bevel(GridlineColors.bevelLight, GridlineColors.bevelDark)
+data class Bevel(val topLeft: Color, val bottomRight: Color)
 
-fun Modifier.reliefPressed(): Modifier = bevel(GridlineColors.bevelDark, GridlineColors.bevelLight)
+/** A one-unit frame around a box. */
+data class Line(val width: Dp, val color: Color)
 
-fun Modifier.reliefInset(): Modifier = bevel(GridlineColors.bevelDark, GridlineColors.bevelLight)
+fun Modifier.reliefRaised(): Modifier = bevel(GridlineRelief.reliefRaised)
 
-/** A one-unit frame in [color] around the whole box. */
-fun Modifier.frame(color: Color = GridlineColors.border): Modifier = drawBehind {
-    val w = GridlineSpacing.line.toPx()
+fun Modifier.reliefPressed(): Modifier = bevel(GridlineRelief.reliefPressed)
+
+fun Modifier.reliefInset(): Modifier = bevel(GridlineRelief.reliefInset)
+
+fun Modifier.bevel(bevel: Bevel): Modifier = drawBehind {
+    bevelLines(GridlineMetrics.line.toPx(), bevel.topLeft, bevel.bottomRight)
+}
+
+/** The strong (ink) frame by default; pass [GridlineRelief.frame] for the quiet one. */
+fun Modifier.frame(line: Line = GridlineRelief.frameStrong): Modifier = drawBehind {
+    val w = line.width.toPx()
     val half = w / 2f
     drawRect(
-        color = color,
+        color = line.color,
         topLeft = Offset(half, half),
         size = Size(size.width - w, size.height - w),
         style = Stroke(width = w),
     )
-}
-
-private fun Modifier.bevel(topLeft: Color, bottomRight: Color): Modifier = drawBehind {
-    bevelLines(GridlineSpacing.line.toPx(), topLeft, bottomRight)
 }
 
 internal fun DrawScope.bevelLines(w: Float, topLeft: Color, bottomRight: Color) {
