@@ -7,6 +7,10 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ticktock.core.contracts.AudioInput
+import ticktock.core.contracts.AudioSink
+import ticktock.core.contracts.InputInfo
+import ticktock.core.contracts.InputSource
 import ticktock.core.contracts.fakes.FakeAudioInput
 import ticktock.core.contracts.fakes.FakeClock
 import ticktock.core.detect.fakes.Sine
@@ -258,6 +262,43 @@ class HopAnalyserTest {
         assertEquals(69, reading.midiSounding)
         assertEquals(0, Cents.shown(reading.cents, reading.hz))
         assertEquals(415.0, reading.a4Hz, 0.0)
+    }
+
+    /** An input that opens with [source], as the capture chain reports after falling back through the presets. */
+    private fun inputOpening(source: InputSource) = object : AudioInput {
+        private var sink: AudioSink? = null
+        override fun start(sink: AudioSink): Result<InputInfo> {
+            this.sink = sink
+            return Result.success(InputInfo(rate, "Built-in microphone", source))
+        }
+        override fun stop() {
+            sink = null
+        }
+        fun push(samples: FloatArray) = sink!!(samples, samples.size)
+    }
+
+    /**
+     * SRC-03 on the path production takes: the preset is known only once the
+     * input has opened, and the gate must shift to it. A note twice the
+     * UNPROCESSED floor votes there; VOICE_RECOGNITION delivers the same
+     * sound 18 dB hotter, so the same samples are silence under its floor and
+     * pass once delivered as that preset would.
+     */
+    @Test
+    fun `SRC-03 the preset the input opened with reaches the gate through the analyser`() {
+        val floor = ResponseModeTable.of(ResponseMode.NORMAL).rmsFloor
+        val amplitude = floor * 2.0 * Math.sqrt(2.0)
+        fun run(source: InputSource, gainDb: Double = 0.0): List<Decision> {
+            val analyser = analyser()
+            val input = inputOpening(source)
+            analyser.attach(input).getOrThrow()
+            assertEquals(source, analyser.detector.source)
+            input.push(Sine(440.0, amplitude * Math.pow(10.0, gainDb / 20.0), rate).next(hopFrames * 10))
+            return analyser.drain()
+        }
+        assertTrue(run(InputSource.UNPROCESSED).all { it.hopClass == HopClass.VOTE })
+        assertTrue(run(InputSource.VOICE_RECOGNITION).all { it.reject == RejectReason.SILENCE })
+        assertTrue(run(InputSource.VOICE_RECOGNITION, gainDb = SourceLevel.offsetDb(InputSource.VOICE_RECOGNITION)).all { it.hopClass == HopClass.VOTE })
     }
 
     @Test
