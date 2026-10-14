@@ -26,6 +26,13 @@ python3 -I tools/gen-tokens/gen_tokens.py --check    # exit 1 when Tokens.kt has
 Skipped on purpose, with the reason written into the generated file: `--focus-ring` (the platform
 draws keyboard focus on Android).
 
+## Where the sheet comes from
+
+The sheet is the owner's own Gridline token set, copied from the design-system reference the owner
+supplied with the brief (the `docs/gridline/tokens` directory of the previous 1.x app, which the
+owner also wrote). It is the owner's work and carries this project's licence header. The same token
+set appears in other projects of the owner's; none of them is the source of this copy.
+
 The sheet copies here hold token values only. The original `fonts.css` fetched the families from a
 web font service; that line is removed because the app bundles the fonts and never fetches them.
 
