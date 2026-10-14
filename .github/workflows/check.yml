@@ -25,7 +25,12 @@ env:
   # Belt and braces with gradle.properties: an artifact missing from
   # gradle/verification-metadata.xml fails the job.
   GRADLE_OPTS: -Dorg.gradle.dependency.verification=strict
-  TICKTOCK_DENYLIST: ${{ runner.temp }}/denylist
+  # The two SDK packages the build pins that the runner image does not carry.
+  # They are installed by exact package id in their own step, so the build
+  # never fetches an SDK component on its own (android.builder.sdkDownload is
+  # off in gradle.properties). Bumping either id is a reviewed change here and
+  # in gradle/libs.versions.toml together.
+  SDK_PACKAGES: ndk;28.2.13676358 cmake;3.22.1
 
 jobs:
   check:
@@ -42,12 +47,16 @@ jobs:
       - name: Write the denylist from its secret
         env:
           DENYLIST: ${{ secrets.TICKTOCK_DENYLIST }}
+        # The path goes through GITHUB_ENV because the runner context is not
+        # available to the workflow-level env block; a reference to it there
+        # fails validation and no job starts.
         run: |
           if [ -z "$DENYLIST" ]; then
             echo "the TICKTOCK_DENYLIST secret is not available to this run; the scan cannot be complete" >&2
             exit 1
           fi
-          (umask 077 && printf '%s\n' "$DENYLIST" > "$TICKTOCK_DENYLIST")
+          (umask 077 && printf '%s\n' "$DENYLIST" > "$RUNNER_TEMP/denylist")
+          echo "TICKTOCK_DENYLIST=$RUNNER_TEMP/denylist" >> "$GITHUB_ENV"
 
       - name: Identity scan over the tree and the whole history
         run: |
@@ -80,6 +89,17 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Install the pinned SDK packages the image lacks
+        # Exact package ids only; sdkmanager verifies each archive against the
+        # checksum in Google's repository manifest. A package already on the
+        # image is a no-op.
+        run: |
+          # shellcheck disable=SC2086  # SDK_PACKAGES is a space-separated list of ids
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" $SDK_PACKAGES
+          for p in $SDK_PACKAGES; do
+            [ -d "$ANDROID_SDK_ROOT/${p/;//}" ] || { echo "sdkmanager did not install $p" >&2; exit 1; }
+          done
+
       - name: Stage the Robolectric runtime
         run: |
           curl -sSfL -o "tools/robolectric-deps/${ROBOLECTRIC_JAR}" \
@@ -88,7 +108,6 @@ jobs:
 
       - name: Full gate (sources, U, N, H, lint, APK, manifest)
         env:
-          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
           # On a push this is the previous tip; on a new branch it is all zeros
           # and verify.sh falls back to the merge base with main.
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
@@ -97,19 +116,21 @@ jobs:
       - name: Prove the PR's tests are red on the base
         if: github.event_name == 'pull_request'
         env:
-          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: tools/prove-red.sh --base "$BASE_SHA" --head "$HEAD_SHA"
 
       - name: Release guard fires on the placeholder id
-        env:
-          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+        # The real path, assembleRelease, must stop on the guard and say so;
+        # running the guard task alone would stay green if its hookup into
+        # preReleaseBuild ever broke.
         run: |
-          if ./gradlew --no-daemon --console=plain :app:checkReleaseApplicationId; then
-            echo "the release guard passed on a placeholder id" >&2
+          if ./gradlew --no-daemon --console=plain :app:assembleRelease > "$RUNNER_TEMP/release.log" 2>&1; then
+            echo "assembleRelease succeeded on a placeholder id" >&2
             exit 1
           fi
+          grep -q 'Release builds are blocked' "$RUNNER_TEMP/release.log" \
+            || { tail -40 "$RUNNER_TEMP/release.log"; echo "assembleRelease failed for another reason than the guard" >&2; exit 1; }
 
   # The gate's own proof: seven planted failures must each turn it red. It
   # rebuilds the tree once per case, so it runs on main only.
@@ -127,12 +148,24 @@ jobs:
           DENYLIST: ${{ secrets.TICKTOCK_DENYLIST }}
         run: |
           [ -n "$DENYLIST" ] || { echo "the TICKTOCK_DENYLIST secret is not available to this run" >&2; exit 1; }
-          (umask 077 && printf '%s\n' "$DENYLIST" > "$TICKTOCK_DENYLIST")
+          (umask 077 && printf '%s\n' "$DENYLIST" > "$RUNNER_TEMP/denylist")
+          echo "TICKTOCK_DENYLIST=$RUNNER_TEMP/denylist" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
         with:
           distribution: temurin
           java-version: '21'
+
+      - name: Install the pinned SDK packages the image lacks
+        # Exact package ids only; sdkmanager verifies each archive against the
+        # checksum in Google's repository manifest. A package already on the
+        # image is a no-op.
+        run: |
+          # shellcheck disable=SC2086  # SDK_PACKAGES is a space-separated list of ids
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" $SDK_PACKAGES
+          for p in $SDK_PACKAGES; do
+            [ -d "$ANDROID_SDK_ROOT/${p/;//}" ] || { echo "sdkmanager did not install $p" >&2; exit 1; }
+          done
 
       - name: Stage the Robolectric runtime
         run: |
@@ -141,6 +174,4 @@ jobs:
           (cd tools/robolectric-deps && sha256sum -c MANIFEST.sha256)
 
       - name: Seven planted failures turn the gate red
-        env:
-          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
         run: tools/verify-selftest.sh
