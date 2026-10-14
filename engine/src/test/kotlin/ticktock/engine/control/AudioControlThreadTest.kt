@@ -318,6 +318,19 @@ class AudioControlThreadTest {
     }
 
     @Test
+    fun `TON-01 A4 outlives the tools, so a drone started after the registry emptied still sounds against it`() {
+        start()
+        send(OutputCommand.SetA4(442.0))
+        register(OutputTool.DRONE)
+        send(drone, OutputCommand.Unregister(OutputTool.DRONE))
+        assertEquals(listOf(OutputCommand.SetA4(442.0), drone), backend.opened.single().sent)
+
+        register(OutputTool.DRONE)
+        assertEquals(listOf<OutputCommand>(OutputCommand.SetA4(442.0)), checkNotNull(backend.current).sent)
+        assertFalse(checkNotNull(backend.current).continuesEngine)
+    }
+
+    @Test
     fun `OUT-05 a speaker appearing is not a replug`() {
         startOnHeadset()
         register(OutputTool.DRONE)

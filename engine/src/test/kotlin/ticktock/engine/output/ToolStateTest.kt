@@ -81,6 +81,16 @@ class ToolStateTest {
     }
 
     @Test
+    fun `TON-01 A4 outlives the tools, clear keeps it and every replay starts with it`() {
+        val state = ToolState()
+        state.sent(OutputCommand.SetA4(442.0), warm)
+        state.clear()
+        assertEquals(listOf<OutputCommand>(OutputCommand.SetA4(442.0)), state.replay(continuing = false))
+        state.kept(OutputCommand.SetA4(415.0))
+        assertEquals(listOf<OutputCommand>(OutputCommand.SetA4(415.0)), state.replay(continuing = false))
+    }
+
+    @Test
     fun `POL-24 the sounding notes are every voice's note, both notes of a root and fifth, once each, in order`() {
         val state = ToolState()
         state.sent(warm)
