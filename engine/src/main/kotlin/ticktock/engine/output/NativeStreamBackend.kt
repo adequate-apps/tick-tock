@@ -36,6 +36,13 @@ class NativeStreamBackend(
     private val native: NativeCalls,
     private val outputs: () -> List<RoutedDevice>,
 ) : StreamBackend {
+    /**
+     * Guards the handle's lifetime: [diagnostics] may run on any thread
+     * while the control thread destroys the handle, so the read and the
+     * destroy exclude each other. Nothing slow runs under it.
+     */
+    private val lifetime = Any()
+
     /** The stream open now; read by Diagnostics from any thread, written by the control thread. */
     @Volatile
     private var current: NativeOpenStream? = null
@@ -44,7 +51,7 @@ class NativeStreamBackend(
     private var parked = 0L
 
     /** The native counters of the open stream, or null while none is open. */
-    fun diagnostics(): NativeDiagnostics? = current?.diagnostics()
+    fun diagnostics(): NativeDiagnostics? = synchronized(lifetime) { current?.diagnostics() }
 
     override fun open(request: StreamRequest, listener: StreamListener): Result<OpenStream> {
         if (request != HONOURED) {
@@ -93,7 +100,7 @@ class NativeStreamBackend(
 
     /** The stream's last act: it is no longer current, and its handle meets its fate. */
     private fun endStream(handle: Long, fate: HandleFate) {
-        current = null
+        synchronized(lifetime) { current = null }
         when (fate) {
             HandleFate.KEEP -> parked = handle
             HandleFate.DESTROY -> destroy(handle)
@@ -102,7 +109,7 @@ class NativeStreamBackend(
     }
 
     private fun destroy(handle: Long) {
-        native.nativeDestroy(handle)
+        synchronized(lifetime) { native.nativeDestroy(handle) }
     }
 
     private fun deviceName(deviceId: Int): String = outputs().firstOrNull { it.id == deviceId }?.name ?: "output device $deviceId"
