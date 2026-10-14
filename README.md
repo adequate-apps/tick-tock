@@ -53,7 +53,23 @@ The H tier runs Robolectric offline. Stage the android-all jar named in
 `tools/robolectric-deps/MANIFEST.sha256` into that directory and check it with `sha256sum -c`
 before running; a missing jar fails the run instead of downloading.
 
+Screenshot goldens of the Gridline frame live in `app/src/test/screenshots/`:
+
+```sh
+./gradlew :app:verifyRoborazziDebug   # fail on any pixel change against the goldens
+./gradlew :app:recordRoborazziDebug   # rewrite the goldens after a reviewed visual change
+```
+
 `docs/ACCEPTANCE.md` lists every behaviour criterion with its tier and status.
+`docs/design/gridline-android.md` is the component inventory and the messaging rules every screen
+follows.
+
+## Design tokens and fonts
+
+`design/.../Tokens.kt` is generated from the Gridline token sheet by `tools/gen-tokens/gen_tokens.py`
+(see its README); a test fails when the file drifts. The IBM Plex weights the type scale uses are
+staged into `design/src/main/res/font/` by `tools/fonts/stage.sh` and pinned by
+`tools/fonts/MANIFEST.sha256`.
 
 ## Icon
 
