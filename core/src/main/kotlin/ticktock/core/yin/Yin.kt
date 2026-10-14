@@ -56,8 +56,9 @@ sealed interface YinResult {
  * difference function, which [refinePeriod] explains; the same evaluation
  * gives the interpolated minimum of DET-04.
  *
- * The autocorrelation comes from an FFT of the smallest 5-smooth length that
- * holds the window plus the longest lag (DET-05). The window is fixed in
+ * The autocorrelation comes from an FFT of the smallest even 5-smooth length
+ * that holds the window plus the longest lag (DET-05), run as two real
+ * transforms of half that length each (DET-17). The window is fixed in
  * milliseconds, so the same note gives the same reading at every rate; the
  * hop is the spec's 2048 frames at 44.1 kHz (spec 0.3).
  *
@@ -76,18 +77,26 @@ class Yin(val sampleRate: Int) {
 
     /**
      * Lags 0..[maxLag] + 1 are computed: the extra one is the right-hand
-     * neighbour a dip at [maxLag] needs to count as a local minimum.
+     * neighbour a dip at [maxLag] needs to count as a local minimum. Even,
+     * for the real transform.
      */
-    val fftLength: Int = Fft.smallestFiveSmoothAtLeast(windowFrames + maxLag + 1)
+    val fftLength: Int = Fft.smallestEvenFiveSmoothAtLeast(windowFrames + maxLag + 1)
 
     /** Windows skipped because they held a NaN or an infinity (DET-15). */
     var nonFiniteWindows: Int = 0
         private set
 
-    private val fft = Fft(fftLength)
-    private val re = DoubleArray(fftLength)
-    private val im = DoubleArray(fftLength)
-    private val power = DoubleArray(fftLength)
+    private val fft = RealFft(fftLength)
+    private val signal = DoubleArray(fftLength)
+    private val spectrumRe = DoubleArray(fft.bins)
+    private val spectrumIm = DoubleArray(fft.bins)
+    // The power spectrum of a real signal mirrors about the middle, so only
+    // the bins up to it are kept; `unfolded` lays it out at full length for
+    // the second transform.
+    private val power = DoubleArray(fft.bins)
+    private val unfolded = DoubleArray(fftLength)
+    private val autocorrelationRe = DoubleArray(fft.bins)
+    private val autocorrelationIm = DoubleArray(fft.bins)
     private val prefix = DoubleArray(windowFrames + 1)
     private val lagCount = maxLag + 2
     private val diff = DoubleArray(lagCount)
@@ -98,6 +107,8 @@ class Yin(val sampleRate: Int) {
         require(sampleRate > 0) { "sample rate $sampleRate" }
         require(minLag >= 2) { "sample rate $sampleRate cannot resolve $HIGH_HZ Hz" }
         require(windowFrames > maxLag + 1) { "window of $windowFrames frames is shorter than the longest lag" }
+        // The lags read off the second transform are all inside its half spectrum.
+        check(lagCount <= fft.bins) { "lags up to ${lagCount - 1} for a transform of $fftLength" }
     }
 
     /**
@@ -187,23 +198,17 @@ class Yin(val sampleRate: Int) {
         prefix[0] = 0.0
         for (i in 0 until n) {
             val x = window[i].toDouble()
-            re[i] = x
-            im[i] = 0.0
+            signal[i] = x
             prefix[i + 1] = prefix[i] + x * x
         }
-        for (i in n until fftLength) {
-            re[i] = 0.0
-            im[i] = 0.0
-        }
-        fft.forward(re, im)
-        for (k in 0 until fftLength) {
-            power[k] = re[k] * re[k] + im[k] * im[k]
-            re[k] = power[k]
-            im[k] = 0.0
-        }
-        // The spectrum of a real signal is even, so transforming the power
-        // spectrum forward gives the autocorrelation scaled by the length.
-        fft.forward(re, im)
+        for (i in n until fftLength) signal[i] = 0.0
+        fft.forward(signal, spectrumRe, spectrumIm)
+        for (k in 0 until fft.bins) power[k] = spectrumRe[k] * spectrumRe[k] + spectrumIm[k] * spectrumIm[k]
+        // The power spectrum of a real signal is real and even, so transforming
+        // it forward gives the autocorrelation scaled by the length.
+        for (k in 0 until fft.bins) unfolded[k] = power[k]
+        for (k in fft.bins until fftLength) unfolded[k] = power[fftLength - k]
+        fft.forward(unfolded, autocorrelationRe, autocorrelationIm)
         val scale = 1.0 / fftLength
 
         diff[0] = 0.0
@@ -213,7 +218,7 @@ class Yin(val sampleRate: Int) {
         for (lag in 1 until lagCount) {
             val head = prefix[n - lag]
             val tail = prefix[n] - prefix[lag]
-            diff[lag] = (head + tail - 2.0 * re[lag] * scale) / (n - lag)
+            diff[lag] = (head + tail - 2.0 * autocorrelationRe[lag] * scale) / (n - lag)
             running += diff[lag]
             runningMean[lag] = running / lag
             cmnd[lag] = if (running > 0.0) diff[lag] / runningMean[lag] else 1.0
