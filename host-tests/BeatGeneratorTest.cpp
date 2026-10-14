@@ -176,6 +176,97 @@ TEST(Metronome, liveEditsNeverDoubleABeatOrBunchClicks) {
     EXPECT_EQ(0, engine.lateDropped());
 }
 
+// MET-05 for subdivisions: raising the subdivision in the block right after
+// a subdivision click must not fire the point that already sounded under the
+// new grid. 120 bpm in halves: the half-beat click at 36000 sounds in the
+// block [35968, 36032); the edit to quarters arrives at 36032, where the
+// quarter points 30000 and 36000 are behind and 42000 is next.
+TEST(Metronome, raisingTheSubdivisionNeverRefiresThePointThatJustSounded) {
+    RenderEngine engine;
+    engine.onStreamStart(48000.0);
+    ASSERT_TRUE(engine.send(start(params(120, 4, 2))));
+    Rendered out = renderFrames(engine, 36032, 64);
+    ASSERT_EQ((std::vector<std::int64_t>{0, 12000, 24000, 36000}), onsets(out.mono));
+    ASSERT_TRUE(engine.send(update(params(120, 4, 4))));
+    renderInto(engine, 48000, 64, out);
+    const auto found = onsets(out.mono);
+    const std::vector<std::int64_t> expected = {0, 12000, 24000, 36000, 42000, 48000, 54000, 60000, 66000, 72000, 78000, 84000};
+    EXPECT_EQ(expected, found);
+    EXPECT_EQ(0, engine.lateDropped());
+    EXPECT_EQ(0, engine.generator().lateSubdivisionsDropped());
+}
+
+// MET-04 for subdivisions: lowering or raising the subdivision past a point
+// the new grid places in the past skips that point, and the skip is no late
+// beat. 120 bpm on beats; at 39040 the edit to halves puts 36000 behind.
+TEST(Metronome, aSubdivisionPointAlreadyPassedAtTheEditIsSkippedAndNotCountedLate) {
+    RenderEngine engine;
+    engine.onStreamStart(48000.0);
+    ASSERT_TRUE(engine.send(start(params(120, 4, 1))));
+    Rendered out = renderFrames(engine, 39040, 64);
+    ASSERT_TRUE(engine.send(update(params(120, 4, 2))));
+    renderInto(engine, 48000, 64, out);
+    const auto found = onsets(out.mono);
+    const std::vector<std::int64_t> expected = {0, 24000, 48000, 60000, 72000, 84000};
+    EXPECT_EQ(expected, found);
+    EXPECT_EQ(0, engine.lateDropped()) << "a point the grid never scheduled is no late beat";
+    EXPECT_EQ(0, engine.generator().lateSubdivisionsDropped());
+    ASSERT_EQ(4u, out.beats.size());
+    EXPECT_EQ(3, out.beats[3].index);
+}
+
+// A tempo edit re-grids the subdivisions under the beat that sounded last;
+// a point the new grid places in the past is skipped, never bunched onto the
+// next block, and a subdivision that does arrive late is counted apart from
+// the beats.
+TEST(Metronome, aTempoEditRegridsTheSubdivisionsFromTheLastBeat) {
+    RenderEngine engine;
+    engine.onStreamStart(48000.0);
+    ASSERT_TRUE(engine.send(start(params(60, 4, 4))));  // period 48000, quarters at 12000
+    Rendered out = renderFrames(engine, 48000 + 13000, 64);  // beat 1 at 48000, its first quarter at 60000 sounded
+    ASSERT_TRUE(engine.send(update(params(120, 4, 4))));  // period 24000 from 48000: quarters at 54000 and 60000 are behind, 66000 is next
+    renderInto(engine, 48000, 64, out);
+    const auto found = onsets(out.mono);
+    const std::vector<std::int64_t> expected = {0, 12000, 24000, 36000, 48000, 60000, 66000, 72000, 78000, 84000, 90000, 96000, 102000, 108000};
+    EXPECT_EQ(expected, found);
+    EXPECT_EQ(0, engine.lateDropped());
+    EXPECT_EQ(0, engine.generator().lateSubdivisionsDropped());
+}
+
+// MET-05 with subdivisions: edits inside the latency window never double a
+// beat, beat clicks stay min(old, new) period - 1 apart, and the beat row
+// keeps its order.
+TEST(Metronome, liveEditsWithSubdivisionsNeverDoubleABeat) {
+    RenderEngine engine;
+    engine.onStreamStart(48000.0);
+    ASSERT_TRUE(engine.send(start(params(120, 4, 4))));
+    Rendered out = renderFrames(engine, 72000 + 100, 64);
+    const int tempos[] = {121, 119, 240, 60, 240, 300, 120};
+    const int subdivisions[] = {3, 4, 2, 4, 1, 4, 3};
+    int minPeriod = 24000;
+    for (int i = 0; i < 7; ++i) {
+        ASSERT_TRUE(engine.send(update(params(tempos[i], 4, subdivisions[i]))));
+        minPeriod = std::min(minPeriod, static_cast<int>(llround(48000.0 * 60 / tempos[i])));
+        renderInto(engine, 64 * 3, 64, out);
+    }
+    renderInto(engine, 48000 * 4, 64, out);
+
+    std::set<std::int64_t> indices;
+    std::int64_t previous = -1;
+    std::int64_t previousFrame = -1;
+    for (const BeatEvent& b : out.beats) {
+        EXPECT_TRUE(indices.insert(b.index).second) << "beat " << b.index << " sounded twice";
+        EXPECT_GT(b.index, previous);
+        if (previousFrame >= 0) {
+            EXPECT_GE(b.frame - previousFrame, minPeriod - 1) << "beats " << previous << " and " << b.index;
+        }
+        previous = b.index;
+        previousFrame = b.frame;
+    }
+    EXPECT_EQ(0, engine.lateDropped());
+    EXPECT_EQ(0, engine.generator().lateSubdivisionsDropped());
+}
+
 // MET-06: beat m+1 sounds at onset(m) + round(sr x 60 / bpm_new).
 TEST(Metronome, aTempoChangeReanchorsOnTheBeatThatSounded) {
     RenderEngine engine;
