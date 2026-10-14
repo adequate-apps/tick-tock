@@ -34,7 +34,7 @@ class OutputPortContractTest {
         OutputCommand.MetroStart(setup),
         OutputCommand.MetroUpdate(setup.copy(bpm = 132)),
         OutputCommand.MetroStop,
-        OutputCommand.Mute(MuteReason.FOCUS_LOSS, active = true),
+        OutputCommand.Mute(MuteReason.RECORDING_ON_SPEAKER, active = true),
         OutputCommand.VoiceOff(slot = 0),
         OutputCommand.Unregister(OutputTool.DRONE),
     )
@@ -78,6 +78,7 @@ class OutputPortContractTest {
             OutputEvent.Counters(lateBeatsDropped = 0, underruns = 0),
             OutputEvent.Parked(ParkReason.HEADPHONES_DISCONNECTED, setOf(OutputTool.METRONOME)),
             OutputEvent.Resumed(setOf(OutputTool.METRONOME), info.copy(sampleRate = 44_100)),
+            OutputEvent.Parked(ParkReason.INCOMING_CALL, setOf(OutputTool.METRONOME)),
             OutputEvent.Failed("USB DAC", listOf(48_000, 44_100)),
             OutputEvent.Closed,
         )
@@ -106,6 +107,30 @@ class OutputPortContractTest {
             listOf(OutputEvent.Opened(FakeOutputPort.DEFAULT_INFO), OutputEvent.Closed),
             port.events.take(2).toList(),
         )
+    }
+
+    /**
+     * Owner decision 4: another app's playback is never a reason to stop, so
+     * the contract offers no focus-loss reason at all; an incoming call is the
+     * one outside event that stops output, and it parks rather than mutes, so
+     * nothing restarts until the player acts.
+     */
+    @Test
+    fun `an incoming call parks every registered tool and no reason names audio focus`() = runTest {
+        val port = FakeOutputPort()
+        port.send(OutputCommand.Register(OutputTool.DRONE))
+        port.send(OutputCommand.Register(OutputTool.METRONOME))
+
+        port.incomingCall()
+
+        val parked = port.emitted.filterIsInstance<OutputEvent.Parked>().single()
+        assertEquals(ParkReason.INCOMING_CALL, parked.reason)
+        assertEquals(setOf(OutputTool.DRONE, OutputTool.METRONOME), parked.tools)
+        assertNull(port.info.value)
+        assertEquals(emptyList<OutputEvent>(), port.emitted.filterIsInstance<OutputEvent.Resumed>())
+
+        assertEquals(emptyList<String>(), ParkReason.entries.map { it.name }.filter { "FOCUS" in it })
+        assertEquals(emptyList<String>(), MuteReason.entries.map { it.name }.filter { "FOCUS" in it })
     }
 
     @Test
