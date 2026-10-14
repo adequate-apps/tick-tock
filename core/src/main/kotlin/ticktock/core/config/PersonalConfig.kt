@@ -5,6 +5,7 @@ import ticktock.core.contracts.Voice
 import ticktock.core.detect.ResponseMode
 import ticktock.core.json.JsonValue
 import ticktock.core.metro.ClickSound
+import ticktock.core.music.Accidentals
 import ticktock.core.music.Pitch
 import ticktock.core.ranges.UserRangeOverride
 
@@ -32,7 +33,16 @@ data class PersonalConfig(
 data class HornProfile(val id: String, val instrumentKey: String, val nickname: String)
 
 enum class DisplayMode(val wire: String) { WRITTEN("written"), CONCERT("concert") }
-enum class Spelling(val wire: String) { AUTO("auto"), SHARPS("sharps"), FLATS("flats") }
+/**
+ * The player's accidental choice as stored. [accidentals] is the override the
+ * resolver takes ([ticktock.core.music.NoteSpelling.resolve]); AUTO is no
+ * override, so the instrument's family decides.
+ */
+enum class Spelling(val wire: String, val accidentals: Accidentals?) {
+    AUTO("auto", null),
+    SHARPS("sharps", Accidentals.SHARPS),
+    FLATS("flats", Accidentals.FLATS),
+}
 
 /**
  * File spellings of the engine's own enums. The config layer names the voices
