@@ -24,7 +24,7 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 | DET-13 | ceiling test | U | 2.0 | YinTest `DET-13` (two tests: 4600 Hz; every 100 Hz from 4600 Hz to 10 kHz, clean and at 10 dB SNR, no sub-harmonic at either rate) + YinTest `DET-08` at 10 dB SNR pinning the other side of the sub-period rule | green |
 | DET-14 | window long enough for the floor | U | 2.0 | YinTest `DET-14` (`Yin.WINDOW_SECONDS` reads `Hop.SECONDS`, the one definition the analyser cuts by) | green |
 | DET-15 | non-finite input | U | 2.0 | YinTest `DET-15`, YinEstimatorTest `DET-15` (no candidate at level 0, counted) and DetectorEndToEndTest `DET-15` (a NaN hop mid-note is skipped and counted, the held note goes on) | green |
-| DET-16 | off the UI thread | H, D | 2.0 | | open |
+| DET-16 | off the UI thread | H, D | 2.0 | AnalysisThreadTest `DET-16` (decisions arrive on the thread named `analysis`, promoted to audio priority, on audio pushed from another thread); the device half is the emulator readout run, `tools/device/readout.sh --tone 440 --expect A4` | green (H) |
 | DET-17 | per-hop budget | H, D | 2.0 | YinTest `DET-17` prints the JVM per-hop cost (informational: sax-like A4 median about 1.7 ms, white noise about 1.9 ms at 48 kHz); the reference-device figure is the M2 gate | open |
 
 ## Detector policy
@@ -163,12 +163,12 @@ ledgered under their own prefixes below.
 | OUT-15 | start and stop never block | H | 2.0 | | open |
 | OUT-16 | render thread | H | 2.0 | | open |
 | OUT-17 | error names | H | 2.0 | | open |
-| IN-01 | one owner and release | H | 2.0 | | open |
-| IN-02 | busy or missing | H | 2.0 | | open |
-| IN-03 | saved interface stays saved | H | 2.0 | | open |
-| IN-04 | replug recovers | H, D | 2.0 | | open |
-| IN-05 | honest silence | H | 2.0 | | open |
-| IN-06 | a hung driver costs one timeout | H | 2.0 (the fallback trigger is the property check, SRC-01) | | open |
+| IN-01 | one owner and release | H | 2.0 | AudioRecordSourceTest `IN-01` (three tests: a recorder that errors mid-stream is released and the failure names the device; a restart replaces the stream with at most one recorder open at any point; a late recorder from a hung open is released) | green |
+| IN-02 | busy or missing | H | 2.0 | AudioRecordSourceTest `IN-02` (Busy names the device and the recorder is released; an absent saved interface is reported as Disconnected by name while the session opens on the built-in microphone) | green |
+| IN-03 | saved interface stays saved | H | 2.0 | AudioRecordSourceTest `IN-03` (the saved name is a read-only input to the source; present it is used, absent the default serves and the listener is told which, and the next open with the interface back uses it) | green |
+| IN-04 | replug recovers | H, D | 2.0 | AudioRecordSourceTest `IN-04` (three tests: unplug stops with a reason and replug resumes on the same sink; a saved interface that returns takes over from the built-in microphone with one recorder open throughout; after stop nothing resumes) + AndroidRecorderPlatformTest (the AudioManager device callback reaches the listener); device half open | green (H) |
+| IN-05 | honest silence | H | 2.0 | AudioRecordSourceTest `IN-05` (a recorder stopped behind our back is declared dead and released; the sink receives no block it did not record) | green |
+| IN-06 | a hung driver costs one timeout | H | 2.0 (the fallback trigger is the property check, SRC-01) | AudioRecordSourceTest `IN-06` (every attempt in the chain shares one deadline; a hung open ends the chain within one timeout with the rates tried named, and what the hung call returns later is released) | green |
 
 ## Metronome timing
 
@@ -320,8 +320,8 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| SRC-01 | source chosen by the UNPROCESSED property | H | 2.0 | | open |
-| SRC-02 | Diagnostics shows source and effects | H | 2.0 | | open |
+| SRC-01 | source chosen by the UNPROCESSED property | H | 2.0 | AudioRecordSourceTest `SRC-01` (three tests: the property decides the first preset, UNPROCESSED is never asked for without it, a refused preset falls through at every rate and the opened one is reported, every preset refused is one Refused failure) + AndroidRecorderPlatformTest (the framework answers "true" or "false" rather than the null the compatibility definition names; only "true" opens UNPROCESSED) | green |
+| SRC-02 | Diagnostics shows source and effects | H | 2.0 | AudioRecordSourceTest `SRC-02` (the recording configuration report, source, effects and silenced, reaches the source's state flow and clears on stop) + DebugReadoutTest (the M2 debug readout shows the input and the platform report; the Diagnostics page reads the same flow in M6) | green |
 | SRC-03 | floors shift by the source offset | U | 2.0 | ResponseModeTableTest `SRC-03` (the table) + HopAnalyserTest `SRC-03` (the preset the input opened with reaches the gate through the analyser) | green |
 
 ### Output stream mode

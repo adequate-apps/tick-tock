@@ -6,7 +6,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import ticktock.app.BuildConfig
 import ticktock.app.R
+import ticktock.app.debug.DebugTuneExtras
 import ticktock.design.components.Field
 import ticktock.design.components.GlText
 import ticktock.design.components.Pane
@@ -19,6 +21,8 @@ import ticktock.design.components.Pane
 @Composable
 fun TuneScreen() {
     EmptyPane(title = R.string.pane_tune, text = R.string.empty_tune, tag = "tune")
+    // M2's capture path made visible; a release build draws nothing here and M4 removes it.
+    if (BuildConfig.DEBUG) DebugTuneExtras()
 }
 
 @Composable
