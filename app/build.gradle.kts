@@ -14,19 +14,21 @@ val releaseSigning = Properties().apply {
 }
 
 /**
- * Deliberate placeholder. Stores reject the com.example namespace, so an
- * unfinished build can never ship by accident; checkReleaseApplicationId
- * below fails any release build while the id still starts with it.
+ * The published application id (decision 17). It is permanent once on a store.
+ * checkReleaseApplicationId below still fails any release build whose id starts
+ * with the com.example placeholder namespace; CI proves that by overriding the
+ * id with the ticktock.applicationIdOverride property, which nothing else sets.
  */
 val placeholderPrefix = "com.example."
-val placeholderApplicationId = "com.example.ticktock.placeholder"
+val releaseApplicationId = providers.gradleProperty("ticktock.applicationIdOverride")
+    .getOrElse("com.adequateapps.metronome")
 
 android {
     namespace = "ticktock.app"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = placeholderApplicationId
+        applicationId = releaseApplicationId
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1

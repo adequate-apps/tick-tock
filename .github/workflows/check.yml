@@ -121,12 +121,12 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: tools/prove-red.sh --base "$BASE_SHA" --head "$HEAD_SHA"
 
-      - name: Release guard fires on the placeholder id
+      - name: Release guard fires on a placeholder id
         # The real path, assembleRelease, must stop on the guard and say so;
         # running the guard task alone would stay green if its hookup into
-        # preReleaseBuild ever broke.
+        # preReleaseBuild ever broke. The override plants a com.example id.
         run: |
-          if ./gradlew --no-daemon --console=plain :app:assembleRelease > "$RUNNER_TEMP/release.log" 2>&1; then
+          if ./gradlew --no-daemon --console=plain -Pticktock.applicationIdOverride=com.example.guardproof :app:assembleRelease > "$RUNNER_TEMP/release.log" 2>&1; then
             echo "assembleRelease succeeded on a placeholder id" >&2
             exit 1
           fi
