@@ -617,14 +617,44 @@ class AudioControlThreadTest {
     }
 
     @Test
-    fun `OUT-11 the same policy applies to every tool, and one that keeps some parks only the rest`() {
+    fun `OUT-11 the same policy applies to every tool, and one that keeps some parks only the rest, which stop sounding`() {
         start(policy = BackgroundPolicy { it.filterTo(mutableSetOf()) { tool -> tool == OutputTool.METRONOME } })
         register(OutputTool.DRONE, OutputTool.METRONOME)
+        send(drone, OutputCommand.MetroStart(setup))
         control.appBackgrounded()
         idle()
         assertEquals(listOf(OutputEvent.Parked(ParkReason.BACKGROUND, setOf(OutputTool.DRONE))), eventsOf<OutputEvent.Parked>())
-        assertNotNull(backend.current)
+        val stream = checkNotNull(backend.current)
+        // A parked drone makes no sound (OUT-02): every voice slot is off and
+        // the metronome, kept, runs on.
+        assertEquals(
+            (0 until AudioControlThread.VOICE_SLOTS).map { OutputCommand.VoiceOff(it) },
+            stream.sent.drop(2),
+        )
+        assertArrayEquals(intArrayOf(), control.soundingNotes.current())
         assertEquals(listOf("started"), owner.calls)
+    }
+
+    @Test
+    fun `OUT-11 a policy that keeps the drone stops the parked metronome`() {
+        start(policy = BackgroundPolicy { it.filterTo(mutableSetOf()) { tool -> tool == OutputTool.DRONE } })
+        register(OutputTool.DRONE, OutputTool.METRONOME)
+        send(drone, OutputCommand.MetroStart(setup))
+        control.appBackgrounded()
+        idle()
+        assertEquals(listOf(OutputEvent.Parked(ParkReason.BACKGROUND, setOf(OutputTool.METRONOME))), eventsOf<OutputEvent.Parked>())
+        assertEquals(listOf(drone, OutputCommand.MetroStart(setup), OutputCommand.MetroStop), checkNotNull(backend.current).sent)
+        assertArrayEquals(intArrayOf(62), control.soundingNotes.current())
+    }
+
+    @Test
+    fun `a voice command for a slot the engine lacks is refused aloud rather than ignored natively`() {
+        start()
+        register(OutputTool.DRONE)
+        send(OutputCommand.VoiceOn(slot = AudioControlThread.VOICE_SLOTS, midi = 69, voice = Voice.SINE, gain = 0.5f), OutputCommand.VoiceOff(slot = -1))
+        assertEquals(emptyList<OutputCommand>(), checkNotNull(backend.current).sent)
+        assertArrayEquals(intArrayOf(), control.soundingNotes.current())
+        assertEquals(2, control.diagnostics.value.log.count { "refused" in it })
     }
 
     @Test
