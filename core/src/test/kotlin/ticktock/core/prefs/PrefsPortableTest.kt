@@ -132,7 +132,7 @@ class PrefsPortableTest {
             PersonalConfig(settings = PortableSettings(earsFirst = true, announceSettledNotes = true)),
         )
         val diff = PersonalConfigMerge.diff(PersonalConfig(settings = current), incoming)
-        assertEquals(listOf("Ears first is set to on.", "Announce settled notes is set to on."), diff.sentences())
+        assertEquals(listOf("Ears first: off becomes on.", "Announce settled notes: off becomes on."), diff.sentences())
         assertNotNull(PrefsPortable.apply(Prefs(), incoming.settings))
         assertEquals(true, PrefsPortable.apply(Prefs(), incoming.settings).earsFirst)
     }

@@ -12,6 +12,14 @@ object Pitch {
 
     const val MIDI_A4 = 69
 
+    /**
+     * The A4 reference the player may set (decision 16): 415 covers baroque
+     * pitch, 466 is the top that keeps every A4 within a semitone of 440, so
+     * note naming stays unambiguous. The prefs table, the personal
+     * configuration and the stepper all read this one range.
+     */
+    val A4_HZ: ClosedFloatingPointRange<Double> = 415.0..466.0
+
     /** Spelling-neutral label such as "A#/Bb3" or "C4"; octave numbers follow C4 = 60. */
     fun label(midi: Int): String {
         val octave = midi / 12 - 1

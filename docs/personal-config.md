@@ -29,6 +29,8 @@ import diff and the merged result. Both are pure functions with JVM tests.
     "responseMode": "slow",
     "noiseFloorDb": -50,
     "keepAwake": true,
+    "earsFirst": false,
+    "announceSettledNotes": false,
     "droneVoice": "root-fifth",
     "clickSound": "beep",
     "visualOffsetMs": 15
@@ -62,19 +64,24 @@ added. Profiles are never removed by an import.
 | Field | Type | Allowed values |
 |---|---|---|
 | `instrument` | text | a catalogue key |
-| `a4Hz` | number | 430 to 450 inclusive |
+| `a4Hz` | number | 415 to 466 inclusive (decision 16) |
 | `displayMode` | text | `written`, `concert` |
 | `spelling` | text | `auto`, `sharps`, `flats` |
 | `responseMode` | text | `fast`, `normal`, `slow` |
 | `noiseFloorDb` | whole number | -80 to -10 |
 | `keepAwake` | boolean | |
+| `earsFirst` | boolean | the readout hides while a note sounds (EAR-03) |
+| `announceSettledNotes` | boolean | settled notes are read by a polite live region (TLK-02) |
 | `droneVoice` | text | `sine`, `warm`, `root-fifth` |
 | `clickSound` | text | `wood`, `click`, `beep` |
 | `visualOffsetMs` | whole number | -500 to 500 |
 
-Device-bound state stays out of the file on purpose: permission grants, measured output latency,
-the routed device, diagnostics counters and practice history belong to the phone they were
-measured on.
+The settings table is the prefs field table in `core/src/main/kotlin/ticktock/core/prefs/PrefsSchema.kt`:
+a row with a portable link travels in this file under the same key and the same spelling of its
+value, and `PrefsPortable` moves the rows in both directions. Device-bound state stays out of the
+file on purpose: permission grants, the paused-capture state, the measured Bluetooth offset, the
+drone and click volumes, the metronome's current setup, diagnostics counters and practice history
+belong to the phone they were set on.
 
 ## Versions
 
@@ -94,7 +101,7 @@ whole file, and every problem is listed at once with the path it was found at, f
 
 ```
 rangeOverrides.eb_alto: keyedLow F#/Gb6 is above keyedHigh A#/Bb3
-settings.a4Hz: expected a number from 430 to 450, found 429
+settings.a4Hz: expected a number from 415 to 466, found 414
 hornProfiles[1].id: id "a" appears more than once
 ```
 

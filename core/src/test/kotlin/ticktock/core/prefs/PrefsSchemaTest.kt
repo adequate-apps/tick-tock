@@ -27,7 +27,7 @@ class PrefsSchemaTest {
     private fun normalise(json: String): NormalisedPrefs = PrefsSchema.normalise(Json.parse(json).obj!!)
 
     private fun ok(text: String): NormalisedPrefs = PrefsSchema.read(text).let {
-        it as? ReadResult.Ok ?: throw AssertionError("expected Ok, got $it")
+        (it as? ReadResult.Ok ?: throw AssertionError("expected Ok, got $it")).result
     }
 
     @Test

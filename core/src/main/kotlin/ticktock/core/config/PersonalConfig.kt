@@ -4,6 +4,7 @@ package ticktock.core.config
 import ticktock.core.contracts.Voice
 import ticktock.core.json.JsonValue
 import ticktock.core.metro.ClickSound
+import ticktock.core.music.Pitch
 import ticktock.core.ranges.UserRangeOverride
 
 /**
@@ -65,6 +66,10 @@ data class PortableSettings(
     /** "Ignore sounds quieter than", in dBFS. */
     val noiseFloorDb: Int? = null,
     val keepAwake: Boolean? = null,
+    /** EAR-03: the readout hides while a note sounds. */
+    val earsFirst: Boolean? = null,
+    /** TLK-02: settled notes are read by a polite live region. */
+    val announceSettledNotes: Boolean? = null,
     val droneVoice: Voice? = null,
     val clickSound: ClickSound? = null,
     /** Metronome visual offset in milliseconds; positive draws the beat later. */
@@ -73,7 +78,8 @@ data class PortableSettings(
     val unknownFields: Map<String, JsonValue> = emptyMap(),
 ) {
     companion object {
-        val A4_HZ: ClosedFloatingPointRange<Double> = 430.0..450.0
+        /** Decision 16; the one definition lives in [Pitch]. */
+        val A4_HZ: ClosedFloatingPointRange<Double> = Pitch.A4_HZ
         val NOISE_FLOOR_DB: IntRange = -80..-10
         val VISUAL_OFFSET_MS: IntRange = -500..500
     }
