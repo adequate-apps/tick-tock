@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.app.audio
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -16,6 +20,7 @@ import ticktock.core.detect.fakes.Sine
 import ticktock.core.music.Pitch
 import ticktock.engine.input.RecordingState
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /** The session object folds decisions, failures and the platform report into one state. */
 class LiveCaptureTest {
@@ -41,9 +46,44 @@ class LiveCaptureTest {
         val state = capture.state.value
         assertEquals(0, state.readout.cents)
         assertEquals(440.0, state.readout.hz ?: 0.0, 0.5)
-        assertEquals(-23.0, state.readout.levelDb, 0.5)
-        awaitUntil("counters") { capture.state.value.counters.hopsAnalysed == 8L }
-        assertTrue(capture.state.value.lastHopNanos > 0)
+        awaitUntil("level") { capture.level.value.hop >= 0 }
+        assertEquals(-23.0, capture.level.value.db, 0.5)
+
+        // The diagnostics are sampled about once a second, never per hop.
+        assertEquals(CaptureDiagnostics(), capture.diagnostics.value)
+        repeat(LiveCapture.DIAGNOSTICS_HOPS) { input.push(sine.next(Hop.frames(rate))) }
+        awaitUntil("counters") { capture.diagnostics.value.counters.hopsAnalysed >= LiveCapture.DIAGNOSTICS_HOPS }
+        assertTrue(capture.diagnostics.value.lastHopNanos > 0)
+    }
+
+    @Test
+    fun `POL-31 a held note moves the state a few times, the level every hop and the diagnostics about once a second`() {
+        val input = FakeAudioInput(sampleRate = rate)
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val states = AtomicInteger()
+        val levels = AtomicInteger()
+        val diagnostics = AtomicInteger()
+        scope.launch { capture.state.collect { states.incrementAndGet() } }
+        scope.launch { capture.level.collect { levels.incrementAndGet() } }
+        scope.launch { capture.diagnostics.collect { diagnostics.incrementAndGet() } }
+        capture.start(input)
+        val afterStart = states.get()
+
+        val sine = Sine(Pitch.hzFromMidi(69, 440.0), 0.1, rate)
+        val hops = 3 * LiveCapture.DIAGNOSTICS_HOPS
+        val levelsBefore = levels.get()
+        for (i in 1..hops) {
+            input.push(sine.next(Hop.frames(rate)))
+            // One hop at a time, so every hop is its own batch and its own level.
+            awaitUntil("hop $i analysed") { levels.get() - levelsBefore >= i }
+        }
+        awaitUntil("note read") { capture.state.value.readout.note == "A4" }
+
+        assertTrue("the readout moved ${states.get() - afterStart} times for $hops hops of one note", states.get() - afterStart in 1..4)
+        assertEquals(hops, levels.get() - levelsBefore)
+        assertEquals(3, diagnostics.get() - 1)  // the initial value, then one sample per DIAGNOSTICS_HOPS
+        assertEquals(hops.toLong(), capture.diagnostics.value.counters.hopsAnalysed)
+        scope.cancel()
     }
 
     @Test
@@ -76,7 +116,7 @@ class LiveCaptureTest {
 
         awaitUntil("blank") { capture.state.value.readout.note == null }
         assertNull(capture.state.value.readout.cents)
-        assertEquals(Readout.LEVEL_FLOOR_DB, capture.state.value.readout.levelDb, 0.0)
+        awaitUntil("floor") { capture.level.value.db == Level.LEVEL_FLOOR_DB }
     }
 
     @Test
@@ -105,15 +145,24 @@ class LiveCaptureTest {
 
         capture.stop()
         assertEquals(CaptureState(), capture.state.value)
+        assertEquals(Level(), capture.level.value)
+        assertEquals(CaptureDiagnostics(), capture.diagnostics.value)
         assertEquals(0, input.openCount)
     }
 
     @Test
     fun `level in dBFS is floored and otherwise 20 log10 of the hop RMS`() {
-        assertEquals(Readout.LEVEL_FLOOR_DB, Readout.levelDb(0.0), 0.0)
-        assertEquals(Readout.LEVEL_FLOOR_DB, Readout.levelDb(1e-9), 0.0)
-        assertEquals(-20.0, Readout.levelDb(0.1), 1e-9)
-        assertEquals(0.0, Readout.levelDb(1.0), 1e-9)
+        assertEquals(Level.LEVEL_FLOOR_DB, Level.db(0.0), 0.0)
+        assertEquals(Level.LEVEL_FLOOR_DB, Level.db(1e-9), 0.0)
+        assertEquals(-20.0, Level.db(0.1), 1e-9)
+        assertEquals(0.0, Level.db(1.0), 1e-9)
+    }
+
+    @Test
+    fun `the readout keeps the tenth of a hertz it shows and nothing finer`() {
+        assertEquals(440.0, Readout.shownHz(440.04), 0.0)
+        assertEquals(440.1, Readout.shownHz(440.05), 0.0)
+        assertEquals(27.5, Readout.shownHz(27.4999), 0.0)
     }
 
     private fun awaitUntil(what: String, timeoutMillis: Long = 5_000, condition: () -> Boolean) {

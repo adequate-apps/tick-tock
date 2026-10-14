@@ -2,6 +2,7 @@
 package ticktock.app
 
 import android.content.Intent
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -18,6 +19,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import ticktock.app.audio.LiveCapture
 import ticktock.app.debug.InputSeam
 import ticktock.core.contracts.InputFailure
 import ticktock.core.contracts.fakes.FakeAudioInput
@@ -70,7 +72,15 @@ class DebugReadoutTest {
         compose.onNodeWithTag("debug-level-value", useUnmergedTree = true).assertTextEquals("-23 dBFS")
         compose.onNodeWithTag("debug-source-value", useUnmergedTree = true).assertTextEquals("FAKE at 48000 Hz, Fake microphone")
         compose.onNodeWithTag("debug-a4-value", useUnmergedTree = true).assertTextEquals("440 Hz")
-        compose.waitUntil(TIMEOUT) { nodes("debug-counters-value", "8 hops, 0 dropped, 0 errors", substring = true) == 1 }
+        // The counters are sampled about once a second of hops, never per hop (POL-31).
+        compose.onNodeWithTag("debug-counters-value", useUnmergedTree = true).assertTextEquals("0 hops, 0 dropped, 0 errors, 0.0 ms per hop")
+        // Paced, so the burst never outruns the analyser's ring: a dropped hop here would be the harness's doing.
+        repeat(LiveCapture.DIAGNOSTICS_HOPS) {
+            input.push(sine.next(Hop.frames(rate)))
+            Thread.sleep(5)
+        }
+        compose.waitUntil(TIMEOUT) { nodes("debug-counters-value", "0 hops, 0 dropped, 0 errors, 0.0 ms per hop") == 0 }
+        compose.onNodeWithTag("debug-counters-value", useUnmergedTree = true).assertTextContains(" hops, 0 dropped, 0 errors", substring = true)
 
         scenario?.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
         compose.waitUntil(TIMEOUT) { !input.isOpen }
