@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Every push and PR: identity scan (with the private denylist from a secret),
-# wrapper hashes, strict dependency verification, the JVM tiers, lint, a debug
+# wrapper hashes, strict dependency verification, the JVM and host-test tiers, lint, a debug
 # APK, the manifest allowlist, the 16 KB page-alignment check of the native
 # libraries, the release guard and, on PRs, the red-on-base proof. Actions are
 # pinned to full commit SHAs; the tag is a comment so a reviewer can see what
@@ -32,6 +32,8 @@ env:
   # off in gradle.properties). Bumping either id is a reviewed change here and
   # in gradle/libs.versions.toml together.
   SDK_PACKAGES: ndk;28.2.13676358 cmake;3.22.1
+  # GoogleTest for the N tier's host tests, from Ubuntu 24.04's archive.
+  GTEST_DEB_VERSION: 1.14.0-1
 
 jobs:
   check:
@@ -101,6 +103,16 @@ jobs:
             [ -d "$ANDROID_SDK_ROOT/${p/;//}" ] || { echo "sdkmanager did not install $p" >&2; exit 1; }
           done
 
+      - name: Install GoogleTest for the host tests
+        # The N tier's host tests link gtest (pacman's 1.18 on a workstation).
+        # Ubuntu's signed archive, one exact version, test-only: nothing from
+        # it reaches the app. Bumping the version is a reviewed change here.
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends "libgtest-dev=${GTEST_DEB_VERSION}"
+          [ "$(dpkg-query -W -f='${Version}' libgtest-dev)" = "$GTEST_DEB_VERSION" ] \
+            || { echo "libgtest-dev is not $GTEST_DEB_VERSION" >&2; exit 1; }
+
       - name: Stage the Robolectric runtime
         run: |
           curl -sSfL -o "tools/robolectric-deps/${ROBOLECTRIC_JAR}" \
@@ -167,6 +179,16 @@ jobs:
           for p in $SDK_PACKAGES; do
             [ -d "$ANDROID_SDK_ROOT/${p/;//}" ] || { echo "sdkmanager did not install $p" >&2; exit 1; }
           done
+
+      - name: Install GoogleTest for the host tests
+        # The N tier's host tests link gtest (pacman's 1.18 on a workstation).
+        # Ubuntu's signed archive, one exact version, test-only: nothing from
+        # it reaches the app. Bumping the version is a reviewed change here.
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends "libgtest-dev=${GTEST_DEB_VERSION}"
+          [ "$(dpkg-query -W -f='${Version}' libgtest-dev)" = "$GTEST_DEB_VERSION" ] \
+            || { echo "libgtest-dev is not $GTEST_DEB_VERSION" >&2; exit 1; }
 
       - name: Stage the Robolectric runtime
         run: |
