@@ -1,0 +1,513 @@
+{
+  "banjo": {
+    "transposition": 0,
+    "keyed": "C3..D#/Eb6 (48..87)",
+    "keyedBy": "base/base",
+    "extended": "C3..D#/Eb6 (48..87)",
+    "extendedBy": "base/base"
+  },
+  "baritone_bc": {
+    "transposition": 0,
+    "keyed": "E2..G4 (40..67)",
+    "keyedBy": "base/base",
+    "extended": "E2..A#/Bb4 (40..70)",
+    "extendedBy": "base/base"
+  },
+  "baritone_tc": {
+    "transposition": -14,
+    "keyed": "F#/Gb3..A5 (54..81)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb3..C6 (54..84)",
+    "extendedBy": "base/base"
+  },
+  "bass_guitar": {
+    "transposition": -12,
+    "keyed": "E2..F5 (40..77)",
+    "keyedBy": "base/base",
+    "extended": "E2..G5 (40..79)",
+    "extendedBy": "base/base"
+  },
+  "bassoon": {
+    "transposition": 0,
+    "keyed": "A#/Bb1..A4 (34..69)",
+    "keyedBy": "base/base",
+    "extended": "A#/Bb1..E5 (34..76)",
+    "extendedBy": "base/base"
+  },
+  "bb_bass": {
+    "transposition": -26,
+    "keyed": "A#/Bb3..F#/Gb6 (58..90)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "A#/Bb3..C7 (58..96)",
+    "extendedBy": "base/base"
+  },
+  "bb_soprano": {
+    "transposition": -2,
+    "keyed": "A#/Bb3..F#/Gb6 (58..90)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "A#/Bb3..F7 (58..101)",
+    "extendedBy": "app_overlay/app_overlay"
+  },
+  "bb_tenor": {
+    "transposition": -14,
+    "keyed": "A#/Bb3..F#/Gb6 (58..90)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "A#/Bb3..F7 (58..101)",
+    "extendedBy": "base/base"
+  },
+  "c": {
+    "transposition": 0,
+    "keyed": "C3..G5 (48..79)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "A0..C8 (21..108)",
+    "extendedBy": "base/base"
+  },
+  "cello": {
+    "transposition": 0,
+    "keyed": "C2..G4 (36..67)",
+    "keyedBy": "base/base",
+    "extended": "C2..F#/Gb6 (36..90)",
+    "extendedBy": "base/base"
+  },
+  "clar_a": {
+    "transposition": -3,
+    "keyed": "E3..C7 (52..96)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "E3..C7 (52..96)",
+    "extendedBy": "base/base"
+  },
+  "clar_alto_eb": {
+    "transposition": -9,
+    "keyed": "E3..F6 (52..89)",
+    "keyedBy": "base/base",
+    "extended": "E3..A6 (52..93)",
+    "extendedBy": "base/base"
+  },
+  "clar_bass_bb": {
+    "transposition": -14,
+    "keyed": "C3..C7 (48..96)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "C3..C7 (48..96)",
+    "extendedBy": "base/base"
+  },
+  "clar_basset_f": {
+    "transposition": -7,
+    "keyed": "C3..C7 (48..96)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "C3..C7 (48..96)",
+    "extendedBy": "base/app_overlay"
+  },
+  "clar_bb": {
+    "transposition": -2,
+    "keyed": "E3..C7 (52..96)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "E3..C7 (52..96)",
+    "extendedBy": "base/base"
+  },
+  "clar_c": {
+    "transposition": 0,
+    "keyed": "E3..C7 (52..96)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "E3..C7 (52..96)",
+    "extendedBy": "base/app_overlay"
+  },
+  "clar_contraalto_eb": {
+    "transposition": -21,
+    "keyed": "C3..G6 (48..91)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "C3..C7 (48..96)",
+    "extendedBy": "app_overlay/base"
+  },
+  "clar_contrabass_bb": {
+    "transposition": -26,
+    "keyed": "C3..G6 (48..91)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "C3..C7 (48..96)",
+    "extendedBy": "base/base"
+  },
+  "clar_d": {
+    "transposition": 2,
+    "keyed": "E3..C7 (52..96)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "E3..C7 (52..96)",
+    "extendedBy": "base/base"
+  },
+  "clar_eb": {
+    "transposition": 3,
+    "keyed": "E3..C7 (52..96)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "E3..C7 (52..96)",
+    "extendedBy": "base/base"
+  },
+  "contrabassoon": {
+    "transposition": -12,
+    "keyed": "A#/Bb1..A4 (34..69)",
+    "keyedBy": "base/base",
+    "extended": "A#/Bb1..C5 (34..72)",
+    "extendedBy": "base/base"
+  },
+  "cornet_bb": {
+    "transposition": -2,
+    "keyed": "F#/Gb3..A5 (54..81)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb3..C6 (54..84)",
+    "extendedBy": "base/base"
+  },
+  "double_bass": {
+    "transposition": -12,
+    "keyed": "E2..D5 (40..74)",
+    "keyedBy": "base/base",
+    "extended": "C2..G5 (36..79)",
+    "extendedBy": "base/base"
+  },
+  "eb_alto": {
+    "transposition": -9,
+    "keyed": "A#/Bb3..F#/Gb6 (58..90)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "A#/Bb3..F7 (58..101)",
+    "extendedBy": "base/base"
+  },
+  "eb_bari": {
+    "transposition": -21,
+    "keyed": "A3..F#/Gb6 (57..90)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "A3..F7 (57..101)",
+    "extendedBy": "base/base"
+  },
+  "eb_contrabass": {
+    "transposition": -33,
+    "keyed": "A#/Bb3..F#/Gb6 (58..90)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "A#/Bb3..F#/Gb6 (58..90)",
+    "extendedBy": "base/app_overlay"
+  },
+  "eb_sopranino": {
+    "transposition": 3,
+    "keyed": "A#/Bb3..F#/Gb6 (58..90)",
+    "keyedBy": "app_overlay/app_overlay",
+    "extended": "A#/Bb3..F#/Gb6 (58..90)",
+    "extendedBy": "base/app_overlay"
+  },
+  "english_horn": {
+    "transposition": -7,
+    "keyed": "B3..E6 (59..88)",
+    "keyedBy": "base/base",
+    "extended": "B3..F#/Gb6 (59..90)",
+    "extendedBy": "base/base"
+  },
+  "euph_bc": {
+    "transposition": 0,
+    "keyed": "E2..A#/Bb4 (40..70)",
+    "keyedBy": "base/base",
+    "extended": "E2..D5 (40..74)",
+    "extendedBy": "base/base"
+  },
+  "euph_tc": {
+    "transposition": -14,
+    "keyed": "F#/Gb3..C6 (54..84)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb3..E6 (54..88)",
+    "extendedBy": "base/base"
+  },
+  "flugel_bb": {
+    "transposition": -2,
+    "keyed": "F#/Gb3..A5 (54..81)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb3..C6 (54..84)",
+    "extendedBy": "base/base"
+  },
+  "flute_alto_g": {
+    "transposition": -5,
+    "keyed": "C4..A6 (60..93)",
+    "keyedBy": "base/base",
+    "extended": "C4..C7 (60..96)",
+    "extendedBy": "base/base"
+  },
+  "flute_bass_c": {
+    "transposition": -12,
+    "keyed": "C4..F6 (60..89)",
+    "keyedBy": "base/base",
+    "extended": "C4..A6 (60..93)",
+    "extendedBy": "base/base"
+  },
+  "flute_c": {
+    "transposition": 0,
+    "keyed": "C4..A6 (60..93)",
+    "keyedBy": "base/base",
+    "extended": "B3..D7 (59..98)",
+    "extendedBy": "base/base"
+  },
+  "flute_piccolo": {
+    "transposition": 12,
+    "keyed": "D4..A6 (62..93)",
+    "keyedBy": "base/base",
+    "extended": "D4..C7 (62..96)",
+    "extendedBy": "base/base"
+  },
+  "guitar": {
+    "transposition": 0,
+    "keyed": "E2..B5 (40..83)",
+    "keyedBy": "base/base",
+    "extended": "E2..C6 (40..84)",
+    "extendedBy": "base/base"
+  },
+  "harp": {
+    "transposition": 0,
+    "keyed": "B0..G#/Ab7 (23..104)",
+    "keyedBy": "base/base",
+    "extended": "B0..G#/Ab7 (23..104)",
+    "extendedBy": "base/base"
+  },
+  "horn_bb": {
+    "transposition": -2,
+    "keyed": "A#/Bb2..G5 (46..79)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb2..C6 (42..84)",
+    "extendedBy": "base/base"
+  },
+  "horn_eb_alto": {
+    "transposition": -9,
+    "keyed": "F#/Gb3..A5 (54..81)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb3..C6 (54..84)",
+    "extendedBy": "base/base"
+  },
+  "horn_f": {
+    "transposition": -7,
+    "keyed": "C3..E5 (48..76)",
+    "keyedBy": "base/base",
+    "extended": "D2..C6 (38..84)",
+    "extendedBy": "base/base"
+  },
+  "mandolin": {
+    "transposition": 0,
+    "keyed": "G3..C#/Db6 (55..85)",
+    "keyedBy": "base/base",
+    "extended": "G3..E7 (55..100)",
+    "extendedBy": "base/base"
+  },
+  "mellophone_f": {
+    "transposition": -7,
+    "keyed": "F#/Gb3..A5 (54..81)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb3..C6 (54..84)",
+    "extendedBy": "base/base"
+  },
+  "oboe": {
+    "transposition": 0,
+    "keyed": "A#/Bb3..D#/Eb6 (58..87)",
+    "keyedBy": "base/base",
+    "extended": "A#/Bb3..C7 (58..96)",
+    "extendedBy": "base/base"
+  },
+  "oboe_damore": {
+    "transposition": -3,
+    "keyed": "B3..D#/Eb6 (59..87)",
+    "keyedBy": "base/base",
+    "extended": "B3..F#/Gb6 (59..90)",
+    "extendedBy": "base/base"
+  },
+  "piano": {
+    "transposition": 0,
+    "keyed": "A0..C8 (21..108)",
+    "keyedBy": "base/base",
+    "extended": "A0..C8 (21..108)",
+    "extendedBy": "base/base"
+  },
+  "rec_alto_f": {
+    "transposition": 0,
+    "keyed": "F4..E6 (65..88)",
+    "keyedBy": "base/base",
+    "extended": "E4..C7 (64..96)",
+    "extendedBy": "base/base"
+  },
+  "rec_bass_f": {
+    "transposition": 0,
+    "keyed": "F3..D5 (53..74)",
+    "keyedBy": "base/base",
+    "extended": "F3..F5 (53..77)",
+    "extendedBy": "base/base"
+  },
+  "rec_sopranino_f": {
+    "transposition": 12,
+    "keyed": "F4..E6 (65..88)",
+    "keyedBy": "base/base",
+    "extended": "F4..G6 (65..91)",
+    "extendedBy": "base/base"
+  },
+  "rec_soprano_c": {
+    "transposition": 12,
+    "keyed": "C4..A5 (60..81)",
+    "keyedBy": "base/base",
+    "extended": "C4..G6 (60..91)",
+    "extendedBy": "base/base"
+  },
+  "rec_tenor_c": {
+    "transposition": 0,
+    "keyed": "C4..A5 (60..81)",
+    "keyedBy": "base/base",
+    "extended": "C4..G6 (60..91)",
+    "extendedBy": "base/base"
+  },
+  "sousaphone_bbb": {
+    "transposition": 0,
+    "keyed": "F#/Gb1..C4 (30..60)",
+    "keyedBy": "base/base",
+    "extended": "C1..D5 (24..74)",
+    "extendedBy": "base/base"
+  },
+  "tbn_alto_eb": {
+    "transposition": 0,
+    "keyed": "A2..D5 (45..74)",
+    "keyedBy": "base/base",
+    "extended": "A2..F5 (45..77)",
+    "extendedBy": "base/base"
+  },
+  "tbn_bass": {
+    "transposition": 0,
+    "keyed": "G#/Ab1..F4 (32..65)",
+    "keyedBy": "base/base",
+    "extended": "A0..F5 (21..77)",
+    "extendedBy": "base/base"
+  },
+  "tbn_contrabass": {
+    "transposition": 0,
+    "keyed": "E1..D4 (28..62)",
+    "keyedBy": "base/base",
+    "extended": "A0..C5 (21..72)",
+    "extendedBy": "app_overlay/app_overlay"
+  },
+  "tbn_tenor": {
+    "transposition": 0,
+    "keyed": "E2..B4 (40..71)",
+    "keyedBy": "base/base",
+    "extended": "C2..D5 (36..74)",
+    "extendedBy": "base/base"
+  },
+  "trp_a": {
+    "transposition": -3,
+    "keyed": "F#/Gb3..A#/Bb5 (54..82)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb3..D#/Eb6 (54..87)",
+    "extendedBy": "base/base"
+  },
+  "trp_bass_bb": {
+    "transposition": -14,
+    "keyed": "F#/Gb3..A5 (54..81)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb3..C6 (54..84)",
+    "extendedBy": "base/base"
+  },
+  "trp_bb": {
+    "transposition": -2,
+    "keyed": "F#/Gb3..A#/Bb5 (54..82)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb3..D#/Eb6 (54..87)",
+    "extendedBy": "base/base"
+  },
+  "trp_c": {
+    "transposition": 0,
+    "keyed": "F#/Gb3..A#/Bb5 (54..82)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb3..C#/Db6 (54..85)",
+    "extendedBy": "base/base"
+  },
+  "trp_d": {
+    "transposition": 2,
+    "keyed": "F#/Gb3..A5 (54..81)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb3..C6 (54..84)",
+    "extendedBy": "base/base"
+  },
+  "trp_e": {
+    "transposition": 4,
+    "keyed": "F#/Gb3..A5 (54..81)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb3..C6 (54..84)",
+    "extendedBy": "base/base"
+  },
+  "trp_eb": {
+    "transposition": 3,
+    "keyed": "F#/Gb3..A5 (54..81)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb3..C6 (54..84)",
+    "extendedBy": "base/base"
+  },
+  "trp_f": {
+    "transposition": 5,
+    "keyed": "C4..F5 (60..77)",
+    "keyedBy": "base/base",
+    "extended": "F#/Gb3..D6 (54..86)",
+    "extendedBy": "base/base"
+  },
+  "trp_piccolo_a": {
+    "transposition": 9,
+    "keyed": "C#/Db3..E5 (49..76)",
+    "keyedBy": "base/base",
+    "extended": "C#/Db3..G5 (49..79)",
+    "extendedBy": "base/base"
+  },
+  "trp_piccolo_bb": {
+    "transposition": 10,
+    "keyed": "C#/Db3..E5 (49..76)",
+    "keyedBy": "base/base",
+    "extended": "C#/Db3..G5 (49..79)",
+    "extendedBy": "base/base"
+  },
+  "tuba_bbb": {
+    "transposition": 0,
+    "keyed": "E1..A#/Bb3 (28..58)",
+    "keyedBy": "base/base",
+    "extended": "A#/Bb0..C5 (22..72)",
+    "extendedBy": "base/base"
+  },
+  "tuba_cc": {
+    "transposition": 0,
+    "keyed": "D1..C4 (26..60)",
+    "keyedBy": "base/base",
+    "extended": "C1..C5 (24..72)",
+    "extendedBy": "base/base"
+  },
+  "tuba_eb": {
+    "transposition": 0,
+    "keyed": "D1..E4 (26..64)",
+    "keyedBy": "base/base",
+    "extended": "C1..C5 (24..72)",
+    "extendedBy": "base/base"
+  },
+  "tuba_f": {
+    "transposition": 0,
+    "keyed": "D1..E4 (26..64)",
+    "keyedBy": "base/base",
+    "extended": "C1..C5 (24..72)",
+    "extendedBy": "base/base"
+  },
+  "ukulele": {
+    "transposition": 0,
+    "keyed": "C4..A5 (60..81)",
+    "keyedBy": "base/base",
+    "extended": "C4..A5 (60..81)",
+    "extendedBy": "base/base"
+  },
+  "viola": {
+    "transposition": 0,
+    "keyed": "C3..G5 (48..79)",
+    "keyedBy": "base/base",
+    "extended": "C3..A6 (48..93)",
+    "extendedBy": "base/base"
+  },
+  "violin": {
+    "transposition": 0,
+    "keyed": "G3..E6 (55..88)",
+    "keyedBy": "base/base",
+    "extended": "G3..G7 (55..103)",
+    "extendedBy": "base/base"
+  },
+  "voice": {
+    "transposition": 0,
+    "keyed": "F2..G5 (41..79)",
+    "keyedBy": "base/base",
+    "extended": "D2..C6 (38..84)",
+    "extendedBy": "base/base"
+  }
+}
