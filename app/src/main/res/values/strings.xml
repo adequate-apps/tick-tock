@@ -4,9 +4,36 @@
     <!-- The user-visible name lives here and in AppIdentity.NAME, nowhere else. -->
     <string name="app_name">TickTock</string>
 
+    <!-- Title strip -->
     <string name="state_idle">Idle</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_back">Back</string>
+
+    <!-- Status bar: one fact per segment, always a sentence or a plain fact. -->
     <string name="status_microphone_closed">Microphone closed</string>
     <string name="status_output_closed">Output closed</string>
+
+    <!-- Tabs -->
+    <string name="tab_tune">Tune</string>
+    <string name="tab_drone_metronome">Drone / Metronome</string>
+    <string name="tab_table">Table</string>
+
+    <!-- Panes -->
     <string name="pane_tune">Tune</string>
-    <string name="empty_ready">Ready.</string>
+    <string name="pane_drone">Drone</string>
+    <string name="pane_metronome">Metronome</string>
+    <string name="pane_table">Intonation table</string>
+    <string name="pane_settings">Settings</string>
+    <string name="pane_state_stopped">Stopped</string>
+
+    <!--
+        Empty states: each one says what will appear here and what makes it
+        appear. These are placeholders for an internal build; later milestones
+        replace them with the real panes.
+    -->
+    <string name="empty_tune">The note you play appears here as a name, whole cents and Hz, with a needle showing how far it sits from centre. Detection is scheduled for a later build.</string>
+    <string name="empty_drone">A held reference tone appears here: a tone grid with octave steps, three voices and a volume. Sound is scheduled for a later build.</string>
+    <string name="empty_metronome">The click appears here: tempo, time signature, accents and a beat row. Sound is scheduled for a later build.</string>
+    <string name="empty_table">Every note you hold builds a curve here. The table lists each note with its spread for this session or all history. Storage is scheduled for a later build.</string>
+    <string name="empty_settings">Settings appear here: instrument, A4, written or concert pitch, spelling, response, noise floor, keep-awake, drone voice, click sound and visual offset.</string>
 </resources>
