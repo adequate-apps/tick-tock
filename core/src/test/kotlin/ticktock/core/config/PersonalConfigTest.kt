@@ -214,6 +214,32 @@ class PersonalConfigTest {
         assertEquals("440 Hz", diff.changes.first { it.key == "a4Hz" }.before)
     }
 
+    /**
+     * Decision 3: an import shows what it will change before applying. Fields
+     * this version does not know are merged too, so the diff has to say so;
+     * ones that already hold the same value are not a change.
+     */
+    @Test
+    fun `diff counts the unknown fields an import will replace`() {
+        val current = PersonalConfig(
+            settings = PortableSettings(a4Hz = 440.0, unknownFields = linkedMapOf("ringTone" to Json.str("bell"))),
+            unknownFields = linkedMapOf("theme" to Json.str("gray"), "same" to Json.num(1)),
+        )
+        val incoming = PersonalConfig(
+            settings = PortableSettings(unknownFields = linkedMapOf("ringTone" to Json.str("chime"))),
+            unknownFields = linkedMapOf("theme" to Json.str("blue"), "same" to Json.num(1), "added" to Json.bool(true)),
+        )
+        val diff = PersonalConfigMerge.diff(current, incoming)
+        assertEquals(listOf("3 fields from a newer version of the app will be replaced or added."), diff.sentences())
+        val change = diff.changes.single()
+        assertEquals(ImportChange.Section.NEWER_VERSION, change.section)
+        assertEquals("3 fields", change.after)
+
+        val one = PersonalConfigMerge.diff(current, PersonalConfig(unknownFields = linkedMapOf("added" to Json.bool(true))))
+        assertEquals(listOf("1 field from a newer version of the app will be replaced or added."), one.sentences())
+        assertTrue(PersonalConfigMerge.diff(current, PersonalConfig(unknownFields = linkedMapOf("same" to Json.num(1)))).isEmpty)
+    }
+
     @Test
     fun `diff of an identical or empty import is empty`() {
         assertTrue(PersonalConfigMerge.diff(full, full).isEmpty)
