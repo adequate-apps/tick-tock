@@ -20,6 +20,14 @@ class CentsBandTest {
         assertEquals(-13, Cents.shown(-12.6))
         assertEquals(0, Cents.shown(-0.4))
         assertEquals("+0", Cents.format(Cents.shown(-0.4)))
+        // The largest double below one half: adding 0.5 first would round it
+        // up to 1.0 before the floor, so -0.4999... would print as -1.
+        assertEquals(0, Cents.shown(0.49999999999999994))
+        assertEquals(0, Cents.shown(-0.49999999999999994))
+        assertEquals("+0", Cents.format(Cents.shown(-0.49999999999999994)))
+        assertEquals(5, Cents.shown(5.499999999999999))
+        assertEquals(12, Cents.shown(12.499999999999998))
+        assertEquals(-12, Cents.shown(-12.499999999999998))
         assertEquals("+5", Cents.format(5))
         assertEquals("-13", Cents.format(-13))
     }
