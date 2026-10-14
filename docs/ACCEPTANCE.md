@@ -9,7 +9,7 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| DET-01 | search band | U | 2.0 | YinTest `DET-01` | green |
+| DET-01 | search band | U | 2.0 | YinTest `DET-01` (25 to 4570 Hz: half a semitone past A0 at A4 = 415 and C8 at A4 = 466, the sweep ends of decision 16, derived from `Pitch.A4_HZ` in the test) | green |
 | DET-02 | interpolation on the raw difference function | U | 2.0 | YinTest `DET-02` (`Yin.parabolicOffset` on the raw difference function, three-positive guard) | green |
 | DET-03 | multi-period refinement | U | 2.0 | YinTest `DET-03` | green |
 | DET-04 | interpolated threshold | U | 2.0 | YinTest `DET-04` | green |
@@ -18,10 +18,10 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 | DET-07 | full-range sweep, instrument-like timbres | U | 2.0 | YinSweepTest `reads the note within tolerance[DET-07 sax-like ...]` and `[DET-07 weak-fundamental ...]`, 352 cases, every one within 1 c, no strict gap; plus DetectorEndToEndTest (the real YIN behind HopAnalyser and Detector on frames from FakeAudioInput): a 33-note chromatic sax-like run at A4 = 442 at both rates, every saved reading on the right note within 1 c of its detune | green |
 | DET-08 | weak-fundamental high C | U | 2.0 | YinTest `DET-08` | green |
 | DET-09 | top octave, regression pin | U | 2.0 | YinTest `DET-09` | green |
-| DET-10 | low A at 430 | U | 2.0 | YinTest `DET-10` (A4 = 430, 435, 440, 442, 445, 450) | green |
-| DET-11 | C8 at 450 | U | 2.0 | YinTest `DET-11` | green |
+| DET-10 | low A at 430 | U | 2.0 | YinTest `DET-10` (two tests: A4 = 415, 430, 435, 440, 442, 445, 450, 466; A0 at A4 = 415 read 40 c flat) | green |
+| DET-11 | C8 at 450 | U | 2.0 | YinTest `DET-11` (two tests: A4 = 450 and 466; C8 at A4 = 466 read 40 c sharp) | green |
 | DET-12 | rate invariance | U | 2.0 | YinTest `DET-12` | green |
-| DET-13 | ceiling test | U | 2.0 | YinTest `DET-13` | green |
+| DET-13 | ceiling test | U | 2.0 | YinTest `DET-13` (two tests: 4600 Hz; every 100 Hz from 4600 Hz to 10 kHz, clean and at 10 dB SNR, no sub-harmonic at either rate) + YinTest `DET-08` at 10 dB SNR pinning the other side of the sub-period rule | green |
 | DET-14 | window long enough for the floor | U | 2.0 | YinTest `DET-14` (`Yin.WINDOW_SECONDS` reads `Hop.SECONDS`, the one definition the analyser cuts by) | green |
 | DET-15 | non-finite input | U | 2.0 | YinTest `DET-15`, YinEstimatorTest `DET-15` (no candidate at level 0, counted) and DetectorEndToEndTest `DET-15` (a NaN hop mid-note is skipped and counted, the held note goes on) | green |
 | DET-16 | off the UI thread | H, D | 2.0 | | open |
@@ -35,30 +35,30 @@ Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **
 | POL-02 | legato note-change latency | U | 2.0 | DetectorPolicyTest `POL-02`; DetectorEndToEndTest holds the readout non-blank across 32 legato changes on real audio | green |
 | POL-03 | no long-memory vote | U | 2.0 | DetectorPolicyTest `POL-03` | green |
 | POL-04 | unknown mode | U | 2.0 | ResponseModeTableTest `POL-04` (`ResponseMode.fromStored`) + PrefsSchemaTest `POL-04` (the normaliser reads an unknown mode as Normal; the Response control shows the normalised value) | green |
-| POL-05 | mode switch resets | U | 2.0 | DetectorPolicyTest `POL-05` | green |
+| POL-05 | mode switch resets | U | 2.0 | DetectorPolicyTest `POL-05` (two tests: the reset; the change returns the release of the note it forgot) | green |
 | POL-06 | attack edge | U | 2.0 | DetectorPolicyTest `POL-06` | green |
-| POL-07 | release edge | U | 2.0 | DetectorPolicyTest `POL-07` (two tests: silence, note change) | green |
-| POL-08 | re-attack of the same note | U | 2.0 | DetectorPolicyTest `POL-08` | green |
+| POL-07 | release edge | U | 2.0 | DetectorPolicyTest `POL-07` (three tests: silence, note change, the droop and re-attack scoop around a gap shorter than the window) | green |
+| POL-08 | re-attack of the same note | U | 2.0 | DetectorPolicyTest `POL-08` (two tests: a long silence; every gap from one hop to the window, in every mode: silence longer than the release edge ends the note and the re-attack confirms on its own hops) | green |
 | POL-09 | time in hops | U | 2.0 | HopAnalyserTest `POL-09` (400 hops in bursts of 8 with 0–200 ms of fake-clock jitter) | green |
 | POL-10 | aperiodicity on every path | U | 2.0 | DetectorPolicyTest `POL-10` (two tests) + HopAnalyserTest `POL-10` (white noise on frames) + DetectorEndToEndTest `POL-10` (10 s of white noise through the real YIN: nothing saved, no note shown) | green |
 | POL-11 | RMS gate | U | 2.0 | DetectorPolicyTest `POL-11` | green |
 | POL-12 | mic gain scope | U | 2.0 | DetectorPolicyTest `POL-12` + HopAnalyserTest `POL-12` (the window reaches the estimator unscaled) | green |
 | POL-13 | detector window gate | U | 2.0 | DetectorPolicyTest `POL-13` | green |
 | POL-14 | leaps of any size are saved | U | 2.0 | DetectorPolicyTest `POL-14` (octave up, fifth down, sixth up) | green |
-| POL-15 | one window per hop | U | 2.0 | HopAnalyserTest `POL-15` | green |
-| POL-16 | oversized block | U | 2.0 | HopAnalyserTest `POL-16` (two tests: analyser, ring) | green |
+| POL-15 | one window per hop | U | 2.0 | HopAnalyserTest `POL-15`; after a ring gap the first hop is context only, so no window that never existed is analysed (HopAnalyserTest `POL-16 after an overflow`) | green |
+| POL-16 | oversized block | U | 2.0 | HopAnalyserTest `POL-16` (three tests: analyser, ring, and after an overflow every window is contiguous audio and hop numbering follows sounding time) | green |
 | POL-17 | restart replaces the stream | U | 2.0 | HopAnalyserTest `POL-17` (two tests) with FakeAudioInput | green |
 | POL-18 | counters visible | U | 2.0 | HopAnalyserTest `POL-18` (`AnalysisCounters`; the Diagnostics page reads them in M6) | green |
 | POL-19 | readings carry their A4 | U | 2.0 | DetectorA4Test `POL-19` | green |
-| POL-20 | A4 change discards stale readings | U | 2.0 | DetectorA4Test `POL-20` | green |
+| POL-20 | A4 change discards stale readings | U | 2.0 | DetectorA4Test `POL-20` (two tests: the discard; the change returns the release of the note it forgot) | green |
 | POL-21 | same-value change | U | 2.0 | DetectorA4Test `POL-21` | green |
 | POL-22 | new run on A4 change | U | 2.0 | DetectorA4Test `POL-22` (the reading stream is partitioned by generation; the run row itself opens under SES-02 in M3) | green |
 | POL-23 | table after an A4 change | U | 2.0 | DetectorA4Test `POL-23` (`Pitch.centsFrom` re-derives from stored Hz, and every reading carries its A4) | green |
-| POL-24 | bleed is excluded | N + U | 2.0 | U: BleedPolicyTest `POL-24` on scripted estimates; N fixtures land with the engine | open |
+| POL-24 | bleed is excluded | N + U | 2.0 | U: BleedPolicyTest `POL-24` on scripted estimates, and `POL-28 leakage after the player stops` (leakage after a unison is never saved); N fixtures land with the engine | open |
 | POL-25 | an excluded hop keeps the player's note | N + U | 2.0 | U: BleedPolicyTest `POL-25`; N fixtures land with the engine | open |
 | POL-26 | duck on suspicion | N + U | 2.0 | U: BleedPolicyTest `POL-26` (two tests); N fixtures land with the engine | open |
-| POL-27 | unison is measured | N + U | 2.0 | U: BleedPolicyTest `POL-27` (two tests); N fixtures land with the engine | open |
-| POL-28 | pure leakage is never re-admitted | N + U | 2.0 | U: BleedPolicyTest `POL-28`; N fixtures land with the engine | open |
+| POL-27 | unison is measured | N + U | 2.0 | U: BleedPolicyTest `POL-27` (three tests: admission, a dip restarts the count, one weak hop in unison is skipped and three end the admission); N fixtures land with the engine | open |
+| POL-28 | pure leakage is never re-admitted | N + U | 2.0 | U: BleedPolicyTest `POL-28` (two tests: leakage alone; leakage after the player stops, where the admission lapses and nothing is saved); N fixtures land with the engine | open |
 | POL-29 | no duck, no re-admission | N + U | 2.0 | U: BleedPolicyTest `POL-29`; N fixtures land with the engine | open |
 | POL-30 | pipes are duck consumers | N + U | 2.0 | U: BleedPolicyTest `POL-30`; N fixtures land with the engine | open |
 | POL-31 | render scope | H | 2.0 | | open |
@@ -136,7 +136,7 @@ ledgered under their own prefixes below.
 | SES-08 | summaries and indexes | H | 2.0 | | open |
 | SES-09 | retention | H | 2.0 | | open |
 | SES-10 | storage budget | H | 2.0 | | open |
-| SES-11 | one writer | H | 2.0 | the field table and the normaliser derived from it: PrefsSchemaTest `SES-11`; the one writer lands with `PrefsStore` in M3 | open |
+| SES-11 | one writer | H | 2.0 | the field table and the normaliser derived from it: PrefsSchemaTest `SES-11`; the noise-floor range tops out where the gate stays reachable under every preset (ResponseModeTableTest `the top of the noise-floor range`); the one writer lands with `PrefsStore` in M3 | open |
 | SES-12 | unknown and newer fields | H | 2.0 | the normaliser's round trip of unknown and newer-version fields: PrefsSchemaTest `SES-12`; the store's half lands in M3 | open |
 | SES-13 | zero stays zero | H | 2.0 | the normaliser keeps a gain of 0: PrefsSchemaTest `SES-13`; the restart path lands in M3 | open |
 | SES-14 | golden stored data | H | 2.0 | | open |
@@ -272,7 +272,7 @@ revision document; the IDs are claimed here like any other.
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | CHK-01 | ensemble and check-set pads marked | H | 2.0 | the marks per pad: TuningNotesTest `CHK-01`; the grid lands in M5 | open |
-| CHK-02 | check sets per instrument, golden over all 73 keys | U | 2.0 | TuningNotesTest `CHK-02` (four tests) + `core/src/test/resources/catalogue/tuning-notes-golden.json` | green |
+| CHK-02 | check sets per instrument, golden over all 73 keys | U | 2.0 | TuningNotesTest `CHK-02` (seven tests: the clarinet and saxophone sets, every key's set, one band's Bb per instrument, a set agrees with its preferred ensemble note, every trumpet climbs concert F to Bb, the golden) + `core/src/test/resources/catalogue/tuning-notes-golden.json` | green |
 | CHK-03 | Next check retunes in place | N, H | 2.0 | the walk through the set: TuningNotesTest `CHK-03`; the retune is TON-03 in M2 | open |
 
 ### A4 range
@@ -322,7 +322,7 @@ revision document; the IDs are claimed here like any other.
 |---|---|---|---|---|---|
 | SRC-01 | source chosen by the UNPROCESSED property | H | 2.0 | | open |
 | SRC-02 | Diagnostics shows source and effects | H | 2.0 | | open |
-| SRC-03 | floors shift by the source offset | U | 2.0 | ResponseModeTableTest `SRC-03` | green |
+| SRC-03 | floors shift by the source offset | U | 2.0 | ResponseModeTableTest `SRC-03` (the table) + HopAnalyserTest `SRC-03` (the preset the input opened with reaches the gate through the analyser) | green |
 
 ### Output stream mode
 
