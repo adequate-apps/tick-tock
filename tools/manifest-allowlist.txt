@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Every <uses-permission> the merged manifest may carry, one per line. The
+# check in tools/check-manifest.sh compares the set exactly: a permission that
+# appears here and is missing from the build is as much a finding as a new one,
+# because either means the manifest changed without this file being reviewed.
+#
+# The literal <applicationId> stands for the package of the variant under
+# test, so the debug suffix does not need its own line.
+#
+# v1 records audio and nothing else. Background playback (v1.2) will add a
+# foreground-service set here in its own reviewed change.
+android.permission.RECORD_AUDIO
+
+# Declared by androidx.core for every app: a signature-level permission that
+# protects dynamically registered receivers. It is granted to the app itself
+# and prompts for nothing.
+<applicationId>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
