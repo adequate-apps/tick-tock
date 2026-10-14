@@ -22,8 +22,10 @@ data class BleedState(
     val strongHops: Int = 0,
     /** The sounding note the strong hops were counted for; evidence for one note says nothing about another. */
     val strongNote: Int? = null,
-    /** A sounding note proven to be the player's too; its readings are saved. */
+    /** A sounding note proven to be the player's too; its readings are saved while the level keeps proving it. */
     val admitted: Int? = null,
+    /** Consecutive hops of the admitted note whose level fell under the unison ratio. */
+    val weakHops: Int = 0,
 ) {
     companion object {
         val IDLE = BleedState()
@@ -46,11 +48,19 @@ data class BleedStep(
  * (POL-27). Leakage alone falls with the duck and is never admitted (POL-28);
  * an output that cannot duck never gets the chance (POL-29). The duck releases
  * after three clear hops.
+ *
+ * An admission holds only while the level keeps proving it: the drone keeps
+ * leaking the same note after the player stops or breathes, so a hop of the
+ * admitted note under the ratio is skipped, and [LAPSE_HOPS] such hops in a
+ * row withdraw the admission, which then has to be earned again (POL-28).
  */
 object BleedPolicy {
     const val SUSPECT_HOPS = 3
     const val CLEAR_HOPS = 3
     const val UNISON_HOPS = 5
+
+    /** Weak hops that end an admission: one is a dip or a glitch, three is the player gone, as for a leak suspected or cleared. */
+    const val LAPSE_HOPS = 3
     private const val DUCK_FLOOR_LINEAR = 0.30
     val DUCK_FLOOR: Float = DUCK_FLOOR_LINEAR.toFloat()
     const val FULL_GAIN = 1.0f
@@ -83,8 +93,23 @@ object BleedPolicy {
         }
         val leak = candidate != null && candidate in sounding
         if (!leak) return clear(state)
-        if (state.admitted == candidate) return BleedStep(state.copy(clearHops = 0), exclude = false)
+        if (state.admitted == candidate) return holdAdmission(state, level)
         return suspect(state, candidate, level, duckable)
+    }
+
+    /**
+     * The admitted note again: still the player's while the level stays at
+     * unison. Under the ratio it is what the leak alone gives, so the hop is
+     * skipped, and a run of them withdraws the admission.
+     */
+    private fun holdAdmission(state: BleedState, level: Double): BleedStep {
+        if (level >= UNISON_RATIO * state.preDuckLevel) return BleedStep(state.copy(clearHops = 0, weakHops = 0), exclude = false)
+        val weakHops = state.weakHops + 1
+        if (weakHops >= LAPSE_HOPS) {
+            val lapsed = state.copy(clearHops = 0, weakHops = 0, strongHops = 0, strongNote = null, admitted = null)
+            return BleedStep(lapsed, exclude = true)
+        }
+        return BleedStep(state.copy(clearHops = 0, weakHops = weakHops), exclude = true)
     }
 
     private fun clear(state: BleedState): BleedStep {
@@ -112,7 +137,7 @@ object BleedPolicy {
         val hopsSinceDuck = state.hopsSinceDuck + 1
         if (hopsSinceDuck < RAMP_HOPS) {
             // The ramp is still moving; a level read now says nothing about who is playing.
-            return BleedStep(state.copy(suspectHops = suspectHops, clearHops = 0, hopsSinceDuck = hopsSinceDuck), exclude = true)
+            return BleedStep(state.copy(suspectHops = suspectHops, clearHops = 0, hopsSinceDuck = hopsSinceDuck, weakHops = 0), exclude = true)
         }
         val strong = level >= UNISON_RATIO * state.preDuckLevel
         val continuing = candidate == state.strongNote
@@ -124,7 +149,7 @@ object BleedPolicy {
         val admitted = if (strongHops >= UNISON_HOPS) candidate else null
         val next = state.copy(
             suspectHops = suspectHops, clearHops = 0, hopsSinceDuck = hopsSinceDuck,
-            strongHops = strongHops, strongNote = candidate, admitted = admitted,
+            strongHops = strongHops, strongNote = candidate, admitted = admitted, weakHops = 0,
         )
         return BleedStep(next, exclude = admitted == null)
     }

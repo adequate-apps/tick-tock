@@ -130,9 +130,12 @@ class Detector(
 
         if (midi != null && bleedStep.exclude) {
             // A skipped hop leaves the incumbent and its pending readings alone
-            // (POL-25), unless the incumbent itself is what the output now
-            // sounds: then it is unproven and must not stay on the readout.
-            val release = if (incumbent == midi) endNote(hop, ReleaseCause.BLEED) else null
+            // (POL-25), unless the incumbent itself is what the output sounds
+            // and the player is not proven to hold it: then it must not stay
+            // on the readout. An admitted note rides out a weak hop; it ends
+            // when the admission lapses.
+            val unproven = incumbent == midi && bleed.admitted != midi
+            val release = if (unproven) endNote(hop, ReleaseCause.BLEED) else null
             return Decision(hop, HopClass.SKIP, skip = SkipReason.BLEED, level = level, incumbent = incumbent, release = release, duck = duck)
         }
         if (reason != null) {
