@@ -78,20 +78,68 @@ class HopAnalyserTest {
         analyser.attach(input).getOrThrow()
         val sine = Sine(440.0, 0.1, rate)
 
-        // Six hops of silence then four of tone: only the tone fits.
+        // Six hops of silence then four of tone: only the tone fits. The first
+        // kept hop has no neighbour before it and serves as context alone, so
+        // three windows come out, numbered from where the tone sits in time.
         val block = Synth.silence(hopFrames * 6) + sine.next(hopFrames * 4)
         input.push(block)
         val decisions = analyser.drain()
-        assertEquals(4, decisions.size)
+        assertEquals(listOf(7L, 8L, 9L), decisions.map { it.hop })
         assertTrue("silence got through: ${decisions.map { it.reject }}", decisions.none { it.reject == RejectReason.SILENCE })
-        assertEquals(6, analyser.counters.droppedHops)
+        assertEquals(7, analyser.counters.droppedHops)
 
         // The stream continues after the overflow.
         input.push(sine.next(hopFrames * 2))
         val more = analyser.drain()
-        assertEquals(listOf(4L, 5L), more.map { it.hop })
-        assertEquals(6, analyser.counters.droppedHops)
-        assertEquals(6, analyser.counters.hopsAnalysed)
+        assertEquals(listOf(10L, 11L), more.map { it.hop })
+        assertEquals(7, analyser.counters.droppedHops)
+        assertEquals(5, analyser.counters.hopsAnalysed)
+    }
+
+    /**
+     * POL-15 and POL-16 after an overflow. The ring dropped audio between the
+     * last hop analysed and the next, so the two are no longer neighbours and
+     * the window they would form never existed. The first hop after the gap
+     * is context only, and hop numbering moves on by the hops lost, so a hop
+     * index stays a time (POL-09). Each sample carries its own frame index,
+     * which makes a window's continuity checkable to the sample.
+     */
+    @Test
+    fun `POL-16 after an overflow no spliced window is analysed and hop numbering follows sounding time`() {
+        for (dropped in intArrayOf(300, 1000, hopFrames)) {
+            val label = "$dropped frames dropped"
+            var frame = 0
+            fun frames(n: Int) = FloatArray(n) { (frame++).toFloat() }
+            val windows = ArrayList<FloatArray>()
+            val recording = PitchEstimator { window, frames, _ ->
+                windows += window.copyOf(frames)
+                HopEstimate.none(0.0)
+            }
+            val analyser = HopAnalyser(Detector(ResponseMode.NORMAL), recording, ringHops = 16)
+            val input = FakeAudioInput(sampleRate = rate)
+            analyser.attach(input).getOrThrow()
+            input.push(frames(hopFrames * 12))
+            assertEquals(label, (0L until 12L).toList(), analyser.drain().map { it.hop })
+
+            // One block beyond what is free: the ring keeps the newest 16 hops.
+            input.push(frames(hopFrames * 16 + dropped))
+            val after = analyser.drain()
+
+            // Every window after the first (whose first half is the silence before the stream) is contiguous audio.
+            for ((i, w) in windows.withIndex().drop(1)) {
+                for (j in 1 until w.size) assertEquals("$label: window $i breaks at sample $j", w[j - 1] + 1f, w[j], 0f)
+            }
+            val lostHops = dropped / hopFrames
+            assertEquals("$label: windows after the gap", 15, after.size)
+            assertEquals("$label: first hop after the gap", 12L + lostHops + 1, after.first().hop)
+            assertEquals("$label: hops lost plus the one spent as context", lostHops + 1L, analyser.counters.droppedHops)
+            assertEquals(label, 12 + 15, analyser.counters.hopsAnalysed)
+            // A hop index is sounding time to within a hop: the window's second half starts where the index says.
+            for ((i, w) in windows.drop(12).withIndex()) {
+                val start = after[i].hop * hopFrames
+                assertTrue("$label: hop ${after[i].hop} starts at frame ${w[hopFrames]}", kotlin.math.abs(w[hopFrames] - start) < hopFrames)
+            }
+        }
     }
 
     @Test
@@ -161,7 +209,7 @@ class HopAnalyserTest {
         var calls = 0
         val throwing = PitchEstimator { window, frames, sampleRate ->
             calls++
-            if (calls == 3) throw IllegalStateException("estimator failed on hop 2")
+            if (calls == 3) throw IllegalStateException("estimator failed on call 3")
             ZeroCrossingEstimator().estimate(window, frames, sampleRate)
         }
         val analyser = analyser(ringHops = 4, estimator = throwing)
@@ -169,15 +217,17 @@ class HopAnalyserTest {
         analyser.attach(input).getOrThrow()
         val sine = Sine(440.0, 0.1, rate)
 
+        // Five hops into a four-hop ring: one is lost, the first kept is context
+        // only, and the estimator throws on the third window it sees (hop 4).
         input.push(sine.next(hopFrames * 5))
         val decisions = analyser.drain()
-        assertEquals(listOf(0L, 1L, 3L), decisions.map { it.hop })
+        assertEquals(listOf(2L, 3L), decisions.map { it.hop })
         val counters = analyser.counters
-        assertEquals(1, counters.droppedHops)
+        assertEquals(2, counters.droppedHops)
         assertEquals(1, counters.analysisErrors)
-        assertEquals(3, counters.hopsAnalysed)
+        assertEquals(2, counters.hopsAnalysed)
         assertNotNull(counters.lastAnalysisError)
-        assertTrue(counters.lastAnalysisError!!.contains("hop 2"))
+        assertTrue(counters.lastAnalysisError!!.contains("call 3"))
 
         analyser.attach(input).getOrThrow()
         assertEquals(AnalysisCounters(), analyser.counters)
