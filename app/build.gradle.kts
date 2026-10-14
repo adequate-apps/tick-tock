@@ -82,16 +82,30 @@ tasks.withType<Test>().configureEach {
     inputs.files(fileTree("src/test/screenshots")).withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
-val checkReleaseApplicationId by tasks.registering {
+// Each release variant's effective application id, as AGP computes it after
+// flavors and suffixes. The guard reads these rather than the constant above,
+// so a flavor or suffix cannot slip a com.example id past it.
+val releaseApplicationIds = objects.mapProperty(String::class.java, String::class.java)
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        releaseApplicationIds.put(variant.name, variant.applicationId)
+    }
+}
+
+val checkReleaseApplicationId = tasks.register("checkReleaseApplicationId") {
     group = "verification"
-    description = "Fails while the application id is still the com.example placeholder."
-    val id = placeholderApplicationId
+    description = "Fails while any release variant's application id is still the com.example placeholder."
+    val ids = releaseApplicationIds
     doLast {
-        if (id.startsWith(placeholderPrefix)) {
-            throw GradleException(
-                "Release builds are blocked: applicationId '$id' is a placeholder. " +
-                    "Set the owner's real id in app/build.gradle.kts before building a release.",
-            )
+        val found = ids.get()
+        if (found.isEmpty()) throw GradleException("Release guard found no release variant to check.")
+        for ((variant, id) in found) {
+            if (id.startsWith(placeholderPrefix)) {
+                throw GradleException(
+                    "Release builds are blocked: applicationId '$id' of variant '$variant' is a placeholder. " +
+                        "Set the owner's real id in app/build.gradle.kts before building a release.",
+                )
+            }
         }
     }
 }
