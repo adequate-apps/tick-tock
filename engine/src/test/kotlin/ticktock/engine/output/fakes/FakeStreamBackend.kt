@@ -50,10 +50,13 @@ class FakeOpenStream(
         this.muted = muted
     }
 
+    /** When set, what the next buffer request is granted, whatever it asked; the native path grows on its own. */
+    var nextGrant: Int? = null
+
     override fun xrunCount(): Int = xruns
     override fun setBufferBursts(bursts: Int): Int {
-        this.bursts = bursts
-        return bursts
+        this.bursts = nextGrant ?: bursts
+        return this.bursts
     }
 
     override fun close(): Boolean = end(keep = false)

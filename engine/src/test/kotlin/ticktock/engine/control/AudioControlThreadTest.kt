@@ -694,6 +694,31 @@ class AudioControlThreadTest {
     }
 
     @Test
+    fun `SHM-02 two steps the render callback took inside one poll are two Diagnostics lines, and a refused step is none`() {
+        start()
+        register(OutputTool.METRONOME)
+        val stream = checkNotNull(backend.current)
+        stream.nextGrant = 4
+        stream.xruns = 2
+        idleFor(AudioControlThread.XRUN_POLL_MILLIS)
+        assertEquals(listOf("buffer 2 to 3 bursts", "buffer 3 to 4 bursts"), control.diagnostics.value.log.map { it.substringAfter(": ") })
+        assertEquals(4, control.diagnostics.value.bufferBursts)
+
+        val refusing = FakeStreamBackend()
+        val second = AudioControlThread(refusing, devices, modes, owner, BackgroundPolicy.StopEverything, 36)
+        second.start()
+        second.send(OutputCommand.Register(OutputTool.METRONOME))
+        shadowOf(second.looper).idle()
+        val clamped = checkNotNull(refusing.current)
+        clamped.nextGrant = 2
+        clamped.xruns = 1
+        shadowOf(second.looper).idleFor(Duration.ofMillis(AudioControlThread.XRUN_POLL_MILLIS))
+        assertEquals(listOf("buffer stays at 2 bursts"), second.diagnostics.value.log.map { it.substringAfter(": ") })
+        assertEquals(2, second.diagnostics.value.bufferBursts)
+        second.shutdown()
+    }
+
+    @Test
     fun `beats and counters from the stream reach the flow, and a dropped stream's do not`() {
         start()
         register(OutputTool.METRONOME)
