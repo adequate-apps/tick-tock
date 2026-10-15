@@ -43,7 +43,11 @@ class OutputGraphTest {
                 val before = graph.tune.trace.value
                 input.push(sine.next(Hop.frames(48_000)))
                 val deadline = System.nanoTime() + 5_000_000_000L
-                while (graph.tune.trace.value === before && System.nanoTime() < deadline) Thread.sleep(1)
+                while (graph.tune.trace.value === before && System.nanoTime() < deadline) {
+                    org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+                    Thread.sleep(1)
+                }
+                org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
                 assertTrue(graph.tune.trace.value !== before)
             }
             assertEquals(69, graph.tune.state.value.readout.midi)
@@ -134,7 +138,11 @@ class OutputGraphTest {
                 val samples = sine.next(Hop.frames(48_000))
                 input.push(if (followsDuck) samples.map { it * link.duckGain.get() }.toFloatArray() else samples)
                 val deadline = System.nanoTime() + 5_000_000_000L
-                while (graph.tune.trace.value === before && System.nanoTime() < deadline) Thread.sleep(1)
+                while (graph.tune.trace.value === before && System.nanoTime() < deadline) {
+                    org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+                    Thread.sleep(1)
+                }
+                org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
                 assertTrue("audio reached the app capture", graph.tune.trace.value !== before)
             }
             fun saved(): Long {
@@ -154,10 +162,26 @@ class OutputGraphTest {
                 val before = graph.tune.trace.value
                 input.push(sine.next(Hop.frames(48_000)).map { it * 4 * link.duckGain.get() }.toFloatArray())
                 val deadline = System.nanoTime() + 5_000_000_000L
-                while (graph.tune.trace.value === before && System.nanoTime() < deadline) Thread.sleep(1)
+                while (graph.tune.trace.value === before && System.nanoTime() < deadline) {
+                    org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+                    Thread.sleep(1)
+                }
+                org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
                 assertTrue(graph.tune.trace.value !== before)
             }
             assertEquals("a changed drone needs fresh full-gain evidence", beforeGainChange, saved())
+            repeat(35) {
+                val before = graph.tune.trace.value
+                input.push(sine.next(Hop.frames(48_000)).map { it * 4 }.toFloatArray())
+                val deadline = System.nanoTime() + 5_000_000_000L
+                while (graph.tune.trace.value === before && System.nanoTime() < deadline) {
+                    org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+                    Thread.sleep(1)
+                }
+                org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+                assertTrue(graph.tune.trace.value !== before)
+            }
+            assertTrue("a new player can earn admission against the new baseline", saved() > beforeGainChange)
             graph.onBackground()
             assertEquals(1f, link.duckGain.get())
         } finally {

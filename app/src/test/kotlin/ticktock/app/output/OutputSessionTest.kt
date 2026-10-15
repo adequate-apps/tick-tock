@@ -217,6 +217,7 @@ internal class TestOutputConnection : OutputConnection, OutputPort, SoundingNote
     override val events = MutableSharedFlow<OutputEvent>(extraBufferCapacity = 128)
     override val info = MutableStateFlow<OutputInfo?>(null)
     override val controlDiagnostics = MutableStateFlow(ControlDiagnostics())
+    var acknowledgeDucks = true
     val duckGain = AtomicReference(1f)
     val sent = mutableListOf<OutputCommand>()
     val registered = mutableSetOf<OutputTool>()
@@ -246,7 +247,10 @@ internal class TestOutputConnection : OutputConnection, OutputPort, SoundingNote
                     events.tryEmit(OutputEvent.Closed)
                 }
             }
-            is OutputCommand.Duck -> duckGain.set(cmd.gain)
+            is OutputCommand.Duck -> {
+                duckGain.set(cmd.gain)
+                if (acknowledgeDucks && cmd.generation != 0) events.tryEmit(OutputEvent.DuckSettled(cmd.generation, 0, 0))
+            }
             is OutputCommand.VoiceOn -> voice = cmd
             is OutputCommand.VoiceGain -> voice = voice?.copy(gain = cmd.gain)
             is OutputCommand.VoiceOff -> voice = null
@@ -260,6 +264,7 @@ internal class TestOutputConnection : OutputConnection, OutputPort, SoundingNote
         events.tryEmit(OutputEvent.Parked(reason, tools))
     }
     fun replug() {
+        duckGain.set(1f)
         info.value = openInfo
         events.tryEmit(OutputEvent.Resumed(registered.toSet(), openInfo))
     }

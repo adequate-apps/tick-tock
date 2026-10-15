@@ -18,15 +18,71 @@ import java.util.concurrent.atomic.AtomicReference
 
 class CaptureBleedTest {
     @Test
+    fun `POL-28 a queued burst cannot advance unison before the floor request dispatches`() {
+        val baselineReady = CountDownLatch(1)
+        val releaseBatch = CountDownLatch(1)
+        val requested = CountDownLatch(1)
+        val sink = FakeHistorySink()
+        val capture = LiveCapture(mode = ticktock.core.detect.ResponseMode.FAST, promote = {},
+            history = sink, sounding = FakeSoundingNotes(69), onDuck = { value, settled ->
+                if (value == 1f) {
+                    settled()
+                    baselineReady.countDown()
+                    check(releaseBatch.await(5, TimeUnit.SECONDS))
+                } else requested.countDown()
+            })
+        val input = FakeAudioInput(sampleRate = RATE)
+        capture.start(input)
+        try {
+            assertTrue(baselineReady.await(5, TimeUnit.SECONDS))
+            input.push(Sine(440.0, 0.2, RATE).next(16 * Hop.frames(RATE)))
+            releaseBatch.countDown()
+            assertTrue(requested.await(5, TimeUnit.SECONDS))
+            val deadline = System.nanoTime() + 5_000_000_000L
+            while (capture.level.value.hop < 15 && System.nanoTime() < deadline) Thread.sleep(1)
+            assertEquals(15L, capture.level.value.hop)
+            assertTrue("the request fences the rest of this burst", sink.accepted.isEmpty())
+            assertEquals(null, capture.state.value.readout.midi)
+        } finally { releaseBatch.countDown(); capture.stop() }
+    }
+
+    @Test
+    fun `POL-28 an old ducked stream and its input buffer cannot establish the restored baseline`() {
+        val gain = AtomicReference(0.3f)
+        val restore = AtomicReference<(() -> Unit)?>(null)
+        val sink = FakeHistorySink()
+        val capture = LiveCapture(mode = ticktock.core.detect.ResponseMode.FAST, promote = {},
+            history = sink, sounding = FakeSoundingNotes(69), onDuck = { value, settled ->
+                if (value == 1f) restore.set(settled) else { gain.set(value); settled() }
+            })
+        val input = FakeAudioInput(sampleRate = RATE, bufferFrames = 8 * Hop.frames(RATE))
+        capture.start(input)
+        try {
+            val sine = Sine(440.0, 0.2, RATE)
+            repeat(20) { hop(capture, input, sine.next(Hop.frames(RATE)).map { it * 0.3f }.toFloatArray()) }
+            assertTrue("old reduced audio is no baseline", sink.accepted.isEmpty())
+            gain.set(1f)
+            restore.getAndSet(null)!!.invoke()
+            repeat(8) { hop(capture, input, sine.next(Hop.frames(RATE)).map { it * 0.3f }.toFloatArray()) }
+            repeat(30) { hop(capture, input, sine.next(Hop.frames(RATE)).map { it * gain.get() }.toFloatArray()) }
+            assertEquals(0.3f, gain.get())
+            assertTrue("the full input buffer precedes eligible baseline windows", sink.accepted.isEmpty())
+            assertEquals(null, capture.state.value.readout.midi)
+        } finally { capture.stop() }
+    }
+
+    @Test
     fun `POL-28 a stalled worker cannot admit queued leakage before its duck takes effect`() {
         val entered = CountDownLatch(1)
         val release = CountDownLatch(1)
         val requested = CountDownLatch(1)
+        val acknowledgement = AtomicReference<(() -> Unit)?>(null)
+        val lastGain = AtomicReference(1f)
         val sink = FakeHistorySink()
         val capture = LiveCapture(mode = ticktock.core.detect.ResponseMode.FAST,
             promote = { entered.countDown(); check(release.await(5, TimeUnit.SECONDS)) },
             history = sink, sounding = FakeSoundingNotes(69),
-            onDuck = { if (it < 1f) requested.countDown() })
+            onDuck = { value, settled -> lastGain.set(value); acknowledgement.set(settled); requested.countDown() })
         val input = FakeAudioInput(sampleRate = RATE)
         capture.start(input)
         try {
@@ -39,6 +95,17 @@ class CaptureBleedTest {
             assertEquals(15L, capture.level.value.hop)
             assertTrue("pre-duck backlog must never reach history", sink.accepted.isEmpty())
             assertEquals(null, capture.state.value.readout.midi)
+            assertEquals("baseline waits for full gain", 1f, lastGain.get())
+            acknowledgement.getAndSet(null)!!.invoke()
+            val sine = Sine(440.0, 0.2, RATE)
+            repeat(6) { hop(capture, input, sine.next(Hop.frames(RATE))) }
+            assertEquals(0.3f, lastGain.get())
+            repeat(20) { hop(capture, input, sine.next(Hop.frames(RATE))) }
+            assertTrue("an unapplied floor cannot prove a player", sink.accepted.isEmpty())
+            assertEquals(null, capture.state.value.readout.midi)
+            acknowledgement.getAndSet(null)!!.invoke()
+            repeat(20) { hop(capture, input, sine.next(Hop.frames(RATE)).map { it * 0.3f }.toFloatArray()) }
+            assertTrue("fresh leakage remains excluded after acknowledgement", sink.accepted.isEmpty())
         } finally {
             release.countDown()
             capture.stop()
@@ -50,17 +117,18 @@ class CaptureBleedTest {
         val entered = CountDownLatch(1)
         val release = CountDownLatch(1)
         val gain = AtomicReference(1f)
-        val capture = LiveCapture(promote = {}, onDuck = { value ->
+        val capture = LiveCapture(promote = {}, onDuck = { value, settled ->
             if (value < 1f) {
                 entered.countDown()
                 check(release.await(5, TimeUnit.SECONDS))
             }
             gain.set(value)
+            settled()
         })
         capture.start(FakeAudioInput(sampleRate = RATE))
         val failure = InputFailure.Disconnected("USB microphone")
-        val method = LiveCapture::class.java.getDeclaredMethod("onDecisions", List::class.java).apply { isAccessible = true }
-        val analysis = Thread { method.invoke(capture, listOf(Decision(0, HopClass.SKIP, level = 0.1, incumbent = null, duck = 0.3f))) }
+        val method = LiveCapture::class.java.getDeclaredMethod("dispatchDuck", Decision::class.java).apply { isAccessible = true }
+        val analysis = Thread { method.invoke(capture, Decision(0, HopClass.SKIP, level = 0.1, incumbent = null, duck = 0.3f)) }
         val stopped = Thread { capture.onStopped(failure) }
         try {
             analysis.start()
@@ -87,7 +155,7 @@ class CaptureBleedTest {
         val gain = AtomicReference(1f)
         val sink = FakeHistorySink()
         val notes = FakeSoundingNotes(69)
-        val capture = LiveCapture(promote = {}, history = sink, sounding = notes, onDuck = gain::set)
+        val capture = LiveCapture(promote = {}, history = sink, sounding = notes, onDuck = { value, settled -> gain.set(value); settled() })
         val input = FakeAudioInput(sampleRate = RATE)
         capture.start(input)
         try {
@@ -106,7 +174,7 @@ class CaptureBleedTest {
     fun `POL-27 a player holding unison through the duck still reaches history`() {
         val gain = AtomicReference(1f)
         val sink = FakeHistorySink()
-        val capture = LiveCapture(promote = {}, history = sink, sounding = FakeSoundingNotes(69), onDuck = gain::set)
+        val capture = LiveCapture(promote = {}, history = sink, sounding = FakeSoundingNotes(69), onDuck = { value, settled -> gain.set(value); settled() })
         val input = FakeAudioInput(sampleRate = RATE)
         capture.start(input)
         try {
@@ -123,7 +191,7 @@ class CaptureBleedTest {
     fun `POL-28 capture restart forgets unison before hearing only the drone`() {
         val gain = AtomicReference(1f)
         val sink = FakeHistorySink()
-        val capture = LiveCapture(promote = {}, history = sink, sounding = FakeSoundingNotes(69), onDuck = gain::set)
+        val capture = LiveCapture(promote = {}, history = sink, sounding = FakeSoundingNotes(69), onDuck = { value, settled -> gain.set(value); settled() })
         val input = FakeAudioInput(sampleRate = RATE)
         capture.start(input)
         try {
@@ -143,7 +211,7 @@ class CaptureBleedTest {
     fun `POL-28 capture resume forgets unison before hearing only the drone`() {
         val gain = AtomicReference(1f)
         val sink = FakeHistorySink()
-        val capture = LiveCapture(promote = {}, history = sink, sounding = FakeSoundingNotes(69), onDuck = gain::set)
+        val capture = LiveCapture(promote = {}, history = sink, sounding = FakeSoundingNotes(69), onDuck = { value, settled -> gain.set(value); settled() })
         val input = FakeAudioInput(sampleRate = RATE)
         capture.start(input)
         try {

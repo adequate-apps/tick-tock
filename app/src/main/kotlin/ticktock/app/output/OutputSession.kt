@@ -73,6 +73,10 @@ class OutputSession(
     private var batch = 0L
     private var pending = false
     private var lastDuck = 1f
+    private var duckSequence = 0
+    private var pendingDuck = 0
+    private var duckSettled: (() -> Unit)? = null
+    private var duckPresentation: Job? = null
     private var route: Pair<Int?, String>? = null
     private var dismissed: Pair<Int?, String>? = null
     private var closed = false
@@ -92,6 +96,8 @@ class OutputSession(
     /** The debug build can observe the same stream without opening another engine. */
     var observeEvent: (OutputEvent) -> Unit = {}
     var observeCommand: (OutputCommand) -> Unit = {}
+    /** Invalidates capture evidence immediately; the callback must never wait for analysis. */
+    var bleedContextChanged: () -> Unit = {}
 
     @Synchronized
     override fun current(): IntArray = connection?.soundingNotes?.current() ?: IntArray(0)
@@ -180,11 +186,66 @@ class OutputSession(
 
     @Synchronized
     fun duck(gain: Float) {
+        cancelDuckEvidence()
         if ((measuring != null && gain != 1f) || gain == lastDuck || connection == null) return
         lastDuck = gain
         val command = OutputCommand.Duck(gain)
         observeCommand(command)
         connection?.send(listOf(command)) {}
+    }
+
+    /** A control-thread barrier cannot establish when a gain change reaches the microphone. */
+    @Synchronized
+    fun duck(gain: Float, settled: () -> Unit) {
+        cancelDuckEvidence()
+        if (closed || (measuring != null && gain != 1f)) return
+        val link = connection
+        if (link == null || link.port.info.value == null) {
+            settled()
+            return
+        }
+        duckSequence = if (duckSequence == Int.MAX_VALUE) 1 else duckSequence + 1
+        pendingDuck = duckSequence
+        duckSettled = settled
+        lastDuck = gain
+        val command = OutputCommand.Duck(gain, duckSequence)
+        observeCommand(command)
+        link.send(listOf(command)) {}
+    }
+
+    private fun cancelDuckEvidence() {
+        pendingDuck = 0
+        duckSettled = null
+        duckPresentation?.cancel()
+        duckPresentation = null
+    }
+
+    private fun invalidateBleed() {
+        cancelDuckEvidence()
+        bleedContextChanged()
+    }
+
+    private fun presented(event: OutputEvent.DuckSettled) {
+        if (event.generation != pendingDuck || duckSettled == null) return
+        duckPresentation?.cancel()
+        duckPresentation = scope.launch {
+            while (true) {
+                val remaining = synchronized(this@OutputSession) {
+                    if (closed || event.generation != pendingDuck) return@launch
+                    event.nanos - nanoTime()
+                }
+                if (remaining <= 0) break
+                delay((remaining + 999_999L) / 1_000_000L)
+            }
+            synchronized(this@OutputSession) {
+                if (!closed && event.generation == pendingDuck) {
+                    val settled = duckSettled
+                    pendingDuck = 0
+                    duckSettled = null
+                    settled?.invoke()
+                }
+            }
+        }
     }
 
     @Synchronized
@@ -367,6 +428,8 @@ class OutputSession(
     }
 
     private fun send(commands: List<OutputCommand>) {
+        if (commands.any { it is OutputCommand.VoiceOn || it is OutputCommand.VoiceOff ||
+                it is OutputCommand.VoiceGain || it is OutputCommand.SetA4 }) invalidateBleed()
         val link = ensureConnection()
         val version = ++batch
         pending = true
@@ -390,6 +453,7 @@ class OutputSession(
     private fun event(event: OutputEvent) {
         observeEvent(event)
         when (event) {
+            is OutputEvent.DuckSettled -> presented(event)
             is OutputEvent.Beat -> {
                 val run = measuring
                 if (run != null && calibrationState.value?.complete != true && run.measurement.beat(event)) updateCalibration(run)
@@ -410,7 +474,10 @@ class OutputSession(
                 mutableState.value = state.value.copy(failed = event, parked = ParkReason.OUTPUT_FAILED)
                 refresh()
             }
-            is OutputEvent.Opened, is OutputEvent.Resumed, OutputEvent.Closed -> refresh()
+            is OutputEvent.Opened, is OutputEvent.Resumed, OutputEvent.Closed -> {
+                invalidateBleed()
+                refresh()
+            }
             is OutputEvent.Counters -> Unit
         }
     }
@@ -420,6 +487,7 @@ class OutputSession(
         val nextRoute = info?.let { it.deviceId to it.deviceName }
         val muteSources = connection?.controlDiagnostics?.value?.muteSources.orEmpty()
         val muted = muteSources.isNotEmpty()
+        if (nextRoute != route || muted != state.value.muted) invalidateBleed()
         if (measuring?.let { it.route != nextRoute } == true) {
             finishCalibration(restore = false)
             return

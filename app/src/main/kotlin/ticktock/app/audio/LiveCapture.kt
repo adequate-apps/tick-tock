@@ -128,15 +128,29 @@ class LiveCapture(
     /** Where saved readings go; it queues and returns, so the analysis thread never waits on disk (SES-06). */
     private val history: HistorySink? = null,
     sounding: SoundingNotes = NoSoundingNotes,
-    private val onDuck: (Float) -> Unit = {},
+    private val onDuck: (Float, () -> Unit) -> Unit = { _, settled -> settled() },
 ) : InputListener {
     private val detector = Detector(mode, sounding = sounding).also { it.setA4(a4Hz) }
     private val duckLock = Any()
     private var duckEnabled = false
     val a4Hz: Double get() = detector.a4.hz
+    private val analyser = HopAnalyser(detector, YinEstimator(detector))
+    private val readyDecisions = ArrayList<Decision>()
     private val thread = AnalysisThread(
-        HopAnalyser(detector, YinEstimator(detector)), promote,
-        beforeBatch = ::applyRequests, onDecisions = ::onDecisions,
+        analyser, promote, beforeBatch = { readyDecisions.clear(); applyRequests() },
+        onDecisions = {
+            if (!resetAfterInterruption.get() && readyDecisions.isNotEmpty()) onDecisions(readyDecisions)
+        },
+        onDecision = { decision ->
+            // A route or voice change can arrive while an old window is being estimated.
+            if (resetAfterInterruption.get()) {
+                readyDecisions.clear()
+                applyRequests()
+            } else {
+                dispatchDuck(decision)
+                readyDecisions += decision
+            }
+        },
     )
     private val stateFlow = MutableStateFlow(CaptureState())
     val state: StateFlow<CaptureState> = stateFlow
@@ -194,6 +208,7 @@ class LiveCapture(
 
     fun start(input: AudioInput) {
         thread.stop()
+        resetAfterInterruption.set(true)
         synchronized(duckLock) { duckEnabled = true }
         hopsSinceDiagnostics = 0
         levelFlow.value = Level()
@@ -244,7 +259,8 @@ class LiveCapture(
     }
 
     override fun onResumed(info: InputInfo) {
-        resetAfterInterruption.set(true)
+        analyser.inputBufferChanged(info.bufferFrames)
+        outputContextChanged()
         synchronized(duckLock) { duckEnabled = true }
         stateFlow.update { it.copy(info = info, failure = null) }
     }
@@ -253,8 +269,20 @@ class LiveCapture(
         stateFlow.update { it.copy(absentDevice = failure) }
     }
 
+    /** Callable from output control without waiting on the analysis thread or its command lock. */
+    fun outputContextChanged() {
+        analyser.deferBleedEvidence()
+        resetAfterInterruption.set(true)
+    }
+
     private fun applyRequests() {
-        if (resetAfterInterruption.getAndSet(false)) detector.reset()?.let(::endNote)
+        if (resetAfterInterruption.getAndSet(false)) {
+            detector.reset()?.let(::endNote)
+            stateFlow.update { it.copy(readout = Readout()) }
+            synchronized(duckLock) {
+                if (duckEnabled) onDuck(1f, analyser.deferBleedEvidence())
+            }
+        }
         requestedA4.getAndSet(null)?.let { hz ->
             if (hz != detector.a4.hz) detector.setA4(hz)?.let(::endNote)
         }
@@ -263,10 +291,13 @@ class LiveCapture(
         }
     }
 
-    private fun onDecisions(decisions: List<Decision>) {
+    private fun dispatchDuck(decision: Decision) {
         synchronized(duckLock) {
-            if (duckEnabled) decisions.forEach { it.duck?.let(onDuck) }
+            if (duckEnabled) decision.duck?.let { onDuck(it, analyser.deferBleedEvidence()) }
         }
+    }
+
+    private fun onDecisions(decisions: List<Decision>) {
         if (history != null) {
             for (decision in decisions) decision.saved?.let { history.accept(it, decision.firstSettled) }
         }
@@ -290,7 +321,8 @@ class LiveCapture(
     private fun stopDuck() {
         synchronized(duckLock) {
             duckEnabled = false
-            onDuck(1f)
+            analyser.deferBleedEvidence()
+            onDuck(1f) {}
         }
     }
 

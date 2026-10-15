@@ -77,6 +77,7 @@ class AppGraph(
     val theme: StateFlow<Theme> = prefs.prefs.map { it.theme }.stateIn(scope, SharingStarted.Eagerly, prefs.prefs.value.theme)
 
     init {
+        output.bleedContextChanged = tune::outputContextChanged
         crashLog.install { prefs.prefs.value.hornNickname }
         history.start()
         // On the changing thread, so no reading after a label change carries the old label.

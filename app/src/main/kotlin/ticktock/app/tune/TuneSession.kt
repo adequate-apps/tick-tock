@@ -48,7 +48,7 @@ class TuneSession(
         context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
     },
     sounding: SoundingNotes = NoSoundingNotes,
-    onDuck: (Float) -> Unit = {},
+    onDuck: (Float, () -> Unit) -> Unit = { _, settled -> settled() },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val capture = LiveCapture(mode = prefs.responseMode, a4Hz = prefs.a4Hz, history = history,
@@ -105,6 +105,8 @@ class TuneSession(
             capture.requestMode(prefs.responseMode)
         }
     }
+
+    fun outputContextChanged() = capture.outputContextChanged()
 
     /** Tests only. */
     fun close() {
