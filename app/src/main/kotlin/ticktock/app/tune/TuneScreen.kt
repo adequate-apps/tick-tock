@@ -31,6 +31,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ticktock.app.AppGraph
+import ticktock.app.config.effectiveRange
+import ticktock.core.ranges.RangeResolver
 import ticktock.app.R
 import ticktock.app.audio.CaptureState
 import ticktock.app.audio.LastNote
@@ -252,15 +254,16 @@ private fun ReadoutField(
     val shownMidi = soundingMidi?.let { if (written) Transposition.writtenFromSounding(it, instrument.transposition) else it }
     val otherMidi = soundingMidi?.let { if (written) it else Transposition.writtenFromSounding(it, instrument.transposition) }
     val stacked = LocalDensity.current.fontScale >= STACK_LIMIT
+    val dimmed = soundingMidi != null && !RangeResolver.inExtendedRange(instrument, effectiveRange(instrument, prefs), soundingMidi)
 
     Field(Modifier.fillMaxWidth().testTag("readout")) {
         val left: @Composable () -> Unit = {
             Column(verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
-                NoteName(shownMidi, accidentals)
+                NoteName(shownMidi, accidentals, dimmed)
                 GlText(
                     text = hz?.let { "%.1f Hz".format(java.util.Locale.ROOT, it) } ?: "— Hz",
                     style = GridlineType.value,
-                    color = if (hz == null) GridlineColors.textDisabled else GridlineColors.textBody,
+                    color = if (hz == null || dimmed) GridlineColors.textDisabled else GridlineColors.textBody,
                     modifier = Modifier.testTag("readout-hz"),
                 )
             }
@@ -274,7 +277,7 @@ private fun ReadoutField(
                         GlText(text = stringResource(R.string.tune_sounding), style = GridlineType.uiStrong, modifier = Modifier.testTag("readout-sounding"))
                     }
                 } else {
-                    CentsReadout(cents, countdown)
+                    CentsReadout(cents, countdown, dimmed)
                 }
                 if (instrument.transposition != 0 && otherMidi != null) {
                     val name = spell(otherMidi, accidentals)
@@ -334,42 +337,35 @@ private fun ReadoutField(
 
 /** The note in the readout's large type, the octave smaller beside it; a gray dash with nothing to read. */
 @Composable
-private fun NoteName(midi: Int?, accidentals: ticktock.core.music.Accidentals) {
+private fun NoteName(midi: Int?, accidentals: ticktock.core.music.Accidentals, dimmed: Boolean) {
     if (midi == null) {
         GlText(text = "—", style = GridlineType.note, color = GridlineColors.textDisabled, modifier = Modifier.testTag("readout-note"))
         return
     }
+    val ink = if (dimmed) GridlineColors.textDisabled else GridlineColors.textBody
     Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.testTag("readout-note")) {
-        GlText(text = letter(midi, accidentals), style = GridlineType.note, maxLines = 1, modifier = Modifier.testTag("readout-letter"))
-        GlText(text = Pitch.octave(midi).toString(), style = GridlineType.octave, maxLines = 1, modifier = Modifier.testTag("readout-octave"))
+        GlText(text = letter(midi, accidentals), style = GridlineType.note, color = ink, maxLines = 1, modifier = Modifier.testTag("readout-letter"))
+        GlText(text = Pitch.octave(midi).toString(), style = GridlineType.octave, color = ink, maxLines = 1, modifier = Modifier.testTag("readout-octave"))
     }
 }
 
 /** The cents with the band's cue before them and the band's word under them; colour never stands alone (A11Y-03). */
 @Composable
-private fun CentsReadout(cents: Int?, countdown: (() -> Float)?) {
+private fun CentsReadout(cents: Int?, countdown: (() -> Float)?, dimmed: Boolean) {
     if (cents == null) {
         GlText(text = "—", style = GridlineType.cents, color = GridlineColors.textDisabled, modifier = Modifier.testTag("readout-cents"))
         return
     }
-    val band = CentsBand.of(cents)
-    val (numberColour, wordColour, word) = when (band) {
-        CentsBand.IN_TUNE -> Triple(GridlineColors.positive, GridlineColors.positive, stringResource(R.string.tune_in_tune))
-        CentsBand.CLOSE -> Triple(GridlineColors.attention, GridlineColors.attentionInk, stringResource(R.string.tune_close))
-        CentsBand.OFF -> Triple(GridlineColors.danger, GridlineColors.danger, stringResource(R.string.tune_off))
-    }
-    val cue = when (band) {
-        CentsBand.IN_TUNE -> GlIcon.CHECK
-        CentsBand.CLOSE -> if (Cents.sharp(cents)) GlIcon.CUE_SHARP else GlIcon.CUE_FLAT
-        CentsBand.OFF -> if (Cents.sharp(cents)) GlIcon.CUE_SHARP_2 else GlIcon.CUE_FLAT_2
-    }
+    val (numberColour, wordColour, word, cue) = ticktock.app.screens.centsAppearance(cents)
+    val numberInk = if (dimmed) GridlineColors.textDisabled else numberColour
+    val wordInk = if (dimmed) GridlineColors.textDisabled else wordColour
     Column(Modifier.width(IntrinsicSize.Max), horizontalAlignment = Alignment.End) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(GridlineSpacing.sp3)) {
-            Icon(cue, tint = numberColour)
-            GlText(text = signed(cents), style = GridlineType.cents, color = numberColour, maxLines = 1, modifier = Modifier.testTag("readout-cents"))
+            Icon(cue, tint = numberInk)
+            GlText(text = signed(cents), style = GridlineType.cents, color = numberInk, maxLines = 1, modifier = Modifier.testTag("readout-cents"))
         }
         if (countdown != null) RevealCountdown(countdown)
-        GlText(text = word, style = GridlineType.uiStrong, color = wordColour, modifier = Modifier.testTag("readout-band"))
+        GlText(text = word, style = GridlineType.uiStrong, color = wordInk, modifier = Modifier.testTag("readout-band"))
     }
 }
 
