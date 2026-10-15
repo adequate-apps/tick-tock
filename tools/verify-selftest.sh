@@ -108,11 +108,11 @@ run_case() {
 plant_nothing() { :; }
 
 plant_missing_output() {
-    printf '\ntasks.test { enabled = false }\n' >> "$scratch/core/build.gradle.kts"
+    printf '\ntasks.named<Test>("jvmTest") { enabled = false }\n' >> "$scratch/core/build.gradle.kts"
 }
 
 plant_zero_tests() {
-    printf '\ntasks.test { filter { includeTestsMatching("ticktock.nothing.*"); isFailOnNoMatchingTests = false } }\n' >> "$scratch/core/build.gradle.kts"
+    printf '\ntasks.named<Test>("jvmTest") { filter { includeTestsMatching("ticktock.nothing.*"); isFailOnNoMatchingTests = false } }\n' >> "$scratch/core/build.gradle.kts"
 }
 
 plant_passing_gap() {
