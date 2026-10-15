@@ -204,13 +204,13 @@ private class NativeOpenStream(
             is OutputCommand.MetroStart -> cmd.setup.let { s ->
                 native.nativeMetroStart(
                     handle, s.bpm, s.beatsPerBar, s.beatUnit, s.compoundPulse, s.accentOrdinals(),
-                    s.subdivision, s.click.ordinal, s.gain, s.barsOn, s.barsOff,
+                    s.subdivision, s.click.ordinal, s.gain, s.barsOn, s.barsOff, s.beatLimit, s.generation,
                 )
             }
             is OutputCommand.MetroUpdate -> cmd.setup.let { s ->
                 native.nativeMetroUpdate(
                     handle, s.bpm, s.beatsPerBar, s.beatUnit, s.compoundPulse, s.accentOrdinals(),
-                    s.subdivision, s.click.ordinal, s.gain, s.barsOn, s.barsOff,
+                    s.subdivision, s.click.ordinal, s.gain, s.barsOn, s.barsOff, s.beatLimit, s.generation,
                 )
             }
             OutputCommand.MetroStop -> native.nativeMetroStop(handle)

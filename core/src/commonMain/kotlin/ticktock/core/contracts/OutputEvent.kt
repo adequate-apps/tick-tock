@@ -25,8 +25,21 @@ sealed interface OutputEvent {
     /** The stream closed because the registry went empty. */
     data object Closed : OutputEvent
 
-    /** Beat [index] sounded at stream [frame]; [beatInBar] is zero-based. */
-    data class Beat(val index: Long, val beatInBar: Int, val frame: Long, val nanos: Long) : OutputEvent
+    /**
+     * Beat [index] reached stream [frame]; [nanos] is its monotonic presentation time.
+     * [bar] and [silentBar] come from the generator, including a bar cut short by a metre edit.
+     * [audible] describes the configured onset before master mute and gain.
+     */
+    data class Beat(
+        val index: Long,
+        val beatInBar: Int,
+        val frame: Long,
+        val nanos: Long,
+        val bar: Long = 0,
+        val silentBar: Boolean = false,
+        val generation: Int = 0,
+        val audible: Boolean = true,
+    ) : OutputEvent
 
     /** Every registered tool is parked with [reason] until the player or a replug restarts it. */
     data class Parked(val reason: ParkReason, val tools: Set<OutputTool>) : OutputEvent

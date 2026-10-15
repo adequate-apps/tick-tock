@@ -65,4 +65,14 @@ class MetroSetupTest {
     fun `a negative bar index is refused rather than wrapped`() {
         assertThrows(IllegalArgumentException::class.java) { base.copy(barsOn = 3, barsOff = 1).barSounds(-1) }
     }
+
+    @Test
+    fun `a runtime calibration bound survives edits and refuses a negative count`() {
+        assertEquals(0, base.beatLimit)
+        assertEquals(0, base.generation)
+        val calibration = base.copy(beatLimit = 8, generation = 29)
+        assertEquals(8, calibration.copy(bpm = 100).beatLimit)
+        assertEquals(29, calibration.copy(bpm = 100).generation)
+        assertThrows(IllegalArgumentException::class.java) { base.copy(beatLimit = -1) }
+    }
 }

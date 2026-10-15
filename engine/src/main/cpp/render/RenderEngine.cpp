@@ -27,7 +27,7 @@ void RenderEngine::apply(const Command& cmd) {
         }
         case CommandKind::MetroStart: generator_.start(cmd.metro, position_.load(std::memory_order_relaxed)); break;
         case CommandKind::MetroUpdate:
-            if (generator_.running()) generator_.update(cmd.metro, position_.load(std::memory_order_relaxed));
+            if (generator_.running() || generator_.finished()) generator_.update(cmd.metro, position_.load(std::memory_order_relaxed));
             else generator_.start(cmd.metro, position_.load(std::memory_order_relaxed));
             break;
         case CommandKind::MetroStop: generator_.stop(); break;

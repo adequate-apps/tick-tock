@@ -31,6 +31,10 @@ data class MetroSetup(
      */
     val barsOn: Int = 1,
     val barsOff: Int = 0,
+    /** Runtime run limit for calibration; zero runs until stopped. Counts beat onsets from start. */
+    val beatLimit: Int = 0,
+    /** Runtime edit identity, echoed on beat events so queued visuals retain their setup. */
+    val generation: Int = 0,
 ) {
     init {
         require(bpm in BPM_MIN..BPM_MAX) { "bpm $bpm outside $BPM_MIN..$BPM_MAX" }
@@ -40,6 +44,7 @@ data class MetroSetup(
         require(gain in 0f..1f) { "gain $gain outside 0..1" }
         require(barsOn in 1..GAP_BARS_MAX) { "barsOn $barsOn outside 1..$GAP_BARS_MAX" }
         require(barsOff in 0..GAP_BARS_MAX) { "barsOff $barsOff outside 0..$GAP_BARS_MAX" }
+        require(beatLimit >= 0) { "beatLimit $beatLimit is negative" }
     }
 
     /** Length of one on/off cycle in bars. */

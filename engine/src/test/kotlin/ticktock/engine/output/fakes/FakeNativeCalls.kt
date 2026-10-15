@@ -36,8 +36,13 @@ class FakeNativeCalls : NativeCalls {
         fun calls(name: String): List<Call> = synchronized(calls) { calls.filter { it.name == name } }
 
         /** The render side reports a beat; the drain delivers it. */
-        fun beat(index: Long, beatInBar: Int, frame: Long, nanos: Long) {
-            events += Event(KIND_BEAT, index, beatInBar.toLong(), frame, nanos)
+        fun beat(
+            index: Long, beatInBar: Int, frame: Long, nanos: Long,
+            bar: Long = 0, silentBar: Boolean = false, generation: Int = 0, audible: Boolean = true,
+        ) {
+            val flags = (if (audible) 1 else 0) or (if (silentBar) 2 else 0)
+            events += Event(KIND_BEAT, index, beatInBar.toLong(), frame, nanos,
+                ints = intArrayOf(bar.toInt(), (bar ushr 32).toInt(), flags, generation))
         }
 
         fun counters(late: Long, underruns: Long) {
@@ -143,16 +148,16 @@ class FakeNativeCalls : NativeCalls {
 
     override fun nativeMetroStart(
         handle: Long, bpm: Int, beatsPerBar: Int, beatUnit: Int, compoundPulse: Boolean, accents: IntArray,
-        subdivision: Int, click: Int, gain: Float, barsOn: Int, barsOff: Int,
+        subdivision: Int, click: Int, gain: Float, barsOn: Int, barsOff: Int, beatLimit: Int, generation: Int,
     ): Boolean = record(
-        handle, "metroStart", bpm, beatsPerBar, beatUnit, compoundPulse, accents.toList(), subdivision, click, gain, barsOn, barsOff,
+        handle, "metroStart", bpm, beatsPerBar, beatUnit, compoundPulse, accents.toList(), subdivision, click, gain, barsOn, barsOff, beatLimit, generation,
     )
 
     override fun nativeMetroUpdate(
         handle: Long, bpm: Int, beatsPerBar: Int, beatUnit: Int, compoundPulse: Boolean, accents: IntArray,
-        subdivision: Int, click: Int, gain: Float, barsOn: Int, barsOff: Int,
+        subdivision: Int, click: Int, gain: Float, barsOn: Int, barsOff: Int, beatLimit: Int, generation: Int,
     ): Boolean = record(
-        handle, "metroUpdate", bpm, beatsPerBar, beatUnit, compoundPulse, accents.toList(), subdivision, click, gain, barsOn, barsOff,
+        handle, "metroUpdate", bpm, beatsPerBar, beatUnit, compoundPulse, accents.toList(), subdivision, click, gain, barsOn, barsOff, beatLimit, generation,
     )
 
     override fun nativeMetroStop(handle: Long): Boolean = record(handle, "metroStop")

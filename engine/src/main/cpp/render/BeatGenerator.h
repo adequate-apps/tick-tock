@@ -42,7 +42,7 @@ public:
     // to be rendered, where the new grid's subdivisions take over.
     void update(const MetroParams& params, std::int64_t frame);
 
-    void stop() { running_ = false; }
+    void stop() { running_ = false; finished_ = false; }
 
     // The output came back, possibly at another rate: convert the anchor so
     // the next click comes one beat after the first frame of the new stream.
@@ -55,6 +55,8 @@ public:
                         std::int32_t maxEvents);
 
     bool running() const { return running_; }
+    // A finite run stays complete across an edit or a route reopen.
+    bool finished() const { return finished_; }
     // Beats dropped for being more than 2 ms late (MET-04), the Diagnostics figure.
     std::int32_t lateDropped() const { return lateDropped_; }
     // Subdivision clicks dropped the same way, kept apart from the beats.
@@ -76,6 +78,7 @@ private:
     MetroParams params_{};
     double sampleRate_ = 48000.0;
     bool running_ = false;
+    bool finished_ = false;
 
     std::int64_t anchorFrame_ = 0;
     std::int64_t anchorIndex_ = 0;

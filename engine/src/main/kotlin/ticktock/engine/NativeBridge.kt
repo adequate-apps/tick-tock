@@ -20,6 +20,8 @@ class NativeBridge : NativeCalls {
      * - Opened, Resumed: a sampleRate, b framesPerBlock, c deviceId, d latencyMillis,
      *   tools the resumed set as a bit mask of OutputTool ordinals (0 for Opened);
      * - Beat: a index, b beatInBar, c frame, d nanos (CLOCK_MONOTONIC);
+     *   ints [bar low 32 bits, bar high 32 bits, flags, generation];
+     *   flags bit 0 is the configured onset, bit 1 is a silent bar;
      * - Parked: a ParkReason ordinal, tools the parked set;
      * - Failed: a deviceId, ints the refused sample rates;
      * - Counters: a lateBeatsDropped, b underruns.
@@ -43,11 +45,11 @@ class NativeBridge : NativeCalls {
     override external fun nativeDuck(handle: Long, gain: Float): Boolean
     override external fun nativeMetroStart(
         handle: Long, bpm: Int, beatsPerBar: Int, beatUnit: Int, compoundPulse: Boolean, accents: IntArray,
-        subdivision: Int, click: Int, gain: Float, barsOn: Int, barsOff: Int,
+        subdivision: Int, click: Int, gain: Float, barsOn: Int, barsOff: Int, beatLimit: Int, generation: Int,
     ): Boolean
     override external fun nativeMetroUpdate(
         handle: Long, bpm: Int, beatsPerBar: Int, beatUnit: Int, compoundPulse: Boolean, accents: IntArray,
-        subdivision: Int, click: Int, gain: Float, barsOn: Int, barsOff: Int,
+        subdivision: Int, click: Int, gain: Float, barsOn: Int, barsOff: Int, beatLimit: Int, generation: Int,
     ): Boolean
     override external fun nativeMetroStop(handle: Long): Boolean
     override external fun nativeMute(handle: Long, reason: Int, active: Boolean): Boolean

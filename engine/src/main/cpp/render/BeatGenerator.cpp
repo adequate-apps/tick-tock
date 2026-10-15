@@ -20,6 +20,7 @@ MetroParams sanitised(const MetroParams& in) {
     p.subdivision = clampInt(p.subdivision, 1, kSubdivisionMax);
     p.barsOn = clampInt(p.barsOn, 1, kGapBarsMax);
     p.barsOff = clampInt(p.barsOff, 0, kGapBarsMax);
+    if (p.beatLimit < 0) p.beatLimit = 0;
     p.gain = p.gain < 0.0f ? 0.0f : (p.gain > 1.0f ? 1.0f : p.gain);
     for (Accent& a : p.accents) {
         const std::int32_t level = static_cast<std::int32_t>(a);
@@ -48,6 +49,7 @@ std::int64_t BeatGenerator::onsetOf(std::int64_t index) const {
 void BeatGenerator::start(const MetroParams& params, std::int64_t frame) {
     params_ = sanitised(params);
     running_ = true;
+    finished_ = false;
     anchorFrame_ = frame;
     anchorIndex_ = 0;
     nextIndex_ = 0;
@@ -62,7 +64,7 @@ void BeatGenerator::start(const MetroParams& params, std::int64_t frame) {
 void BeatGenerator::update(const MetroParams& params, std::int64_t frame) {
     const MetroParams next = sanitised(params);
     const bool tempoChanged = next.bpm != params_.bpm || next.compoundPulse != params_.compoundPulse;
-    const bool metreChanged = next.beatsPerBar != params_.beatsPerBar;
+    const bool metreChanged = next.beatsPerBar != params_.beatsPerBar || next.beatUnit != params_.beatUnit;
     params_ = next;
 
     if (tempoChanged && haveLast_) {
@@ -139,6 +141,11 @@ std::int32_t BeatGenerator::render(std::int64_t blockStart, std::int32_t frames,
     std::int32_t written = 0;
 
     for (;;) {
+        if (params_.beatLimit > 0 && nextIndex_ >= params_.beatLimit) {
+            running_ = false;
+            finished_ = true;
+            break;
+        }
         const std::int64_t beatOnset = onsetOf(nextIndex_);
         std::int64_t subOnset = nextSubOnset();
         if (subOnset >= 0 && subOnset >= beatOnset) {
@@ -183,6 +190,9 @@ std::int32_t BeatGenerator::render(std::int64_t blockStart, std::int32_t frames,
             events[written].beatInBar = beatInBar_;
             events[written].frame = soundedAt;
             events[written].audible = audible;
+            events[written].bar = bar_;
+            events[written].silentBar = !lastBarSounds_;
+            events[written].generation = params_.generation;
             ++written;
         }
         placeBeat(soundedAt);

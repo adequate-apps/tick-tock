@@ -6,7 +6,7 @@
 
 namespace ticktock {
 
-constexpr std::int32_t kEngineAbiVersion = 2;
+constexpr std::int32_t kEngineAbiVersion = 3;
 
 }  // namespace ticktock
 

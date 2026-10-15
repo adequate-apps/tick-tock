@@ -53,6 +53,9 @@ struct MetroParams {
     float gain = 1.0f;
     std::int32_t barsOn = 1;
     std::int32_t barsOff = 0;
+    // Runtime calibration bound and the identity echoed by every beat.
+    std::int32_t beatLimit = 0;
+    std::int32_t generation = 0;
 
     // The one statement of the gap rule on this side of the wall; mirrors
     // MetroSetup.barSounds so the beat row and the clicks agree (GAP-01).
@@ -95,6 +98,9 @@ struct BeatEvent {
     std::int32_t beatInBar = 0;
     std::int64_t frame = 0;
     bool audible = true;
+    std::int64_t bar = 0;
+    bool silentBar = false;
+    std::int32_t generation = 0;
 };
 
 }  // namespace ticktock::render

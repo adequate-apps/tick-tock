@@ -298,6 +298,26 @@ class AudioControlThreadTest {
     }
 
     @Test
+    fun `BTC-01 an explicit finite restart queued while parked reaches the resumed stream as a start`() {
+        startOnHeadset()
+        register(OutputTool.METRONOME)
+        val previous = setup.copy(bpm = 100, beatLimit = 8, generation = 20)
+        send(OutputCommand.MetroStart(previous))
+        devices.becomingNoisy()
+        idle()
+        assertEquals(true, backend.opened.single().engineKept)
+        val requested = previous.copy(generation = 21)
+        val edited = requested.copy(gain = 0.6f)
+        send(OutputCommand.MetroStart(requested), OutputCommand.MetroUpdate(edited))
+        backend.nextRouted = USB_DAC
+        devices.add(USB_DAC)
+        idle()
+        val resumed = checkNotNull(backend.current)
+        assertTrue(resumed.continuesEngine)
+        assertEquals(listOf(OutputCommand.MetroStart(edited)), resumed.sent)
+    }
+
+    @Test
     fun `OUT-06 what the player switches off while unplugged is switched off in the continued engine too`() {
         startOnHeadset()
         register(OutputTool.DRONE, OutputTool.METRONOME)
@@ -469,6 +489,8 @@ class AudioControlThreadTest {
         register(OutputTool.METRONOME)
         assertEquals(RouteClass.HEADPHONES, control.info.value?.routeClass)
         assertEquals(true, control.route.value?.wireless)
+        assertEquals(BLE_HEADSET.id, control.info.value?.deviceId)
+        assertEquals(true, control.info.value?.wireless)
 
         val stream = checkNotNull(backend.current)
         stream.latency = 8
@@ -477,11 +499,29 @@ class AudioControlThreadTest {
 
         assertEquals(RouteClass.SPEAKER, control.info.value?.routeClass)
         assertEquals(false, control.route.value?.wireless)
+        assertEquals(SPEAKER.id, control.info.value?.deviceId)
+        assertEquals(false, control.info.value?.wireless)
         assertEquals(8, control.info.value?.latencyMillis)
         assertEquals(SPEAKER.name, control.info.value?.deviceName)
         assertEquals(1, backend.opened.size)
         assertEquals(emptyList<OutputEvent.Parked>(), eventsOf<OutputEvent.Parked>())
         assertTrue(control.diagnostics.value.log.any { "route is now" in it })
+    }
+
+    @Test
+    fun `BTC-01 equal output names retain different route identities`() {
+        backend.nextRouted = BLE_HEADSET
+        start()
+        register(OutputTool.METRONOME)
+        val first = checkNotNull(control.info.value)
+        val replacement = BLE_HEADSET.copy(id = BLE_HEADSET.id + 1)
+        checkNotNull(backend.current).routeChanged(replacement)
+        idle()
+        val next = checkNotNull(control.info.value)
+        assertEquals(first.deviceName, next.deviceName)
+        assertEquals(replacement.id, next.deviceId)
+        assertTrue(first != next)
+        assertTrue(next.wireless)
     }
 
     // --- OUT-10, CAL-01, CAL-02 ---------------------------------------------------------------
