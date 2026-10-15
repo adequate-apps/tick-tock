@@ -1,0 +1,289 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+package ticktock.app.output
+
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import ticktock.core.catalogue.Catalogue
+import ticktock.core.catalogue.EnsembleNote
+import ticktock.core.catalogue.TuningNotes
+import ticktock.core.contracts.OutputCommand
+import ticktock.core.contracts.OutputEvent
+import ticktock.core.contracts.OutputInfo
+import ticktock.core.contracts.OutputTool
+import ticktock.core.contracts.ParkReason
+import ticktock.core.contracts.SoundingNotes
+import ticktock.core.contracts.Voice
+import ticktock.core.metro.Accent
+import ticktock.core.metro.MetroSetup
+import ticktock.core.music.Pitch
+import ticktock.core.prefs.Prefs
+import ticktock.engine.output.NativeDiagnostics
+
+data class OutputState(
+    val droneWanted: Boolean = false,
+    val metroWanted: Boolean = false,
+    val droneSounding: Boolean = false,
+    val metroSounding: Boolean = false,
+    val info: OutputInfo? = null,
+    val parked: ParkReason? = null,
+    val failed: OutputEvent.Failed? = null,
+    val bluetoothNotice: Boolean = false,
+) {
+    val toolRunning: Boolean get() = droneSounding || metroSounding
+}
+
+/** One owner across panes and Settings. Preferences survive; sounding intent belongs to this foreground session. */
+class OutputSession(
+    private val readPrefs: () -> Prefs,
+    private val writePrefs: ((Prefs) -> Prefs) -> Unit,
+    var makeConnection: () -> OutputConnection,
+    private val changed: () -> Unit = {},
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+    private val nanoTime: () -> Long = System::nanoTime,
+) : SoundingNotes {
+    private var connection: OutputConnection? = null
+    private var prefs = readPrefs()
+    private val mutableState = MutableStateFlow(OutputState())
+    val state: StateFlow<OutputState> = mutableState
+    private val visuals = BeatVisuals(scope, nanoTime)
+    val beat: StateFlow<VisualBeat?> = visuals.state
+    private val tempo = TapTempo()
+    private var generation = 0
+    private var batch = 0L
+    private var pending = false
+    private var lastDuck = 1f
+    private var route: Pair<Int?, String>? = null
+    private var dismissed: Pair<Int?, String>? = null
+    private var closed = false
+
+    /** The debug build can observe the same stream without opening another engine. */
+    var observeEvent: (OutputEvent) -> Unit = {}
+    var observeCommand: (OutputCommand) -> Unit = {}
+
+    @Synchronized
+    override fun current(): IntArray = connection?.soundingNotes?.current() ?: IntArray(0)
+
+    /** The app owns one drone voice; its root is the lowest sounding note, including root+fifth. */
+    val soundingDroneMidi: Int? get() = current().minOrNull()
+
+    @Synchronized
+    fun diagnostics(): NativeDiagnostics? = connection?.diagnostics()
+
+    fun selectedMidi(p: Prefs = readPrefs()): Int = p.droneMidi ?: tuning(p).defaultDrone.soundingMidi
+
+    private fun tuning(p: Prefs) = TuningNotes.forInstrument(Catalogue.get(p.instrumentKey))
+
+    @Synchronized
+    fun startDrone() {
+        if (closed || mutableState.value.droneWanted) return
+        prefs = readPrefs()
+        mutableState.value = mutableState.value.copy(droneWanted = true, parked = null, failed = null)
+        send(listOf(OutputCommand.SetA4(prefs.a4Hz), OutputCommand.Register(OutputTool.DRONE), droneCommand()))
+    }
+
+    @Synchronized
+    fun stopDrone() {
+        if (!mutableState.value.droneWanted) return
+        mutableState.value = mutableState.value.copy(droneWanted = false, droneSounding = false)
+        send(listOf(OutputCommand.VoiceOff(DRONE_SLOT), OutputCommand.Unregister(OutputTool.DRONE)))
+    }
+
+    fun toggleDrone() = if (state.value.droneWanted) stopDrone() else startDrone()
+
+    fun selectMidi(midi: Int) = writePrefs { it.copy(droneMidi = midi.coerceIn(Pitch.DETECTOR_WINDOW)) }
+    fun ensemble(note: EnsembleNote) = selectMidi(tuning(readPrefs()).ensemble.getValue(note).soundingMidi)
+    fun nextCheck() = selectMidi(tuning(readPrefs()).nextCheck(selectedMidi()).soundingMidi)
+    fun octave(delta: Int) = selectMidi(selectedMidi() + delta * SEMITONES)
+    fun voice(voice: Voice) = writePrefs { it.copy(droneVoice = voice) }
+    fun droneVolume(delta: Float) = writePrefs { it.copy(droneGain = (it.droneGain + delta).coerceIn(0f, 1f)) }
+
+    @Synchronized
+    fun startMetro() {
+        if (closed || mutableState.value.metroWanted) return
+        prefs = readPrefs()
+        mutableState.value = mutableState.value.copy(metroWanted = true, parked = null, failed = null)
+        val setup = nextSetup()
+        send(listOf(OutputCommand.Register(OutputTool.METRONOME), OutputCommand.MetroStart(setup)))
+    }
+
+    @Synchronized
+    fun stopMetro() {
+        if (!mutableState.value.metroWanted) return
+        mutableState.value = mutableState.value.copy(metroWanted = false, metroSounding = false)
+        clearBeat()
+        send(listOf(OutputCommand.MetroStop, OutputCommand.Unregister(OutputTool.METRONOME)))
+    }
+
+    fun toggleMetro() = if (state.value.metroWanted) stopMetro() else startMetro()
+    fun bpm(value: Int) = writePrefs { it.copy(metroBpm = value.coerceIn(MetroSetup.BPM_MIN, MetroSetup.BPM_MAX)) }
+    fun stepBpm(delta: Int) = writePrefs { it.copy(metroBpm = (it.metroBpm + delta).coerceIn(MetroSetup.BPM_MIN, MetroSetup.BPM_MAX)) }
+    fun tapTempo() { tempo.tap(nanoTime())?.let(::bpm) }
+    fun preset(value: MetrePreset) = writePrefs(value::apply)
+    fun customMetre(beats: Int, unit: Int) = writePrefs { MetrePresets.custom(it, beats, unit) }
+    fun accent(index: Int) = writePrefs { p ->
+        p.copy(metroAccents = p.metroAccents.mapIndexed { i, value ->
+            if (i == index) Accent.entries[(value.ordinal + 1) % Accent.entries.size] else value
+        })
+    }
+
+    /** Read the current store under this lock; a delayed listener cannot replay older preferences. */
+    @Synchronized
+    fun settingsChanged() {
+        val previous = prefs
+        prefs = readPrefs()
+        val commands = mutableListOf<OutputCommand>()
+        if (connection != null && previous.a4Hz != prefs.a4Hz) commands += OutputCommand.SetA4(prefs.a4Hz)
+        if (state.value.droneWanted) {
+            if (selectedMidi(previous) != selectedMidi(prefs) || previous.droneVoice != prefs.droneVoice) commands += droneCommand()
+            else if (previous.droneGain != prefs.droneGain) commands += OutputCommand.VoiceGain(DRONE_SLOT, prefs.droneGain)
+        }
+        if (state.value.metroWanted && previous.metroSetup() != prefs.metroSetup()) commands += OutputCommand.MetroUpdate(nextSetup())
+        if (previous.visualOffsetMs != prefs.visualOffsetMs || previous.bluetoothVisualOffsetMs != prefs.bluetoothVisualOffsetMs) {
+            visuals.reset(generation, offset())
+        }
+        if (commands.isNotEmpty()) send(commands)
+        changed()
+    }
+
+    @Synchronized
+    fun duck(gain: Float) {
+        if (gain == lastDuck || connection == null) return
+        lastDuck = gain
+        val command = OutputCommand.Duck(gain)
+        observeCommand(command)
+        connection?.send(listOf(command)) {}
+    }
+
+    @Synchronized
+    fun dismissBluetooth() {
+        dismissed = route
+        refresh()
+    }
+
+    @Synchronized
+    fun background() {
+        stopMetro()
+        stopDrone()
+        duck(1f)
+        connection?.background()
+        mutableState.value = mutableState.value.copy(parked = ParkReason.BACKGROUND)
+        clearBeat()
+        changed()
+    }
+
+    @Synchronized
+    fun foreground() { connection?.foreground() }
+
+    @Synchronized
+    fun close() {
+        if (closed) return
+        background()
+        closed = true
+        connection?.close()
+        scope.cancel()
+    }
+
+    private fun droneCommand() = OutputCommand.VoiceOn(DRONE_SLOT, selectedMidi(prefs), prefs.droneVoice, prefs.droneGain)
+
+    private fun nextSetup(): MetroSetup {
+        generation++
+        visuals.reset(generation, offset())
+        return prefs.metroSetup().copy(generation = generation)
+    }
+
+    private fun clearBeat() {
+        generation++
+        visuals.reset(generation, offset())
+    }
+
+    private fun offset(): Int = if (connection?.port?.info?.value?.wireless == true) {
+        prefs.bluetoothVisualOffsetMs ?: 0
+    } else prefs.visualOffsetMs
+
+    private fun ensureConnection(): OutputConnection {
+        connection?.let { return it }
+        return makeConnection().also { fresh ->
+            connection = fresh
+            // The native stream replays no events. Subscribe before sending its first registration.
+            scope.launch(start = CoroutineStart.UNDISPATCHED) { fresh.port.events.collect(::event) }
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                fresh.port.info.collect { synchronized(this@OutputSession) { refresh() } }
+            }
+        }
+    }
+
+    private fun send(commands: List<OutputCommand>) {
+        val link = ensureConnection()
+        val version = ++batch
+        pending = true
+        commands.forEach(observeCommand)
+        link.send(commands) {
+            scope.launch {
+                synchronized(this@OutputSession) {
+                    if (version != batch || closed) return@synchronized
+                    pending = false
+                    val reason = state.value.parked
+                    if (link.port.info.value == null && reason != null && reason != ParkReason.HEADPHONES_DISCONNECTED) {
+                        mutableState.value = state.value.copy(droneWanted = false, metroWanted = false)
+                    }
+                    refresh()
+                }
+            }
+        }
+    }
+
+    @Synchronized
+    private fun event(event: OutputEvent) {
+        observeEvent(event)
+        when (event) {
+            is OutputEvent.Beat -> if (state.value.metroWanted && connection?.port?.info?.value != null) visuals.accept(event)
+            is OutputEvent.Parked -> if (connection?.port?.info?.value == null) {
+                val retain = pending || event.reason == ParkReason.HEADPHONES_DISCONNECTED
+                mutableState.value = state.value.copy(
+                    parked = event.reason,
+                    droneWanted = state.value.droneWanted && (retain || OutputTool.DRONE !in event.tools),
+                    metroWanted = state.value.metroWanted && (retain || OutputTool.METRONOME !in event.tools),
+                )
+                // Resumption keeps the generator generation, so only queued visual work is cancelled.
+                visuals.reset(generation, offset())
+                refresh()
+            }
+            is OutputEvent.Failed -> if (connection?.port?.info?.value == null) {
+                mutableState.value = state.value.copy(failed = event, parked = ParkReason.OUTPUT_FAILED)
+                refresh()
+            }
+            is OutputEvent.Opened, is OutputEvent.Resumed, OutputEvent.Closed -> refresh()
+            is OutputEvent.Counters -> Unit
+        }
+    }
+
+    private fun refresh() {
+        val info = connection?.port?.info?.value
+        val nextRoute = info?.let { it.deviceId to it.deviceName }
+        if (nextRoute != route) {
+            route = nextRoute
+            dismissed = null
+            visuals.reset(generation, offset())
+        }
+        mutableState.value = state.value.copy(
+            info = info,
+            droneSounding = state.value.droneWanted && info != null && current().isNotEmpty(),
+            metroSounding = state.value.metroWanted && info != null,
+            parked = if (info != null) null else state.value.parked,
+            failed = if (info != null) null else state.value.failed,
+            bluetoothNotice = info?.wireless == true && route != dismissed,
+        )
+        changed()
+    }
+
+    companion object {
+        const val DRONE_SLOT = 0
+        const val SEMITONES = 12
+    }
+}
