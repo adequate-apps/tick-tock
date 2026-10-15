@@ -82,6 +82,15 @@ class TuneScreenTest {
         compose.onAllNodes(hasTestTag(tag), useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
             ?.config?.getOrNull(SemanticsProperties.Text)?.joinToString { it.text }
 
+    private fun needleState(): CharSequence? {
+        var state: CharSequence? = null
+        scenario!!.onActivity { activity ->
+            val view = requireNotNull(activity.window.decorView.findViewWithTag<android.view.View>("needle-accessibility"))
+            state = androidx.core.view.accessibility.AccessibilityNodeInfoCompat.wrap(view.createAccessibilityNodeInfo()).stateDescription
+        }
+        return state
+    }
+
     private fun statusWords(): List<String> = (0..3).mapNotNull { text("statusbar-$it") }
 
     private fun awaitStatus(vararg words: String) {
@@ -100,10 +109,7 @@ class TuneScreenTest {
         play(input, 440.0, 18)
         compose.waitUntil(TIMEOUT) { text("readout-cents") == "+0" }
         assertEquals(null, text("settled-announcement"))
-        scenario!!.onActivity { activity ->
-            val view = activity.window.decorView.findViewWithTag<android.view.View>("needle-accessibility")
-            assertEquals("B 5, 0 cents", androidx.core.view.accessibility.AccessibilityNodeInfoCompat.wrap(view.createAccessibilityNodeInfo()).stateDescription)
-        }
+        assertEquals("B 5, 0 cents", needleState())
         compose.mainClock.autoAdvance = false
         compose.runOnIdle { graph.prefs.update { it.copy(announceSettledNotes = true) } }
         compose.mainClock.advanceTimeByFrame()
@@ -231,7 +237,7 @@ class TuneScreenTest {
         val oldHop = graph.tune.level.value.hop
         play(input, 444.0)
         compose.waitUntil(TIMEOUT) { text("readout-cents") == "+16" }
-        assertEquals(listOf("+16"), compose.onNodeWithTag("cents-scale").fetchSemanticsNode().config[SemanticsProperties.ContentDescription])
+        assertEquals("B 5, 16 cents sharp", needleState())
         assertTrue(graph.tune.trace.value !== oldTrace)
         assertTrue(graph.tune.trace.value.cents.last() > 0f)
         assertTrue(graph.tune.level.value.hop > oldHop)
@@ -277,7 +283,7 @@ class TuneScreenTest {
         assertEquals("sounding", text("readout-sounding"))
         assertEquals("— Hz", text("readout-hz"))
         compose.onNodeWithTag("readout-cents", useUnmergedTree = true).assertDoesNotExist()
-        assertEquals(listOf("—"), compose.onNodeWithTag("cents-scale").fetchSemanticsNode().config[SemanticsProperties.ContentDescription])
+        assertEquals("—", needleState())
         compose.onNodeWithTag("cents-scale").performScrollTo().captureRoboImage("src/test/screenshots/tune-ears-first-hidden-needle.png")
         compose.onNodeWithTag("last-note-trace").assertExists()
         assertTrue(graph.tune.level.value.db > ticktock.app.audio.Level.LEVEL_FLOOR_DB)

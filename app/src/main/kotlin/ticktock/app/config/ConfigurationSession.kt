@@ -44,6 +44,8 @@ internal class ConfigurationSession(
         ConfigurationState(message = R.string.config_exported)
     }
 
+    fun interruptedImport() { mutableState.value = ConfigurationState(message = R.string.config_interrupted, failed = true) }
+
     fun cancel() { if (!state.value.busy) mutableState.value = ConfigurationState() }
 
     fun apply() = action(R.string.config_apply_error) {

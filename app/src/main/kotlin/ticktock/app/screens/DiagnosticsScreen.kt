@@ -50,6 +50,8 @@ internal fun diagnosticFacts(graph: AppGraph): List<DiagnosticFact> {
         DiagnosticFact(R.string.diag_buffer, native?.bufferBursts?.toString() ?: "—", "diag-buffer"),
         DiagnosticFact(R.string.diag_history, graph.history.databaseBytes().toString(), "diag-history"),
         DiagnosticFact(R.string.diag_paused, history.skippedWhilePaused.toString(), "diag-paused"),
+        DiagnosticFact(R.string.diag_rejected, history.rejected.toString(), "diag-rejected"),
+        DiagnosticFact(R.string.diag_store_dropped, history.droppedOnOverflow.toString(), "diag-store-dropped"),
         DiagnosticFact(R.string.diag_flushes, history.flushes.toString(), "diag-flushes"),
         DiagnosticFact(R.string.diag_store_failures, history.failedFlushes.toString(), "diag-store-failures"),
         DiagnosticFact(R.string.diag_prefs_failures, graph.prefs.failedSaves.toString(), "diag-prefs-failures"),

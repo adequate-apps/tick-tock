@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,6 +25,13 @@ internal fun ConfigurationPanel(graph: AppGraph) {
     val owner = graph.configuration
     val state by owner.state.collectAsStateWithLifecycle()
     val prefs by graph.prefs.prefs.collectAsStateWithLifecycle()
+    var pendingImport by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(owner) {
+        if (pendingImport && !owner.state.value.busy && owner.state.value.incoming == null && owner.state.value.message == null) owner.interruptedImport()
+    }
+    LaunchedEffect(state) {
+        if (!state.busy && state.incoming == null && state.message != null) pendingImport = false
+    }
     val busy = state.busy
     val message = state.message
     val failed = state.failed
@@ -31,7 +39,7 @@ internal fun ConfigurationPanel(graph: AppGraph) {
         if (uri != null) owner.export(uri)
     }
     val open = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) owner.open(uri)
+        if (uri != null) { pendingImport = true; owner.open(uri) }
     }
     Column(verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
         ButtonRow(listOf(
@@ -43,7 +51,7 @@ internal fun ConfigurationPanel(graph: AppGraph) {
     }
     state.incoming?.let { config ->
         val diff = PersonalConfigMerge.diff(PersonalConfiguration.snapshot(prefs), config)
-        SquareDialog(stringResource(R.string.config_preview), { owner.cancel() }, tag = "config-preview") {
+        SquareDialog(stringResource(R.string.config_preview), { if (!busy) { pendingImport = false; owner.cancel() } }, tag = "config-preview") {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
                 if (diff.isEmpty) GlText(stringResource(R.string.config_no_changes))
                 diff.changes.forEach { change ->
@@ -53,7 +61,7 @@ internal fun ConfigurationPanel(graph: AppGraph) {
                     }
                 }
                 if (failed) message?.let { GlText(stringResource(it), color = GridlineColors.danger) }
-                ButtonRow(listOf(ButtonAction(stringResource(R.string.action_cancel), { owner.cancel() }, !busy, tag = "config-cancel"),
+                ButtonRow(listOf(ButtonAction(stringResource(R.string.action_cancel), { pendingImport = false; owner.cancel() }, !busy, tag = "config-cancel"),
                     ButtonAction(stringResource(R.string.config_apply), {
                         owner.apply()
                     }, !busy, true, "config-apply")))

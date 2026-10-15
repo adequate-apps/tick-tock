@@ -71,13 +71,19 @@ fun TableScreen(graph: AppGraph = TickTockApp.graph(LocalContext.current)) {
         is Scope.Session -> snapshot?.sessions?.find { it.id == scope.id }
         is Scope.AllHistory -> null
     }
+    val scopeLabel = when (state.scope) {
+        Scope.CurrentSession -> stringResource(R.string.table_session)
+        is Scope.Session -> viewed?.name?.ifBlank { null } ?: stringResource(R.string.table_session)
+        is Scope.AllHistory -> stringResource(R.string.table_all_history)
+    }
+    val comparison = if (state.scope is Scope.AllHistory) emptyList() else snapshot?.history.orEmpty()
     Pane(stringResource(if (detail != null) R.string.table_note_detail else R.string.pane_table),
         Modifier.fillMaxWidth(), tag = "table-pane") {
         Column(verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
             if (detail != null) {
                 Button(stringResource(R.string.action_back), { selected = null }, tag = "table-back")
                 TableLabel(detail.label)
-                TableNoteDetail(detail, snapshot?.history.orEmpty(), prefs, snapshot?.since)
+                TableNoteDetail(detail, comparison, prefs, snapshot?.since, scopeLabel, state.scope is Scope.AllHistory)
                 ButtonRow(listOf(
                     ButtonAction(stringResource(if (output.droneWanted) R.string.table_stop_drone else R.string.table_hear_drone), {
                         if (output.droneWanted) graph.output.stopDrone() else {
@@ -137,6 +143,14 @@ fun TableScreen(graph: AppGraph = TickTockApp.graph(LocalContext.current)) {
                     }, !state.busy && !state.gated && owner.export.allowed && !snapshot?.rows.isNullOrEmpty(), tag = "table-share"),
                     ButtonAction(stringResource(R.string.table_clear_session), { deleting = viewed }, viewed != null && !state.busy, tag = "table-clear")))
                 if (state.gated || snapshot?.rows.isNullOrEmpty()) TableGhost(state.gated)
+                if (!snapshot?.rows.isNullOrEmpty()) {
+                    GlText(stringResource(R.string.table_mean_unit), style = GridlineType.small)
+                    GlText(stringResource(R.string.table_compact_extent), style = GridlineType.small)
+                    GlText(stringResource(R.string.table_probability), style = GridlineType.small)
+                    TableBandLegend()
+                    GlText(stringResource(R.string.table_dimmed), style = GridlineType.small)
+                    TableSeriesLegend(scopeLabel, comparison.isNotEmpty())
+                }
                 snapshot?.rows?.groupBy { it.label }?.forEach { (label, rows) ->
                     TableLabel(label)
                     Field(Modifier.fillMaxWidth()) {
@@ -156,7 +170,7 @@ fun TableScreen(graph: AppGraph = TickTockApp.graph(LocalContext.current)) {
                             HistoryRow(name, "${pluralStringResource(R.plurals.table_attack_total, note.attacks.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), note.attacks)}\n${pluralStringResource(R.plurals.table_reading_total, note.n.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), note.n)}", description, note.n < MIN_TABLE_READINGS,
                                 { selected = note.label to note.midiSounding }, tag = "table-note-${note.midiSounding}",
                                 mean = { TableMean(mean, note.n < MIN_TABLE_READINGS) }, chart = {
-                                    TableHistogram(note, snapshot.history, true)
+                                    TableHistogram(note, comparison, true, scopeLabel)
                                 })
                         }
                     }
@@ -178,7 +192,17 @@ fun TableScreen(graph: AppGraph = TickTockApp.graph(LocalContext.current)) {
         jobs.launch { owner.delete(session.id).join(); if (owner.state.value.error == null) { deleting = null; selected = null } }
     } }
     clearNote?.let { (scope, label, midi) -> TableConfirmation(stringResource(R.string.table_clear_note),
-        detail?.let { tableNoteName(it, prefs) }.orEmpty(), state.busy, state.error, { clearNote = null }) {
+        detail?.let { tableNoteName(it, prefs) }.orEmpty(), state.busy, state.error, { clearNote = null }, details = {
+            GlText(when (scope) {
+                Scope.CurrentSession -> stringResource(R.string.table_current_session)
+                is Scope.Session -> snapshot?.sessions?.find { it.id == scope.id }?.name?.ifBlank { null }
+                    ?: stringResource(R.string.table_current_session)
+                is Scope.AllHistory -> stringResource(R.string.table_all_matching)
+            }, style = GridlineType.uiStrong)
+            TableLabel(label)
+            if (scope is Scope.AllHistory) GlText(stringResource(if (scope.includeDroneRuns) R.string.table_drone_included else R.string.table_drone_excluded), style = GridlineType.small)
+            GlText(stringResource(R.string.table_confirm_note), style = GridlineType.small)
+        }) {
         jobs.launch { owner.clearNote(scope, label, midi).join(); if (owner.state.value.error == null) { clearNote = null; selected = null } }
     } }
 }
@@ -209,9 +233,10 @@ private fun TableGhost(gated: Boolean) {
 }
 
 @Composable
-internal fun TableHistogram(note: NoteSummary, history: List<NoteSummary>, compact: Boolean) {
+internal fun TableHistogram(note: NoteSummary, history: List<NoteSummary>, compact: Boolean, scopeLabel: String) {
     Histogram(note.bins, history.find { it.label == note.label && it.midiSounding == note.midiSounding }?.bins ?: IntArray(101),
-        CentsBand.IN_TUNE_MAX.toFloat(), CentsBand.CLOSE_MAX.toFloat(), stringResource(R.string.table_distribution),
+        CentsBand.IN_TUNE_MAX.toFloat(), CentsBand.CLOSE_MAX.toFloat(),
+        stringResource(R.string.table_chart_spoken, scopeLabel, if (history.isEmpty()) "" else stringResource(R.string.table_history_overlay), if (compact) 25 else 50),
         Modifier.fillMaxWidth(), compact = compact, dimmed = note.n < MIN_TABLE_READINGS)
 }
 

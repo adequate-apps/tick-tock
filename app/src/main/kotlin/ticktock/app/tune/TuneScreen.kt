@@ -29,8 +29,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ticktock.app.AppGraph
 import ticktock.app.config.effectiveRange
@@ -155,15 +154,17 @@ fun TuneScreen(graph: AppGraph, mic: MicAccess) {
             onRetry = graph.tune::retry,
             countdown = if (shownReveal != null) ({ countdown.value }) else null,
         )
-        CentsScale(
-            inTuneMax = CentsBand.IN_TUNE_MAX.toFloat(),
-            closeMax = CentsBand.CLOSE_MAX.toFloat(),
-            cents = readout.cents,
-            flat = stringResource(R.string.tune_flat),
-            sharp = stringResource(R.string.tune_sharp),
-            description = readout.cents?.let(::signed) ?: "—",
-            modifier = Modifier.fillMaxWidth().semantics { stateDescription = spoken ?: "—" },
-        )
+        Box(Modifier.fillMaxWidth()) {
+            CentsScale(
+                inTuneMax = CentsBand.IN_TUNE_MAX.toFloat(),
+                closeMax = CentsBand.CLOSE_MAX.toFloat(),
+                cents = readout.cents,
+                flat = stringResource(R.string.tune_flat),
+                sharp = stringResource(R.string.tune_sharp),
+                modifier = Modifier.fillMaxWidth().testTag("cents-scale").clearAndSetSemantics { },
+            )
+            NeedleAccessibility(stringResource(R.string.tune_needle), spoken ?: "—", Modifier.matchParentSize())
+        }
         SettledAnnouncement(readout.midi, spoken, prefs.announceSettledNotes && !hidden)
         LevelMeter(
             db = { if (listening) level.value.db.takeIf { it > Level.LEVEL_FLOOR_DB } else null },

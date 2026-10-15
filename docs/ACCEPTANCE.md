@@ -142,11 +142,11 @@ ledgered under their own prefixes below.
 |---|---|---|---|---|---|
 | SES-01 | the first run starts with saved prefs | H | 2.0 | HistoryStoreTest `SES-01`; AppGraphTest `SES-01` (cold start from a saved prefs file labels the first run, a prefs change relabels the next); PrefsStoreTest `SES-01`; AVD: a 442 Hz tone stored 206 readings in one run at A4 = 442, and a relaunch kept the session and opened a second | green |
 | SES-02 | new-run triggers | H | 2.0 | HistoryStoreTest `SES-02` (nickname, A4 generation, instrument, transposition, cleared nickname) | green |
-| SES-03 | SESSION means this session | H | 2.0 | HistoryStoreTest `SES-03`; TableSessionTest `SES-03`; TableScreenTest `SES-03 table scope and note clear retain saved history and historical A4`. | green |
-| SES-04 | per-nickname separation | H | 2.0 | HistoryStoreTest `SES-04` | green |
-| SES-05 | validate before storing | H | 2.0 | HistoryStoreTest `SES-05`; the rule is `HistorySink.storable` in :core, SmallContractsTest | green |
+| SES-03 | SESSION means this session | H | 2.0 | HistoryStoreTest `SES-03`; TableSessionTest `SES-03`; TableScreenTest `SES-03 table scope and note clear retain saved history and historical A4`; `note clearing identifies current saved and all history scopes and Cancel is primary` proves scope-labelled confirmation and cancellation. | green |
+| SES-04 | per-nickname separation | H | 2.0 | HistoryStoreTest `SES-04`; SettingsExtrasTest `ordinary instrument choices clear a named identity before capture` checks named-to-generic selection and replay labels. | green |
+| SES-05 | validate before storing | H | 2.0 | HistoryStoreTest `SES-05`; the rule is `HistorySink.storable` in :core, SmallContractsTest; DiagnosticsScreenTest `Diagnostics separates rejected readings and storage buffer drops from audio overflow` checks both storage counters independently. | green |
 | SES-06 | batched writes | H | 2.0 | HistoryStoreTest `SES-06` (a burst is one transaction; 3.2 s of continuous readings at about 200 a second is at most one transaction a second) | green |
-| SES-07 | write errors surface | H | 2.0 | HistoryStoreTest `SES-07`; TableSessionTest `SES-07 failed save keeps its draft facts and error through a later successful read`; TableScreenTest `SES-07 a refused session save keeps its draft and shows the storage error in the sheet`. | green |
+| SES-07 | write errors surface | H | 2.0 | HistoryStoreTest `SES-07`; TableSessionTest `SES-07 failed save keeps its draft facts and error through a later successful read`; TableScreenTest `SES-07 a refused session save keeps its draft and shows the storage error in the sheet`, including recreation with the error and draft retained. | green |
 | SES-08 | summaries and indexes | H | 2.0 | HistoryStoreTest `SES-08`; SchemaTest `SES-08`; TableSessionTest `SES-08 visible table refreshes at a successful flush and retains its snapshot between readings`. | green |
 | SES-09 | retention | H | 2.0 | HistoryStoreTest `SES-09` (two tests: raw readings of unsaved sessions age out with summaries kept; a saved session keeps its readings, decision 5) | green |
 | SES-10 | storage budget | H | 2.0 | HistoryStoreTest `SES-10` (a simulated year: 53 MB against 100 MB) | green |
@@ -239,9 +239,9 @@ ledgered under their own prefixes below.
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | A11Y-01 | tuner readout | H | 2.0 | FrameScreenshotTest `tune at font scale 1_0`, `1_3`, `1_5`, `2_0` cover the ghost readout; sounding note, cents and Hz clipping at every scale still need assertions | open |
-| A11Y-02 | every screen | H | 2.0 (supplemented by CLR-01..03) | AdaptiveRowsTest `denied notices keep the message and action on readable lines` and `setting rows keep labels whole and long values inside the row` assert text fit at four font scales and two widths; FrameScreenshotTest covers Tune, Drone, Metronome and Settings at four scales; ComponentZooTest `labels fit, targets are 48 dp and every control is labelled` covers components in four themes and two widths; unfinished screens and all dialogs remain unproved; DroneScreenTest and MetronomeScreenTest `A11Y-02` reach every output control at double text; OutputScreenshotTest adds 600x800 at all four font scales and the other three themes; DelayScreenshotTest covers large-text dialogs. Table remains pending | open |
+| A11Y-02 | every screen | H | 2.0 (supplemented by CLR-01..03) | AdaptiveRowsTest `denied notices keep the message and action on readable lines` and `setting rows keep labels whole and long values inside the row` assert text fit at four font scales and two widths; FrameScreenshotTest covers Tune, Drone, Metronome and Settings at four scales; ComponentZooTest `labels fit, targets are 48 dp and every control is labelled` covers components in four themes and two widths; unfinished screens and all dialogs remain unproved; DroneScreenTest and MetronomeScreenTest `A11Y-02` reach every output control at double text; OutputScreenshotTest adds 600x800 at all four font scales and the other three themes; DelayScreenshotTest covers large-text dialogs. TableScreenshotTest covers rows, distinct historical comparison, metadata and destructive dialogs at all four text sizes and both widths; the complete cross-screen inventory remains pending | open |
 | A11Y-03 | colour is never alone | H | 2.0 | TuneScreenTest `a played A4 on the default tenor sax reads written B5, in tune, concert A4, and the pane is listening` and `a sharp note shows the sharp cue, the close band and its cents` prove signed digits for in-tune and close; off-band and every other band-bearing surface remain unproved | open |
-| A11Y-04 | touch targets | H | 2.0 | ComponentZooTest `labels fit, targets are 48 dp and every control is labelled`; ControlsTest `a button fires once per tap and meets the touch target` prove component targets; an inventory of every screen and dialog control remains unproved; DroneScreenTest and MetronomeScreenTest assert 48 dp output targets at double text; PadsTest covers two widths and four scales. Table remains pending | open |
+| A11Y-04 | touch targets | H | 2.0 | ComponentZooTest `labels fit, targets are 48 dp and every control is labelled`; ControlsTest `a button fires once per tap and meets the touch target` prove component targets; an inventory of every screen and dialog control remains unproved; DroneScreenTest and MetronomeScreenTest assert 48 dp output targets at double text; PadsTest covers two widths and four scales. TableScreenshotTest covers rows, distinct historical comparison, metadata and destructive dialogs at all four text sizes and both widths; the complete cross-screen inventory remains pending | open |
 
 ## Scope revision, 2026-10-14
 
@@ -357,9 +357,9 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| TLK-01 | needle state description, read on focus only | H | 2.0 | TuneScreenTest `TLK-01 and TLK-02 settled announcements are opt in and never follow cents at hop rate` checks the named needle state and the separate opt-in live region. | green |
+| TLK-01 | needle state description, read on focus only | H | 2.0 | NeedleAccessibilityTest `focus reads the latest note while held-focus changes emit no accessibility events` checks actual focus events and on-demand node state; TuneScreenTest `TLK-01 needle semantics stay stable while its visual cents change` proves the visual updates leave Compose descriptions unchanged. Physical TalkBack speech remains a device check. | green |
 | TLK-02 | opt-in settled-note live region | H | 2.0 | TuneScreenTest `TLK-01 and TLK-02 settled announcements are opt in and never follow cents at hop rate` proves default silence, one-second settling, frozen held-note speech, note changes and ears-first suppression. | green |
-| TLK-03 | table rows read as sentences | H | 2.0 | HistoryControlsTest `history rows expose one full spoken action and fields retain multiline drafts`; TableScreenTest `SES-03` checks the complete note, mean, spread, attacks and readings sentence. | green |
+| TLK-03 | table rows read as sentences | H | 2.0 | HistoryControlsTest `history rows expose one full spoken action and fields retain multiline drafts`; TableScreenTest `SES-03` checks the complete note, mean and spread with cents units, attacks and readings sentence. TableScreenTest `histograms label scope units density and both comparison statistics` also exposes separately labelled historical facts. | green |
 | TLK-04 | beats never announced; stepper actions | H | 2.0 |  | open |
 
 ### Colour and shape
@@ -390,7 +390,7 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| ENT-01 | `Entitlement` with one implementation and no call sites outside the three gated features | U | 2.0 | EntitlementContractTest (four tests; the call-site grep covers every module) | green |
+| ENT-01 | `Entitlement` with one implementation and no call sites outside the three gated features | U | 2.0 | EntitlementContractTest (four tests; the call-site grep covers every module); TableSessionTest `ENT-01` also checks that denied historical comparison data is absent. | green |
 
 ### Background hook
 
@@ -401,8 +401,10 @@ revision document; the IDs are claimed here like any other.
 ## M6 supporting evidence
 
 SettingsExtrasTest covers persisted controls, confirmed history clearing, import preview/cancel/apply,
-document export across activity recreation, saved horn selection and repeated first-run setup.
-ConfigurationFilesTest rejects oversized and malformed UTF-8 documents. PersonalConfigurationTest
+document export and pending imports across activity recreation, slow document reads, recovery after loss
+of a pending payload, generic selection after a saved horn and repeated first-run setup.
+ConfigurationFilesTest rejects oversized, deeply nested and malformed UTF-8 documents; the UI rejects
+deep input without changing preferences and remains usable. PersonalConfigurationTest
 round-trips portable settings, user ranges, horn profiles and unknown fields in one prefs payload.
 SettingsExtrasScreenshotTest and TableScreenshotTest cover four text scales at phone and tablet widths,
 plus every other theme. ComponentZooTest covers history controls in all four themes at every scale.

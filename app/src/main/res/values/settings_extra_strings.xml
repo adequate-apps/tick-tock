@@ -66,4 +66,7 @@
     <string name="config_setting">Setting</string>
     <string name="config_horn_profiles">Saved horns</string>
     <string name="diag_paused">Readings skipped while paused</string>
+    <string name="diag_rejected">Rejected readings</string>
+    <string name="diag_store_dropped">Storage buffer drops</string>
+    <string name="config_interrupted">Phone interrupted settings import; choose the file again</string>
 </resources>
