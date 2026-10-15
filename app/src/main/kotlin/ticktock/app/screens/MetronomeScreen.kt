@@ -93,8 +93,8 @@ fun MetronomeScreen() {
         Segmented(listOf(R.string.metro_wood, R.string.metro_tick, R.string.metro_beep).map { Segment(stringResource(it)) }, prefs.clickSound.ordinal,
             { index -> graph.prefs.update { it.copy(clickSound = ClickSound.entries[index]) } }, tag = "metro-click")
         Caption(stringResource(R.string.tool_volume))
-        Stepper("${(prefs.clickGain * 100).roundToInt()} %", { graph.prefs.update { it.copy(clickGain = (it.clickGain - 0.1f).coerceAtLeast(0f)) } },
-            { graph.prefs.update { it.copy(clickGain = (it.clickGain + 0.1f).coerceAtMost(1f)) } }, stringResource(R.string.tool_volume_lower), stringResource(R.string.tool_volume_raise),
+        Stepper("${(prefs.clickGain * 100).roundToInt()} %", { graph.prefs.update { it.copy(clickGain = ticktock.app.output.steppedGain(it.clickGain, -0.1f)) } },
+            { graph.prefs.update { it.copy(clickGain = ticktock.app.output.steppedGain(it.clickGain, 0.1f)) } }, stringResource(R.string.tool_volume_lower), stringResource(R.string.tool_volume_raise),
             lowerEnabled = prefs.clickGain > 0f, raiseEnabled = prefs.clickGain < 1f, tag = "metro-volume")
 
     }

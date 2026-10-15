@@ -45,7 +45,11 @@ object MetrePresets {
         prefs.metroBeatUnit == 8 && prefs.metroBeatsPerBar in listOf(6, 9, 12)
 }
 
-/** Four intervals, with a fresh first tap after a two-second pause. */
+/** Volume steps use the displayed percentage so endpoints are exact. */
+fun steppedGain(gain: Float, delta: Float): Float =
+    ((gain * 100).roundToInt() + (delta * 100).roundToInt()).coerceIn(0, 100) / 100f
+
+/** Four intervals, with room for timing variation at the slowest tempo. */
 class TapTempo {
     private var previous: Long? = null
     private val intervals = ArrayDeque<Long>()
@@ -64,7 +68,7 @@ class TapTempo {
 
     private companion object {
         const val INTERVALS = 4
-        const val RESET_NANOS = 2_000_000_000L
+        const val RESET_NANOS = 3_000_000_000L
         const val MINUTE_NANOS = 60_000_000_000.0
     }
 }

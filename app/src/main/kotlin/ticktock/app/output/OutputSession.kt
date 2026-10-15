@@ -134,7 +134,7 @@ class OutputSession(
     fun nextCheck() = selectMidi(tuning(readPrefs()).nextCheck(selectedMidi()).soundingMidi)
     fun octave(delta: Int) = selectMidi(selectedMidi() + delta * SEMITONES)
     fun voice(voice: Voice) = writePrefs { it.copy(droneVoice = voice) }
-    fun droneVolume(delta: Float) = writePrefs { it.copy(droneGain = (it.droneGain + delta).coerceIn(0f, 1f)) }
+    fun droneVolume(delta: Float) = writePrefs { it.copy(droneGain = steppedGain(it.droneGain, delta)) }
 
     @Synchronized
     fun startMetro() {

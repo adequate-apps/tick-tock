@@ -260,8 +260,10 @@ class LiveCapture(
 
     override fun onResumed(info: InputInfo) {
         analyser.inputBufferChanged(info.bufferFrames)
-        outputContextChanged()
-        synchronized(duckLock) { duckEnabled = true }
+        synchronized(duckLock) {
+            duckEnabled = true
+            outputContextChanged()
+        }
         stateFlow.update { it.copy(info = info, failure = null) }
     }
 
