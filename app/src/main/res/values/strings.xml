@@ -94,7 +94,15 @@
     <string name="tune_try_again">Try again</string>
     <string name="tune_held">Held by another app</string>
     <string name="tune_no_input">No input</string>
-    <string name="trace_minus_4">−4 s</string>
+    <string name="trace_minus_5">−5 s</string>
+    <string name="trace_attack">attack</string>
+    <string name="trace_end">end</string>
+    <string name="trace_description">Pitch trace, last five seconds</string>
+    <string name="trace_last_note_description">Pitch trace, last note</string>
+    <string name="tune_last_note">Last note</string>
+    <string name="tune_sounding">sounding</string>
+    <string name="tune_seconds">%1$s s</string>
+    <string name="tune_attack_settled">attack %1$s</string>
     <string name="trace_minus_2">−2 s</string>
     <string name="trace_now">now</string>
 </resources>

@@ -229,8 +229,9 @@ private fun Zoo() {
         CentsScale(cents = null, modifier = Modifier.fillMaxWidth(), tag = "zoo-scale-ghost")
         LevelMeter(db = { -18.0 }, caption = "Level", tag = "zoo-level")
         Trace(
-            points = { FloatArray(86) { i -> if (i < 10) Float.NaN else 6f * kotlin.math.exp(-(i - 10) / 12f) + 1f } },
-            timeLabels = listOf(0f to "−4 s", 0.5f to "−2 s", 1f to "now"),
+            points = { FloatArray(108) { i -> if (i < 10) Float.NaN else 14f * kotlin.math.exp(-(i - 10) / 12f) + 1f } },
+            timeLabels = listOf(0f to "−5 s", 0.6f to "−2 s", 1f to "now"),
+            description = "Pitch trace, last five seconds",
             modifier = Modifier.fillMaxWidth(),
             tag = "zoo-trace",
         )

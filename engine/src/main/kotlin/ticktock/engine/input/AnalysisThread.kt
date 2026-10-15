@@ -28,6 +28,8 @@ class AnalysisThread(
     val analyser: HopAnalyser,
     /** Raises the thread to the platform's audio priority on a device; a no-op on the JVM. */
     private val promote: () -> Unit = {},
+    /** Applies queued settings on the analysis thread before any hop in the batch is decided. */
+    private val beforeBatch: () -> Unit = {},
     /** Every decision, in hop order, on the analysis thread. */
     private val onDecisions: (List<Decision>) -> Unit = {},
 ) {
@@ -79,6 +81,7 @@ class AnalysisThread(
             wake.drainPermits()
             if (!running) break
             val started = System.nanoTime()
+            beforeBatch()
             val decisions = analyser.drain()
             if (decisions.isEmpty()) continue
             lastHopNanos = (System.nanoTime() - started) / decisions.size

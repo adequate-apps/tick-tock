@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import ticktock.design.GridlineColors
 import ticktock.design.GridlineMetrics
@@ -26,14 +28,21 @@ import ticktock.design.reliefInset
 
 /**
  * The pitch trace: the last few seconds of readings in cents, oldest at the
- * left and now at the right, with the in-tune band ruled at ±5 c and the
- * centre dotted. [points] holds one value per hop, NaN where nothing was
+ * left and now at the right, on the cents scale's ±50 c with the in-tune
+ * band ruled at ±5 c, the close band's edges at ±12 c and the centre dotted. [points] holds one value per hop, NaN where nothing was
  * read; it is read where it is drawn, so a trace that moves every hop
  * redraws and recomposes nothing (POL-31). [timeLabels] go under the plot
- * at their fractions of the width.
+ * at their fractions of the width. TalkBack reads [description] and nothing
+ * else (TRC-03).
  */
 @Composable
-fun Trace(points: () -> FloatArray, timeLabels: List<Pair<Float, String>>, modifier: Modifier = Modifier, tag: String = "trace") {
+fun Trace(
+    points: () -> FloatArray,
+    timeLabels: List<Pair<Float, String>>,
+    description: String,
+    modifier: Modifier = Modifier,
+    tag: String = "trace",
+) {
     val colors = GridlineColors
     Column(
         modifier = modifier
@@ -42,13 +51,15 @@ fun Trace(points: () -> FloatArray, timeLabels: List<Pair<Float, String>>, modif
             .padding(GridlineMetrics.line)
             .reliefInset()
             .padding(horizontal = GridlineSpacing.sp3, vertical = GridlineSpacing.sp3)
-            .testTag(tag),
+            .testTag(tag)
+            .clearAndSetSemantics { contentDescription = description },
         verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2),
     ) {
         Canvas(Modifier.fillMaxWidth().height(PLOT_HEIGHT)) {
             fun y(c: Float) = size.height / 2f - c.coerceIn(-RANGE, RANGE) / RANGE * size.height / 2f
             val line = GridlineMetrics.line.toPx()
             drawRect(colors.positiveBg, Offset(0f, y(IN_TUNE)), Size(size.width, y(-IN_TUNE) - y(IN_TUNE)))
+            for (edge in listOf(-CLOSE, CLOSE)) drawRect(colors.attention, Offset(0f, y(edge) - line / 2), Size(size.width, line))
             for (edge in listOf(-IN_TUNE, IN_TUNE)) drawRect(colors.positive, Offset(0f, y(edge) - line / 2), Size(size.width, line))
             drawLine(
                 colors.borderLight,
@@ -79,7 +90,8 @@ fun Trace(points: () -> FloatArray, timeLabels: List<Pair<Float, String>>, modif
     }
 }
 
-/** The trace shows ±25 c; anything further sits on the edge. */
-private const val RANGE = 25f
+/** The trace shows ±50 c, as the cents scale does; anything further sits on the edge. */
+private const val RANGE = 50f
+private const val CLOSE = 12f
 private const val IN_TUNE = 5f
 private val PLOT_HEIGHT = 56.dp

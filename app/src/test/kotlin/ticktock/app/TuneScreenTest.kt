@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -169,23 +170,51 @@ class TuneScreenTest {
     }
 
     @Test
-    fun `ears first hides the cents until the note has been held two seconds`() {
+    fun `ears first hides the cents, Hz and needle while a note sounds, shows its mean for two seconds after it ends, then hides`() {
         val input = FakeAudioInput(sampleRate = rate)
         launch(input)
         compose.waitUntil(TIMEOUT) { input.isOpen }
         compose.onNodeWithTag("needle-1").performScrollTo().performClick()
-        val sine = Sine(Pitch.hzFromMidi(69, 440.0), 0.1, rate)
-        repeat(10) { input.push(sine.next(Hop.frames(rate))) }
-        compose.waitUntil(TIMEOUT) { text("readout-letter") != null }
-        assertEquals("the cents wait for the reveal", 0, compose.onAllNodes(hasTestTag("readout-cents"), useUnmergedTree = true).fetchSemanticsNodes().size)
-        // Keep the note sounding past the reveal.
-        val until = System.nanoTime() + 2_600_000_000L
-        while (System.nanoTime() < until) {
-            input.push(sine.next(Hop.frames(rate)))
-            Thread.sleep(40)
-            compose.mainClock.advanceTimeBy(40)
+        compose.onNodeWithTag("last-note-trace").assertExists()
+
+        // EAR-01: the note name, the sounding mark and the live square show; cents and Hz do not.
+        val sine = Sine(Pitch.hzFromMidi(69 + 0.03, 440.0), 0.1, rate)
+        repeat(30) { input.push(sine.next(Hop.frames(rate))); Thread.sleep(5) }
+        compose.waitUntil(TIMEOUT) { text("readout-sounding") != null }
+        assertEquals("B", text("readout-letter"))
+        assertEquals("— Hz", text("readout-hz"))
+        assertEquals(0, compose.onAllNodes(hasTestTag("readout-cents"), useUnmergedTree = true).fetchSemanticsNodes().size)
+        assertEquals("—", text("last-note"))
+        compose.onNodeWithTag("readout").performScrollTo().captureRoboImage("src/test/screenshots/tune-ears-first-hidden.png")
+
+        // EAR-02: the release reveals the held mean, with the countdown under it.
+        compose.mainClock.autoAdvance = false
+        repeat(30) { input.push(FloatArray(Hop.frames(rate))); Thread.sleep(5) }
+        awaitFrames { text("readout-cents") == "+3" }
+        assertEquals("440.8 Hz", text("readout-hz"))
+        assertEquals("B", text("readout-letter"))
+        compose.onNodeWithTag("reveal-countdown", useUnmergedTree = true).assertExists()
+        assertTrue(text("last-note").orEmpty(), text("last-note").orEmpty().endsWith(" s"))
+
+        compose.onNodeWithTag("readout").captureRoboImage("src/test/screenshots/tune-ears-first-reveal.png")
+
+        // Two seconds on, the reading hides again and the last note keeps its name and mean.
+        compose.mainClock.advanceTimeBy(1_900)
+        compose.onNodeWithTag("reveal-countdown", useUnmergedTree = true).assertExists()
+        compose.mainClock.advanceTimeBy(200)
+        awaitFrames { compose.onAllNodes(hasTestTag("reveal-countdown"), useUnmergedTree = true).fetchSemanticsNodes().isEmpty() }
+        assertEquals("—", text("readout-cents"))
+        assertTrue(text("last-note").orEmpty(), text("last-note").orEmpty().startsWith("B5 +3 · "))
+    }
+
+    /** Steps the paused clock a frame at a time until [condition] holds, letting the analysis thread's flows land between frames. */
+    private fun awaitFrames(condition: () -> Boolean) {
+        val until = System.nanoTime() + TIMEOUT * 1_000_000
+        while (!condition()) {
+            if (System.nanoTime() > until) throw AssertionError("readout ${text("readout-letter")} ${text("readout-cents")} ${text("readout-hz")}; last note ${text("last-note")}")
+            Thread.sleep(10)
+            compose.mainClock.advanceTimeByFrame()
         }
-        compose.waitUntil(TIMEOUT) { compose.onAllNodes(hasTestTag("readout-cents") and hasText("+0"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test

@@ -20,6 +20,7 @@ import ticktock.core.music.Pitch
 import ticktock.engine.input.AnalysisThread
 import ticktock.engine.input.InputListener
 import ticktock.engine.input.RecordingState
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.roundToLong
@@ -64,11 +65,26 @@ data class Level(val hop: Long = -1, val db: Double = LEVEL_FLOOR_DB) {
  */
 class TraceSnapshot(val cents: FloatArray, val attacks: Int) {
     companion object {
-        /** About four seconds of hops. */
-        val TRACE_HOPS: Int = ticktock.core.detect.Hop.count(4.0)
+        /** About five seconds of hops (TRC-01). */
+        val TRACE_HOPS: Int = ticktock.core.detect.Hop.count(5.0)
         val EMPTY = TraceSnapshot(FloatArray(TRACE_HOPS) { Float.NaN }, 0)
     }
 }
+
+/**
+ * A note that has ended, from its attack to its release (EAR-02): its held
+ * mean, the attack's settled reading, how long it sounded and its own trace.
+ * [serial] counts notes, so a screen can tell one ended note from the next.
+ */
+class LastNote(
+    val midi: Int,
+    val meanCents: Double,
+    val meanHz: Double,
+    val settledCents: Double?,
+    val seconds: Double,
+    val points: FloatArray,
+    val serial: Int,
+)
 
 /** The analysis counters and the cost of the last hop, sampled about once a second (POL-18, DET-17). */
 data class CaptureDiagnostics(
@@ -109,7 +125,10 @@ class LiveCapture(
 ) : InputListener {
     private val detector = Detector(mode).also { it.setA4(a4Hz) }
     val a4Hz: Double get() = detector.a4.hz
-    private val thread = AnalysisThread(HopAnalyser(detector, YinEstimator(detector)), promote, ::onDecisions)
+    private val thread = AnalysisThread(
+        HopAnalyser(detector, YinEstimator(detector)), promote,
+        beforeBatch = ::applyRequests, onDecisions = ::onDecisions,
+    )
     private val stateFlow = MutableStateFlow(CaptureState())
     val state: StateFlow<CaptureState> = stateFlow
     private val levelFlow = MutableStateFlow(Level())
@@ -121,6 +140,22 @@ class LiveCapture(
     /** The trace, moving every hop; only the trace plot reads it (POL-31). */
     val trace: StateFlow<TraceSnapshot> = traceFlow
 
+    private val lastNoteFlow = MutableStateFlow<LastNote?>(null)
+
+    /** The most recent note that ended; moves once per note. */
+    val lastNote: StateFlow<LastNote?> = lastNoteFlow
+
+    // The analysis thread's alone: the note being held, from its attack.
+    private var noteMidi: Int? = null
+    private var noteStartHop = 0L
+    private var noteCentsSum = 0.0
+    private var noteHzSum = 0.0
+    private var noteReadings = 0
+    private var noteSettled: Double? = null
+    private val notePoints = FloatArray(NOTE_POINTS_MAX)
+    private var notePointCount = 0
+    private var noteSerial = 0
+
     // The analysis thread's alone: the trace's ring and the hops at which attacks began.
     private val traceRing = FloatArray(TraceSnapshot.TRACE_HOPS) { Float.NaN }
     private var traceHead = 0
@@ -129,20 +164,18 @@ class LiveCapture(
 
     // Settings changed on the UI thread wait here for the analysis thread, which
     // alone touches the detector, and take effect from the next batch of hops.
-    @Volatile
-    private var requestedA4: Double? = null
+    private val requestedA4 = AtomicReference<Double?>(null)
 
-    @Volatile
-    private var requestedMode: ResponseMode? = null
+    private val requestedMode = AtomicReference<ResponseMode?>(null)
 
     /** Measures against [hz] from the next hop on; a change starts a new A4 generation (POL-19). */
     fun requestA4(hz: Double) {
-        requestedA4 = hz
+        requestedA4.set(hz)
     }
 
     /** Switches the response mode from the next hop on (POL-05). */
     fun requestMode(mode: ResponseMode) {
-        requestedMode = mode
+        requestedMode.set(mode)
     }
 
     /** Hops since the diagnostics were last sampled; the analysis thread's alone. */
@@ -174,6 +207,8 @@ class LiveCapture(
         lastShownCents = Float.NaN
         attackHops.clear()
         traceFlow.value = TraceSnapshot.EMPTY
+        noteMidi = null
+        lastNoteFlow.value = null
     }
 
     /** The platform's recording report, from the source's flow; the screen forwards it here. */
@@ -193,15 +228,16 @@ class LiveCapture(
         stateFlow.value = stateFlow.value.copy(absentDevice = failure)
     }
 
-    private fun onDecisions(decisions: List<Decision>) {
-        requestedA4?.let { hz ->
-            requestedA4 = null
+    private fun applyRequests() {
+        requestedA4.getAndSet(null)?.let { hz ->
             if (hz != detector.a4.hz) detector.setA4(hz)
         }
-        requestedMode?.let { mode ->
-            requestedMode = null
+        requestedMode.getAndSet(null)?.let { mode ->
             detector.setMode(mode)
         }
+    }
+
+    private fun onDecisions(decisions: List<Decision>) {
         if (history != null) {
             for (decision in decisions) decision.saved?.let { history.accept(it, decision.firstSettled) }
         }
@@ -213,10 +249,50 @@ class LiveCapture(
         // saves the copy on the hops, most of them, that change nothing.
         if (readout != previous.readout) stateFlow.value = previous.copy(readout = readout)
         recordTrace(decisions)
+        recordNotes(decisions)
         hopsSinceDiagnostics += decisions.size
         if (hopsSinceDiagnostics >= DIAGNOSTICS_HOPS) {
             hopsSinceDiagnostics = 0
             diagnosticsFlow.value = CaptureDiagnostics(thread.counters, thread.lastHopNanos)
+        }
+    }
+
+    private fun recordNotes(decisions: List<Decision>) {
+        for (decision in decisions) {
+            // A note change releases the old note and attacks the new one on the same hop.
+            val release = decision.release
+            if (noteMidi != null && release != null && release.midiSounding == noteMidi) {
+                if (noteReadings > 0) {
+                    lastNoteFlow.value = LastNote(
+                        midi = release.midiSounding,
+                        meanCents = noteCentsSum / noteReadings,
+                        meanHz = noteHzSum / noteReadings,
+                        settledCents = noteSettled,
+                        seconds = (release.hop - noteStartHop) * ticktock.core.detect.Hop.SECONDS,
+                        points = notePoints.copyOf(notePointCount),
+                        serial = ++noteSerial,
+                    )
+                }
+                noteMidi = null
+            }
+            decision.attack?.let { attack ->
+                noteMidi = attack.midiSounding
+                noteStartHop = decision.hop
+                noteCentsSum = 0.0
+                noteHzSum = 0.0
+                noteReadings = 0
+                noteSettled = null
+                notePointCount = 0
+            }
+            val held = noteMidi
+            val reading = decision.display
+            if (held != null && reading != null && reading.midiSounding == held) {
+                noteCentsSum += reading.cents
+                noteHzSum += reading.hz
+                noteReadings++
+                if (notePointCount < notePoints.size) notePoints[notePointCount++] = reading.cents.toFloat()
+            }
+            if (decision.firstSettled) noteSettled = decision.saved?.cents
         }
     }
 
@@ -251,6 +327,9 @@ class LiveCapture(
 
     companion object {
         private const val UNKNOWN_DEVICE = "Microphone"
+
+        /** The longest note whose trace is kept for Last note: about 20 s of hops. */
+        const val NOTE_POINTS_MAX = 430
 
         /** About one second of hops: 22 at the 46.44 ms hop. */
         const val DIAGNOSTICS_HOPS = 22

@@ -1,12 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.app.tune
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -14,15 +24,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.delay
 import ticktock.app.AppGraph
 import ticktock.app.R
 import ticktock.app.audio.CaptureState
+import ticktock.app.audio.LastNote
 import ticktock.app.audio.Level
+import ticktock.app.audio.TraceSnapshot
 import ticktock.core.catalogue.Catalogue
 import ticktock.core.catalogue.Instrument
 import ticktock.core.config.DisplayMode
@@ -35,6 +48,9 @@ import ticktock.core.music.Transposition
 import ticktock.core.prefs.Prefs
 import ticktock.core.prefs.PrefsSchema
 import ticktock.design.GridlineColors
+import ticktock.design.GridlineMetrics
+import ticktock.design.Line
+import ticktock.design.frame
 import ticktock.design.GridlineSpacing
 import ticktock.design.GridlineType
 import ticktock.design.components.Button
@@ -87,56 +103,129 @@ fun TuneScreen(graph: AppGraph, mic: MicAccess) {
     val instrument = Catalogue.find(prefs.instrumentKey) ?: Catalogue.get(Catalogue.DEFAULT_KEY)
     val stacked = LocalDensity.current.fontScale >= TWO_UP_LIMIT
 
-    // Ears first: the cents and the needle stay hidden until the note has been held for two seconds.
-    val readout = if (listening) capture.readout else ticktock.app.audio.Readout()
-    var revealed by remember { mutableStateOf(false) }
-    LaunchedEffect(readout.midi, prefs.earsFirst) {
-        revealed = false
-        if (readout.midi != null && prefs.earsFirst) {
-            delay(REVEAL_MILLIS)
-            revealed = true
+    val live = if (listening) capture.readout else ticktock.app.audio.Readout()
+    val lastNote by graph.tune.lastNote.collectAsStateWithLifecycle()
+
+    // Ears first (EAR-01, EAR-02): while a note sounds its cents, Hz and needle
+    // stay hidden; when it ends, its held mean shows for two seconds, then hides.
+    val seenSerial = remember { mutableStateOf(lastNote?.serial) }
+    var reveal by remember { mutableStateOf<LastNote?>(null) }
+    val countdown = remember { Animatable(1f) }
+    LaunchedEffect(lastNote?.serial, prefs.earsFirst) {
+        val ended = lastNote
+        if (!prefs.earsFirst || ended == null || ended.serial == seenSerial.value) {
+            reveal = null
+            return@LaunchedEffect
         }
+        seenSerial.value = ended.serial
+        reveal = ended
+        countdown.snapTo(1f)
+        countdown.animateTo(0f, tween(REVEAL_MILLIS, easing = LinearEasing))
+        reveal = null
     }
-    val hidden = prefs.earsFirst && !revealed && readout.midi != null
+    // A new note ends the reveal at once: its own reading is the one to hide.
+    val shownReveal = reveal?.takeIf { live.midi == null && listening }
+    val earsFirst = prefs.earsFirst
+    val hidden = earsFirst && shownReveal == null && live.midi != null
+    val readout = when {
+        shownReveal != null -> ticktock.app.audio.Readout(
+            midi = shownReveal.midi,
+            cents = Cents.shown(shownReveal.meanCents, shownReveal.meanHz),
+            hz = ticktock.app.audio.Readout.shownHz(shownReveal.meanHz),
+        )
+        hidden -> live.copy(cents = null, hz = null)
+        else -> live
+    }
 
     Column(Modifier.fillMaxWidth().testTag("tune"), verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
-        ReadoutField(readout.midi, readout.cents, readout.hz, prefs, instrument, hidden, gate, mic, onRetry = graph.tune::retry)
+        ReadoutField(
+            readout.midi, readout.cents, readout.hz, prefs, instrument, hidden, gate, mic,
+            onRetry = graph.tune::retry,
+            countdown = if (shownReveal != null) ({ countdown.value }) else null,
+        )
         CentsScale(
-            cents = if (hidden) null else readout.cents,
+            cents = readout.cents,
             flat = stringResource(R.string.tune_flat),
             sharp = stringResource(R.string.tune_sharp),
-            description = if (hidden) "—" else readout.cents?.let(::signed) ?: "—",
+            description = readout.cents?.let(::signed) ?: "—",
             modifier = Modifier.fillMaxWidth(),
         )
         LevelMeter(
             db = { if (listening) level.value.db.takeIf { it > Level.LEVEL_FLOOR_DB } else null },
             caption = stringResource(R.string.tune_level),
         )
-        val attacks by remember { derivedStateOf { trace.value.attacks } }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Caption(stringResource(R.string.tune_trace))
-            GlText(
-                text = when {
-                    !listening -> "—"
-                    attacks == 1 -> stringResource(R.string.tune_attack_one)
-                    else -> stringResource(R.string.tune_attacks, attacks)
-                },
-                style = GridlineType.value,
-                modifier = Modifier.testTag("tune-attacks"),
-            )
+        if (earsFirst) {
+            LastNoteTrace(lastNote, revealing = shownReveal != null, prefs, instrument)
+        } else {
+            LiveTrace(trace, listening)
         }
-        Trace(
-            points = { trace.value.cents },
-            timeLabels = listOf(
-                0f to stringResource(R.string.trace_minus_4),
-                0.5f to stringResource(R.string.trace_minus_2),
-                1f to stringResource(R.string.trace_now),
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        )
         Controls(prefs, graph, listening, stacked)
     }
 }
+
+/** The live trace (TRC-01): the last five seconds of cents and how many notes began in them. */
+@Composable
+private fun LiveTrace(trace: State<TraceSnapshot>, listening: Boolean) {
+    val attacks by remember { derivedStateOf { trace.value.attacks } }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Caption(stringResource(R.string.tune_trace))
+        GlText(
+            text = when {
+                !listening -> "—"
+                attacks == 1 -> stringResource(R.string.tune_attack_one)
+                else -> stringResource(R.string.tune_attacks, attacks)
+            },
+            style = GridlineType.value,
+            modifier = Modifier.testTag("tune-attacks"),
+        )
+    }
+    Trace(
+        points = { trace.value.cents },
+        timeLabels = listOf(
+            0f to stringResource(R.string.trace_minus_5),
+            0.6f to stringResource(R.string.trace_minus_2),
+            1f to stringResource(R.string.trace_now),
+        ),
+        description = stringResource(R.string.trace_description),
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+/**
+ * Ears first's trace (mockups 02, 02b): the last note that ended, from its
+ * attack to its end, so the player sees the shape only after hearing it.
+ * Its name and held mean head it; while its reading shows above, the
+ * attack's settled cents take the mean's place.
+ */
+@Composable
+private fun LastNoteTrace(note: LastNote?, revealing: Boolean, prefs: Prefs, instrument: Instrument) {
+    val accidentals = NoteSpelling.resolve(instrument, prefs.spelling.accidentals)
+    val summary = note?.let {
+        val name = spell(shownMidi(it.midi, prefs, instrument), accidentals)
+        val seconds = stringResource(R.string.tune_seconds, "%.1f".format(java.util.Locale.ROOT, it.seconds))
+        val settled = it.settledCents?.let { c -> Cents.shown(c) }
+        when {
+            !revealing -> "$name ${signed(Cents.shown(it.meanCents, it.meanHz) ?: 0)} · $seconds"
+            settled != null -> stringResource(R.string.tune_attack_settled, signed(settled)) + " · $seconds"
+            else -> "$name · $seconds"
+        }
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Caption(stringResource(R.string.tune_last_note))
+        GlText(text = summary ?: "—", style = GridlineType.value, modifier = Modifier.testTag("last-note"))
+    }
+    Trace(
+        points = { note?.points ?: TraceSnapshot.EMPTY.cents },
+        timeLabels = listOf(0f to stringResource(R.string.trace_attack), 1f to stringResource(R.string.trace_end)),
+        description = stringResource(R.string.trace_last_note_description),
+        modifier = Modifier.fillMaxWidth(),
+        tag = "last-note-trace",
+    )
+}
+
+/** The note the readout names for the sounding [midi]: written or concert as Names says. */
+private fun shownMidi(midi: Int, prefs: Prefs, instrument: Instrument): Int =
+    if (prefs.displayMode == DisplayMode.WRITTEN) Transposition.writtenFromSounding(midi, instrument.transposition) else midi
 
 @Composable
 private fun ReadoutField(
@@ -149,6 +238,7 @@ private fun ReadoutField(
     gate: Gate?,
     mic: MicAccess,
     onRetry: () -> Unit,
+    countdown: (() -> Float)?,
 ) {
     val accidentals = NoteSpelling.resolve(instrument, prefs.spelling.accidentals)
     val written = prefs.displayMode == DisplayMode.WRITTEN
@@ -172,8 +262,12 @@ private fun ReadoutField(
             Column(horizontalAlignment = if (stacked) Alignment.Start else Alignment.End, verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp1)) {
                 if (hidden) {
                     Icon(GlIcon.EYE_SLASH, size = GridlineSpacing.sp8 + GridlineSpacing.sp4, description = stringResource(R.string.tune_hidden))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
+                        Box(Modifier.size(GridlineSpacing.sp3).background(GridlineColors.live).frame(Line(GridlineMetrics.line, GridlineColors.textBody)))
+                        GlText(text = stringResource(R.string.tune_sounding), style = GridlineType.uiStrong, modifier = Modifier.testTag("readout-sounding"))
+                    }
                 } else {
-                    CentsReadout(cents)
+                    CentsReadout(cents, countdown)
                 }
                 if (instrument.transposition != 0 && otherMidi != null) {
                     val name = spell(otherMidi, accidentals)
@@ -236,7 +330,7 @@ private fun NoteName(midi: Int?, accidentals: ticktock.core.music.Accidentals) {
 
 /** The cents with the band's cue before them and the band's word under them; colour never stands alone (A11Y-03). */
 @Composable
-private fun CentsReadout(cents: Int?) {
+private fun CentsReadout(cents: Int?, countdown: (() -> Float)?) {
     if (cents == null) {
         GlText(text = "—", style = GridlineType.cents, color = GridlineColors.textDisabled, modifier = Modifier.testTag("readout-cents"))
         return
@@ -252,13 +346,27 @@ private fun CentsReadout(cents: Int?) {
         CentsBand.CLOSE -> if (Cents.sharp(cents)) GlIcon.CUE_SHARP else GlIcon.CUE_FLAT
         CentsBand.OFF -> if (Cents.sharp(cents)) GlIcon.CUE_SHARP_2 else GlIcon.CUE_FLAT_2
     }
-    Column(horizontalAlignment = Alignment.End) {
+    Column(Modifier.width(IntrinsicSize.Max), horizontalAlignment = Alignment.End) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(GridlineSpacing.sp3)) {
             Icon(cue, tint = numberColour)
             GlText(text = signed(cents), style = GridlineType.cents, color = numberColour, maxLines = 1, modifier = Modifier.testTag("readout-cents"))
         }
+        if (countdown != null) RevealCountdown(countdown)
         GlText(text = word, style = GridlineType.uiStrong, color = wordColour, modifier = Modifier.testTag("readout-band"))
     }
+}
+
+/** The reveal's two seconds running out, read where it is drawn so the countdown recomposes nothing. */
+@Composable
+private fun RevealCountdown(remaining: () -> Float) {
+    val track = GridlineColors.borderLight
+    val fill = GridlineColors.live
+    Box(
+        Modifier.fillMaxWidth().height(GridlineSpacing.sp1).testTag("reveal-countdown").drawBehind {
+            drawRect(track)
+            drawRect(fill, size = Size(size.width * remaining().coerceIn(0f, 1f), size.height))
+        },
+    )
 }
 
 @Composable
@@ -358,4 +466,4 @@ private const val TWO_UP_LIMIT = 1.3f
 /** From this font scale the readout stacks the note over the cents. */
 private const val STACK_LIMIT = 2.0f
 
-private const val REVEAL_MILLIS = 2_000L
+private const val REVEAL_MILLIS = 2_000
