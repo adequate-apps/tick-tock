@@ -53,6 +53,8 @@ class PlayRig(private val performance: Performance, mode: ResponseMode = Respons
 /** How one reading compared with what was played over the same samples. */
 data class Graded(
     val hop: Long,
+    /** The hop of the decision that released the reading to history, after the detector held it pending. */
+    val savedAt: Long,
     val noteIndex: Int,
     val readMidi: Int,
     val readCents: Double,
@@ -125,7 +127,7 @@ class Scorecard(val performance: Performance, val rig: PlayRig, val title: Strin
             if (clean && reading.midiSounding != performance.notes[note].midi) {
                 wrongNotes += "hop ${reading.hop}: read ${Pitch.label(reading.midiSounding)}, played ${Pitch.label(performance.notes[note].midi)}"
             }
-            out += Graded(reading.hop, note, reading.midiSounding, reading.cents, sum / n, clean)
+            out += Graded(reading.hop, decision.hop, note, reading.midiSounding, reading.cents, sum / n, clean)
         }
         graded = out
     }
@@ -136,7 +138,7 @@ class Scorecard(val performance: Performance, val rig: PlayRig, val title: Strin
     val meanError: Double get() = if (cleanErrors.isEmpty()) 0.0 else cleanErrors.average()
     val p95Error: Double get() = if (cleanErrors.isEmpty()) 0.0 else cleanErrors[((cleanErrors.size - 1) * 0.95).roundToInt()]
 
-    /** Clean readings whose printed whole cent differs from the truth's by more than rounding allows. */
+    /** Clean readings whose printed whole cent is more than 1 c from the played pitch. */
     val shownOff: Int get() = graded.count { it.clean && abs((Cents.shown(it.readCents) ?: 0) - it.truthCents) > 1.0 }
 
     /** Per note: how far the mean of its readings (what the table shows) is from the mean of what was played. */
@@ -148,12 +150,31 @@ class Scorecard(val performance: Performance, val rig: PlayRig, val title: Strin
 
     /** Notes long enough to read that produced no saved reading. */
     val missedNotes: List<Int>
-        get() = performance.notes.indices.filter { i -> performance.notes[i].seconds >= 0.45 && graded.none { it.noteIndex == i } }
+        get() = performance.notes.indices.filter { i -> performance.notes[i].seconds >= READABLE_SECONDS && graded.none { it.noteIndex == i } }
 
-    /** Milliseconds from each note's onset to its first saved reading. */
+    /**
+     * Milliseconds from each note's onset to the end of the hop whose decision
+     * released its first reading to history: the detector holds a reading
+     * pending until the note is confirmed, so this is later than the hop the
+     * reading measured.
+     */
     val latenciesMs: List<Double>
         get() = performance.notes.indices.mapNotNull { i ->
-            graded.firstOrNull { it.noteIndex == i }?.let { (it.hop + 1) * hopFrames - performance.onsets[i] }?.let { it * 1000.0 / performance.sampleRate }
+            graded.firstOrNull { it.noteIndex == i }?.let { (it.savedAt + 1) * hopFrames - performance.onsets[i] }?.let { it * 1000.0 / performance.sampleRate }
+        }
+
+    /** Milliseconds from each note's onset to the end of the hop whose decision put it on the readout (its attack). */
+    val readoutLatenciesMs: List<Double>
+        get() {
+            val attacks = rig.decisions.filter { it.attack != null }
+            // Notes too short to confirm have no attack of their own; an attack on the
+            // same pitch later in the take belongs to a later note.
+            return performance.notes.indices.filter { performance.notes[it].seconds >= READABLE_SECONDS }.mapNotNull { i ->
+                val onsetHop = performance.onsets[i] / hopFrames
+                val endHop = performance.ends[i] / hopFrames
+                attacks.firstOrNull { it.hop in onsetHop..endHop && it.attack!!.midiSounding == performance.notes[i].midi }
+                    ?.let { ((it.hop + 1) * hopFrames - performance.onsets[i]) * 1000.0 / performance.sampleRate }
+            }
         }
 
     val attacks: Int get() = rig.decisions.count { it.attack != null }
@@ -175,13 +196,17 @@ class Scorecard(val performance: Performance, val rig: PlayRig, val title: Strin
         append(" | ").append("%.2f".format(maxNoteMeanError))
         append(" | ").append(shownOff)
         append(" | ").append(attacks).append(" / ").append(performance.notes.size)
+        append(" | ").append(readoutLatenciesMs.maxOrNull()?.let { "%.0f".format(it) } ?: "-")
         append(" | ").append(latenciesMs.maxOrNull()?.let { "%.0f".format(it) } ?: "-")
         append(" | ").append(missedNotes.size)
         append(" |")
     }
 
     companion object {
-        const val HEADER = "| take | readings / clean | wrong or phantom | mean c | p95 c | max c | worst note mean c | printed cent off | attacks / notes | worst latency ms | missed |\n" +
-            "|---|---|---|---|---|---|---|---|---|---|---|"
+        /** A note this long is always confirmed and read, in every response mode the bench uses. */
+        const val READABLE_SECONDS = 0.45
+
+        const val HEADER = "| take | readings / clean | wrong or phantom | mean c | p95 c | max c | worst note mean c | printed cent over 1 c off | attacks / notes | worst readout ms | worst saved ms | missed |\n" +
+            "|---|---|---|---|---|---|---|---|---|---|---|---|"
     }
 }

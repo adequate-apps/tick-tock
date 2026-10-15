@@ -37,15 +37,27 @@ class HarmonicRefinerTest {
     }
 
     @Test
-    fun `a weak fundamental is refined on its upper partials to the window's floor`() {
+    fun `a weak fundamental is refined on its upper partials, down to A0`() {
         for (rate in rates) {
             val frames = Hop.windowFrames(rate)
-            val hz = Pitch.hzFromMidi(40.3, 440.0)
-            val window = TestTones.harmonic(hz, rate, frames, Timbre.WEAK_FUNDAMENTAL.partials)
-            val refined = HarmonicRefiner(rate, frames).refine(window, hz * Math.pow(2.0, 2.0 / 1200.0))
-            // Under ten cycles fit in the window at 84 Hz: about 0.1 c is the floor there.
-            assertEquals("$rate Hz", 0.0, cents(refined, hz), 0.15)
+            val refiner = HarmonicRefiner(rate, frames)
+            for (midi in 21..45) {
+                val hz = Pitch.hzFromMidi(midi + 0.3, 440.0)
+                val window = TestTones.harmonic(hz, rate, frames, Timbre.WEAK_FUNDAMENTAL.partials)
+                // Started 2 c off: the fit of every partial and the window's DC together lands on the tone.
+                assertEquals("$rate Hz MIDI $midi", 0.0, cents(refiner.refine(window, hz * Math.pow(2.0, 2.0 / 1200.0)), hz), 0.01)
+            }
         }
+    }
+
+    @Test
+    fun `a microphone offset does not move a low note`() {
+        val rate = 48_000
+        val frames = Hop.windowFrames(rate)
+        val hz = Pitch.hzFromMidi(24, 440.0)
+        val tone = TestTones.harmonic(hz, rate, frames, Timbre.SAX_LIKE.partials)
+        val offset = FloatArray(frames) { tone[it] + 0.05f }
+        assertEquals(0.0, cents(HarmonicRefiner(rate, frames).refine(offset, hz * 1.001), hz), 0.01)
     }
 
     @Test

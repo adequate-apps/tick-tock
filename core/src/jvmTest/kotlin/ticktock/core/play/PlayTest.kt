@@ -15,11 +15,12 @@ import java.io.FileOutputStream
  * 44.1 and 48 kHz. The bounds below are the accuracy the app promises:
  * - no reading ever names a note that was not sounding;
  * - a reading inside a held note, past its attack, is within [STEADY_CENTS]
- *   of what was played, and the printed whole cent is the played pitch rounded;
+ *   of what was played, and the printed whole cent is within 1 c of it;
  * - a note's mean (what the table keeps) is within [NOTE_MEAN_CENTS];
  * - vibrato and a harsh room have their own bounds, below, each set from
  *   measurement with headroom and each explained;
- * - every note long enough to read is read, within [LATENCY_MS] of its onset.
+ * - every note long enough to read reaches the readout within [READOUT_MS]
+ *   of its onset and history within [SAVED_MS].
  * Vibrato and drift takes are graded against the mean pitch over each
  * reading's own window, which is what a tuner can honestly report.
  *
@@ -52,7 +53,8 @@ class PlayTest {
             if (exactPrint && card.shownOff > 0) problems += "$label: ${card.shownOff} printed cents off by more than rounding"
             if (card.maxNoteMeanError > noteMean) problems += "$label: worst note mean error %.2f c, bound %.2f".format(card.maxNoteMeanError, noteMean)
             if (card.missedNotes.isNotEmpty()) problems += "$label: notes never read ${card.missedNotes}"
-            if ((card.latenciesMs.maxOrNull() ?: 0.0) > LATENCY_MS) problems += "$label: worst latency ${card.latenciesMs.maxOrNull()} ms"
+            if ((card.readoutLatenciesMs.maxOrNull() ?: 0.0) > READOUT_MS) problems += "$label: worst readout latency ${card.readoutLatenciesMs.maxOrNull()} ms"
+            if ((card.latenciesMs.maxOrNull() ?: 0.0) > SAVED_MS) problems += "$label: worst saved latency ${card.latenciesMs.maxOrNull()} ms"
             if (rig.analysisErrors != 0L) problems += "$label: ${rig.analysisErrors} analysis errors"
         }
         assertEquals(emptyList<String>(), problems)
@@ -68,6 +70,7 @@ class PlayTest {
         take("flute long tones", Instrument.FLUTE, longTones(listOf(60, 67, 74, 81, 88, 96)))
         take("trumpet long tones", Instrument.TRUMPET, longTones(listOf(52, 58, 64, 70, 76, 82)))
         take("bari sax long tones", Instrument.BARI_SAX, longTones(listOf(36, 41, 48, 55, 62, 69)))
+        take("contrabass long tones", Instrument.CONTRABASS, longTones(listOf(22, 25, 28, 31, 34, 38, 43)))
     }
 
     @Test
@@ -166,7 +169,11 @@ class PlayTest {
          */
         const val HALL_STEADY_CENTS = 1.0
 
-        const val LATENCY_MS = 450.0
+        /** Onset to the note on the readout. POL-02 puts a legato change at about 372 ms. */
+        const val READOUT_MS = 400.0
+
+        /** Onset to the first reading in history, after the detector's pending hold. */
+        const val SAVED_MS = 500.0
 
         @JvmStatic
         @AfterClass

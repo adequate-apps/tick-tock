@@ -22,6 +22,9 @@ enum class Instrument(val label: String, val partials: DoubleArray, val breathDb
     FLUTE("flute", doubleArrayOf(1.0, 0.4, 0.15, 0.08, 0.03), breathDb = -24.0, scoopCents = -8.0),
     TRUMPET("trumpet", doubleArrayOf(0.6, 0.9, 1.0, 0.9, 0.8, 0.65, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15, 0.1), breathDb = -42.0, scoopCents = -25.0),
     BARI_SAX("bari sax", doubleArrayOf(0.15, 1.0, 0.8, 0.6, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15, 0.1), breathDb = -36.0, scoopCents = -20.0),
+
+    /** The bottom of the range: a contrabass reed whose fundamental is buried under its partials. */
+    CONTRABASS("contrabass", doubleArrayOf(0.08, 0.6, 1.0, 0.8, 0.7, 0.55, 0.45, 0.35, 0.3, 0.2, 0.15, 0.1), breathDb = -34.0, scoopCents = -15.0),
 }
 
 enum class Articulation { TONGUED, SLURRED }
