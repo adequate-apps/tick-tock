@@ -63,7 +63,7 @@ fun Notice(
                 .testTag("$tag-text"),
         )
         if (action != null) {
-            Box(Modifier.align(Alignment.CenterVertically).padding(GridlineSpacing.sp1)) { action() }
+            Box(Modifier.align(Alignment.CenterVertically).padding(GridlineSpacing.sp2)) { action() }
         }
     }
 }

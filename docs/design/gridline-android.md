@@ -74,9 +74,9 @@ interactive or carry text that tests read, and are built from Compose Foundation
 | `Field` | A content box with an ink frame and inset relief. | Where readouts, tables, plots and text live. Structure around it, content in it. |
 | `Caption` | An upper-case tracked label above a group. | Plex Sans 600 at 13 sp with 0.04 em tracking. |
 | `Button` | A raised square key with a label. | 48 dp minimum each way, the whole key the target. A key is a rule-bordered face with the bevel inside the border. `Default` uses `controlFace`; `Primary` uses the selection roles for the one action a pane is about. The bevel flips while pressed; nothing else moves. |
-| `Segmented` | Mutually exclusive keys; also the tab bar. | Equal shares while every label fits with 8 dp to its border; otherwise the keys wrap into two columns, then one. Nothing scrolls out of view and no label is cut. The chosen key takes the selection roles with pressed relief. `Segment.running` draws the live square, cyan inside an ink edge. |
+| `Segmented` | Mutually exclusive keys; also the tab bar. | Equal shares while every label fits with 8 dp to its border; otherwise an even number of keys wraps into two columns and an odd number into one, so the grid never has a hole. Nothing scrolls out of view and no label is cut. The chosen key takes the selection roles with pressed relief. `Segment.running` draws the live square, cyan inside an ink edge. |
 | `SettingRow` | Label left, mono value right, light rule beneath. | 48 dp minimum; the whole row is the target. |
-| `Notice` | A full-width strip with a thick left rule and one short line. | Only when the player must act or would be surprised. `Attention`, `Danger`, `Plain`. Lives inside the pane it concerns. |
+| `Notice` | A full-width strip with a thick left rule, one short line and, usually, the key that acts on it ("Try again"), 8 dp inside the strip. | Only when the player must act or would be surprised. `Attention`, `Danger`, `Plain`. Lives inside the pane it concerns. |
 | `StatusBar` | The bar along the bottom of every screen. | One or two words per segment, a rule after each; wraps at large font sizes; never hides. |
 
 Press feedback: `GridlineTheme` installs `PressIndication`, which draws the bevel flip in the

@@ -132,6 +132,42 @@ class FrameScreenshotTest {
     }
 
     @Test
+    fun `metronome at font scale 1_0`() {
+        launch(1f)
+        compose.onNodeWithTag("tabs-2").performClick()
+        assertFrameReadable()
+        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-metronome-360x640-fs1.0")
+    }
+
+    @Test
+    fun `metronome at font scale 1_3`() {
+        launch(1.3f)
+        compose.onNodeWithTag("tabs-2").performClick()
+        assertFrameReadable()
+        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-metronome-360x640-fs1.3")
+    }
+
+    @Test
+    fun `metronome at font scale 1_5`() {
+        launch(1.5f)
+        compose.onNodeWithTag("tabs-2").performClick()
+        assertFrameReadable()
+        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-metronome-360x640-fs1.5")
+    }
+
+    @Test
+    fun `metronome at font scale 2_0`() {
+        launch(2f)
+        compose.onNodeWithTag("tabs-2").performClick()
+        assertFrameReadable()
+        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-metronome-360x640-fs2.0")
+    }
+
+    @Test
     fun `settings at font scale 1_0`() {
         launch(1f)
         compose.onNodeWithTag("open-settings").performClick()
