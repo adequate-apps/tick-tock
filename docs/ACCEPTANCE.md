@@ -2,7 +2,7 @@
 
 One row per criterion in the behaviour spec. A row turns green only when a test that was seen failing before the fix passes after it; a test only ever seen passing is a comment. Known gaps are strict-failing tests that turn red when the gap closes.
 
-Tiers: **U** pure JVM (`:core:test`), **N** host C++ (gtest, offline render), **H** Robolectric harness (`:app`, `:data`), **D** emulator or the owner's phone. Status values: `open`, `red` (test written, failing on the base), `green`, `gap` (strict known gap, named), `deferred` (ships after 2.0).
+Tiers: **U** pure JVM (`:core:jvmTest`), **N** host C++ (gtest, offline render), **H** Robolectric harness (`:app`, `:data`), **D** emulator or the owner's phone. Status values: `open`, `red` (test written, failing on the base), `green`, `gap` (strict known gap, named), `deferred` (ships after 2.0).
 
 
 ## Pitch detection accuracy over the full range

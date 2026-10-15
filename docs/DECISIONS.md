@@ -192,6 +192,16 @@ questions below.
 - `:core` becomes a Kotlin Multiplatform module before M3. Its `commonMain` holds the detector,
   pitch detection, ranges, catalogue, settings schema, portable configuration and statistics, with no
   `java.*` APIs.
+- Done in M3 with a JVM target only. Android modules consume the JVM target; an Android target
+  would compile the same code against the Android SDK and add nothing until a platform piece differs.
+  The iOS target arrives with iOS work.
+- With the JVM as the only target, the compiler resolves `commonMain` against the JDK. Until iOS
+  arrives, `ModuleWallTest` enforces the no-JDK rule from source. Platform pieces sit behind
+  `expect`/`actual`; today that is one function, which reads the bundled range data.
+- The plugin is applied by id without a version. The Kotlin Gradle plugin is already on the build
+  classpath, so the change resolves no new artifact.
+- The fakes and the KnownGap rule moved from `:core`'s test fixtures to a `:core-testing` module,
+  because a multiplatform module cannot carry `java-test-fixtures`.
 - The C++ audio engine stays portable; only its AAudio layer is Android-specific.
 - The screens move to Compose Multiplatform when iOS work starts, after Android 2.0.
 - iOS ships under the same brand and price. Any contributor signs a licence agreement first, because

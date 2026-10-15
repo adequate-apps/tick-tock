@@ -31,7 +31,7 @@ NDK 28.2.13676358 and CMake 3.22.1. Point `JAVA_HOME` at the JDK and `ANDROID_HO
 export JAVA_HOME=/path/to/jdk-21
 export ANDROID_HOME=/path/to/android-sdk
 ./gradlew help
-./gradlew :core:test :app:assembleDebug
+./gradlew :core:jvmTest :app:assembleDebug
 ```
 
 The debug APK lands in `app/build/outputs/apk/debug/`. The application id is
@@ -46,7 +46,7 @@ Changing a version in `gradle/libs.versions.toml` therefore needs a reviewed met
 
 | Tier | Command | What it covers |
 |---|---|---|
-| U | `./gradlew :core:test` | Pure functions and the contract round trips, in seconds |
+| U | `./gradlew :core:jvmTest` | Pure functions and the contract round trips, in seconds |
 | H | `./gradlew :app:testDebugUnitTest :design:testDebugUnitTest :data:testDebugUnitTest :engine:testDebugUnitTest` | Robolectric: the app boots to its Gridline frame; screenshot and storage tests later |
 | D | `./gradlew :app:connectedDebugAndroidTest` | Instrumented tests on an emulator or device |
 

@@ -34,7 +34,7 @@ dependencies {
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
 
-    testImplementation(testFixtures(project(":core")))
+    testImplementation(project(":core-testing"))
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
     testImplementation(libs.robolectric)

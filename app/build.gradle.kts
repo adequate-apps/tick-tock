@@ -134,7 +134,7 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 
-    testImplementation(testFixtures(project(":core")))
+    testImplementation(project(":core-testing"))
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
@@ -144,7 +144,7 @@ dependencies {
     testImplementation(libs.compose.ui.test.junit4)
     testImplementation(libs.androidx.test.ext.junit)
 
-    androidTestImplementation(testFixtures(project(":core")))
+    androidTestImplementation(project(":core-testing"))
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.rules)
