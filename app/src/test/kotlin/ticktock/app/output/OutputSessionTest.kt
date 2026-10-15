@@ -13,6 +13,7 @@ import ticktock.core.contracts.*
 import ticktock.core.prefs.Prefs
 import ticktock.engine.control.ControlDiagnostics
 import ticktock.engine.output.MuteSource
+import java.util.concurrent.atomic.AtomicReference
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class OutputSessionTest {
@@ -179,7 +180,8 @@ internal class TestOutputConnection : OutputConnection, OutputPort, SoundingNote
     override val soundingNotes: SoundingNotes get() = this
     override val events = MutableSharedFlow<OutputEvent>(extraBufferCapacity = 128)
     override val info = MutableStateFlow<OutputInfo?>(null)
-    val controlDiagnostics = MutableStateFlow(ControlDiagnostics())
+    override val controlDiagnostics = MutableStateFlow(ControlDiagnostics())
+    val duckGain = AtomicReference(1f)
     val sent = mutableListOf<OutputCommand>()
     val registered = mutableSetOf<OutputTool>()
     var openInfo = INFO
@@ -208,6 +210,7 @@ internal class TestOutputConnection : OutputConnection, OutputPort, SoundingNote
                     events.tryEmit(OutputEvent.Closed)
                 }
             }
+            is OutputCommand.Duck -> duckGain.set(cmd.gain)
             is OutputCommand.VoiceOn -> voice = cmd
             is OutputCommand.VoiceOff -> voice = null
             else -> Unit

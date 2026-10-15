@@ -10,6 +10,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import ticktock.core.catalogue.Catalogue
 import ticktock.core.catalogue.EnsembleNote
@@ -26,6 +28,7 @@ import ticktock.core.metro.MetroSetup
 import ticktock.core.music.Pitch
 import ticktock.core.prefs.Prefs
 import ticktock.engine.output.NativeDiagnostics
+import ticktock.engine.output.MuteSource
 
 data class OutputState(
     val droneWanted: Boolean = false,
@@ -37,6 +40,8 @@ data class OutputState(
     val failed: OutputEvent.Failed? = null,
     val bluetoothNotice: Boolean = false,
     val calibrating: Boolean = false,
+    val muted: Boolean = false,
+    val ringing: Boolean = false,
 ) {
     val toolRunning: Boolean get() = droneSounding || metroSounding || (calibrating && info != null)
 }
@@ -346,6 +351,14 @@ class OutputSession(
             scope.launch(start = CoroutineStart.UNDISPATCHED) {
                 fresh.port.info.collect { synchronized(this@OutputSession) { refresh() } }
             }
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                fresh.controlDiagnostics?.map { it.muteSources }?.distinctUntilChanged()?.collect {
+                    // The control thread publishes diagnostics before updating its sounding-note snapshot.
+                    fresh.send(emptyList()) {
+                        scope.launch { synchronized(this@OutputSession) { if (!closed) refresh() } }
+                    }
+                }
+            }
         }
     }
 
@@ -401,8 +414,14 @@ class OutputSession(
     private fun refresh() {
         val info = connection?.port?.info?.value
         val nextRoute = info?.let { it.deviceId to it.deviceName }
+        val muteSources = connection?.controlDiagnostics?.value?.muteSources.orEmpty()
+        val muted = muteSources.isNotEmpty()
         if (measuring?.let { it.route != nextRoute } == true) {
             finishCalibration(restore = false)
+            return
+        }
+        if (measuring != null && muted) {
+            finishCalibration(restore = true)
             return
         }
         if (nextRoute != route) {
@@ -412,8 +431,10 @@ class OutputSession(
         }
         mutableState.value = state.value.copy(
             info = info,
-            droneSounding = state.value.droneWanted && info != null && current().isNotEmpty(),
-            metroSounding = state.value.metroWanted && info != null,
+            droneSounding = state.value.droneWanted && info != null && !muted && current().isNotEmpty(),
+            metroSounding = state.value.metroWanted && info != null && !muted,
+            muted = muted,
+            ringing = MuteSource.CALL_RINGING in muteSources,
             parked = if (info != null) null else state.value.parked,
             failed = if (info != null) null else state.value.failed,
             bluetoothNotice = info?.wireless == true && route != dismissed,

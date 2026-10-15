@@ -3,6 +3,8 @@ package ticktock.app.output
 
 import android.content.Context
 import android.os.Handler
+import kotlinx.coroutines.flow.StateFlow
+import ticktock.engine.control.ControlDiagnostics
 import ticktock.core.contracts.OutputCommand
 import ticktock.core.contracts.OutputPort
 import ticktock.core.contracts.SoundingNotes
@@ -13,6 +15,7 @@ import ticktock.engine.output.NativeDiagnostics
 interface OutputConnection {
     val port: OutputPort
     val soundingNotes: SoundingNotes
+    val controlDiagnostics: StateFlow<ControlDiagnostics>? get() = null
 
     /** [applied] runs after the control thread has handled every command in this batch. */
     fun send(commands: List<OutputCommand>, applied: () -> Unit)
@@ -28,6 +31,7 @@ class DeviceOutputConnection(context: Context) : OutputConnection {
     private val handler = Handler(stack.control.looper)
     override val port: OutputPort get() = stack.control
     override val soundingNotes: SoundingNotes get() = stack.control.soundingNotes
+    override val controlDiagnostics: StateFlow<ControlDiagnostics> get() = stack.control.diagnostics
 
     override fun send(commands: List<OutputCommand>, applied: () -> Unit) {
         commands.forEach(port::send)
