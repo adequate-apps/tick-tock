@@ -200,7 +200,7 @@ private class NativeOpenStream(
             is OutputCommand.VoiceOff -> native.nativeVoiceOff(handle, cmd.slot)
             is OutputCommand.VoiceGain -> native.nativeVoiceGain(handle, cmd.slot, cmd.gain)
             is OutputCommand.SetA4 -> native.nativeSetA4(handle, cmd.hz)
-            is OutputCommand.Duck -> native.nativeDuck(handle, cmd.gain)
+            is OutputCommand.Duck -> native.nativeDuck(handle, cmd.gain, cmd.generation)
             is OutputCommand.MetroStart -> cmd.setup.let { s ->
                 native.nativeMetroStart(
                     handle, s.bpm, s.beatsPerBar, s.beatUnit, s.compoundPulse, s.accentOrdinals(),
@@ -269,6 +269,7 @@ private class NativeOpenStream(
     override fun onEvent(kind: Int, a: Long, b: Long, c: Long, d: Long, tools: Int, ints: IntArray?) {
         when (val event = NativeEvent.decode(kind, a, b, c, d, tools, ints)) {
             is NativeEvent.Beat -> listener.onEvent(this, event.event)
+            is NativeEvent.DuckSettled -> listener.onEvent(this, event.event)
             is NativeEvent.Counters -> listener.onEvent(this, event.event)
             // The native side parks itself on any stream error; the control
             // thread decides whether that is an unplug or a reopen in place.

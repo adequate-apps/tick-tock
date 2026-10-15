@@ -34,7 +34,7 @@ sealed interface OutputCommand {
     data class SetA4(val hz: Double) : OutputCommand
 
     /** Bleed duck from the detector: 1.0 is undisturbed, 0.3 is the floor (POL-26). */
-    data class Duck(val gain: Float) : OutputCommand
+    data class Duck(val gain: Float, val generation: Int = 0) : OutputCommand
 
     data class MetroStart(val setup: MetroSetup) : OutputCommand
 

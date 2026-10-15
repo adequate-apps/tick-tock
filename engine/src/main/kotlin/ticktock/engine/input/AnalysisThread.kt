@@ -32,6 +32,8 @@ class AnalysisThread(
     private val beforeBatch: () -> Unit = {},
     /** Every decision, in hop order, on the analysis thread. */
     private val onDecisions: (List<Decision>) -> Unit = {},
+    /** Immediate transitions, before the next buffered hop can supply evidence. */
+    private val onDecision: (Decision) -> Unit = {},
 ) {
     private val latestFlow = MutableStateFlow<Decision?>(null)
 
@@ -82,7 +84,7 @@ class AnalysisThread(
             if (!running) break
             val started = System.nanoTime()
             beforeBatch()
-            val decisions = analyser.drain()
+            val decisions = analyser.drain(onDecision)
             if (decisions.isEmpty()) continue
             lastHopNanos = (System.nanoTime() - started) / decisions.size
             onDecisions(decisions)

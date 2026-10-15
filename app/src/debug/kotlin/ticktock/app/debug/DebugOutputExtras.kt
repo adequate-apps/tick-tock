@@ -61,6 +61,7 @@ private data class OutputState(
         is OutputEvent.Opened, is OutputEvent.Resumed -> copy(parked = null, failed = null)
         is OutputEvent.Beat -> copy(beats = beats + 1, lastBeat = event)
         is OutputEvent.Counters -> copy(counters = event)
+        is OutputEvent.DuckSettled -> this
         is OutputEvent.Parked -> copy(parked = event.reason)
         is OutputEvent.Failed -> copy(failed = event)
         OutputEvent.Closed -> this
@@ -213,6 +214,7 @@ private fun OutputEvent.line(): String = when (this) {
     is OutputEvent.Parked -> "Parked reason=$reason tools=$tools"
     is OutputEvent.Failed -> "Failed device=\"$deviceName\" rates=${refusedRates.joinToString(",")}"
     is OutputEvent.Counters -> "Counters late=$lateBeatsDropped underruns=$underruns"
+    is OutputEvent.DuckSettled -> "DuckSettled generation=$generation frame=$frame nanos=$nanos"
 }
 
 private fun OutputInfo.line(): String =

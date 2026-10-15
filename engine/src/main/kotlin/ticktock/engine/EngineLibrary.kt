@@ -10,5 +10,5 @@ object EngineLibrary {
     const val NAME = "ticktock_engine"
 
     /** Must equal the value compiled into engine.cpp; checked when the bridge loads. */
-    const val ABI_VERSION = 3
+    const val ABI_VERSION = 4
 }

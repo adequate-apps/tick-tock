@@ -84,7 +84,9 @@ object BleedPolicy {
      * @param level the hop's level after mic gain
      * @param duckable whether the output source can act on a duck command
      */
-    fun step(state: BleedState, sounding: IntArray, candidate: Int?, level: Double, duckable: Boolean): BleedStep {
+    fun step(state: BleedState, sounding: IntArray, candidate: Int?, level: Double, duckable: Boolean,
+        evidenceReady: Boolean = true,
+    ): BleedStep {
         if (sounding.isEmpty()) {
             // Nothing to leak. Restore the gain if a duck was in force so the next
             // start of the drone is at full level.
@@ -93,6 +95,11 @@ object BleedPolicy {
         }
         val leak = candidate != null && candidate in sounding
         if (!leak) return clear(state)
+        if (state.ducked && !evidenceReady) {
+            // Buffered audio cannot prove how the player responded to a later gain change.
+            return BleedStep(state.copy(clearHops = 0, hopsSinceDuck = 0, strongHops = 0,
+                strongNote = null, admitted = null, weakHops = 0), exclude = true)
+        }
         if (state.admitted == candidate) return holdAdmission(state, level)
         return suspect(state, candidate, level, duckable)
     }

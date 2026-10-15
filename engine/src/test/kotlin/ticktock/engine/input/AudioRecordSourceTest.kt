@@ -55,6 +55,16 @@ class AudioRecordSourceTest {
     }
 
     @Test
+    fun `capture reports the platform buffer and its in-flight delivery bound`() {
+        val platform = FakeRecorderPlatform().apply { bufferFrames = 4_096 }
+        val source = AudioRecordSource(platform)
+        try {
+            val info = source.start { _, _ -> }.getOrThrow()
+            assertEquals(4_096 + ticktock.core.detect.Hop.frames(info.sampleRate) / 4, info.bufferFrames)
+        } finally { source.stop() }
+    }
+
+    @Test
     fun `SRC-01 the UNPROCESSED property decides the first preset asked for`() {
         platform.unprocessed = true
         val info = source().start(::sink).getOrThrow()
@@ -88,7 +98,7 @@ class AudioRecordSourceTest {
             ),
             platform.attempts,
         )
-        assertEquals(InputInfo(44_100, AudioRecordSource.DEFAULT_DEVICE_NAME, InputSource.VOICE_RECOGNITION), info)
+        assertEquals(InputInfo(44_100, AudioRecordSource.DEFAULT_DEVICE_NAME, InputSource.VOICE_RECOGNITION, 512), info)
         assertEquals(1, platform.openRecorders.size)
     }
 

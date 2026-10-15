@@ -137,7 +137,7 @@ class NativeStreamBackendTest {
         opened.send(OutputCommand.SetA4(442.0))
         opened.send(OutputCommand.VoiceOn(slot = 1, midi = 62, voice = Voice.ROOT_FIFTH, gain = 0.7f))
         opened.send(OutputCommand.VoiceGain(slot = 1, gain = 0.4f))
-        opened.send(OutputCommand.Duck(0.3f))
+        opened.send(OutputCommand.Duck(0.3f, generation = 71))
         opened.send(OutputCommand.MetroStart(setup))
         opened.send(OutputCommand.MetroUpdate(setup.copy(bpm = 140)))
         opened.send(OutputCommand.MetroStop)
@@ -153,7 +153,7 @@ class NativeStreamBackendTest {
                 Call("setA4", listOf(442.0)),
                 Call("voiceOn", listOf(1, 62, 2, 0.7f)),
                 Call("voiceGain", listOf(1, 0.4f)),
-                Call("duck", listOf(0.3f)),
+                Call("duck", listOf(0.3f, 71)),
                 Call("metroStart", metro),
                 Call("metroUpdate", listOf(140) + metro.drop(1)),
                 Call("metroStop", emptyList()),
@@ -175,21 +175,23 @@ class NativeStreamBackendTest {
     }
 
     @Test
-    fun `beats and counters reach the listener for this stream, on the event thread`() {
+    fun `beats, duck acknowledgements and counters reach the listener for this stream, on the event thread`() {
         val opened = open()
         val handle = native.single
         handle.beat(index = 0, beatInBar = 0, frame = 0, nanos = 1_000)
         handle.beat(index = 1, beatInBar = 1, frame = 21_818, nanos = 455_000_000,
             bar = 0x1ffffffffL, silentBar = true, generation = 37, audible = false)
         handle.counters(late = 1, underruns = 2)
+        handle.duckSettled(71, 3_360, 5_123_000_000)
 
-        await("three events") { events.size == 3 }
+        await("four events") { events.size == 4 }
         assertEquals(
             listOf(
                 OutputEvent.Beat(0, 0, 0, 1_000),
                 OutputEvent.Beat(1, 1, 21_818, 455_000_000,
                     bar = 0x1ffffffffL, silentBar = true, generation = 37, audible = false),
                 OutputEvent.Counters(1, 2),
+                OutputEvent.DuckSettled(71, 3_360, 5_123_000_000),
             ),
             events.map { it.second },
         )

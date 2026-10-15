@@ -160,7 +160,7 @@ class Detector(
      * estimate's frequency is what it is, so cents are the same for every
      * gain that passes (POL-12).
      */
-    fun step(estimate: HopEstimate, hop: Long, micGain: Double = 1.0): Decision {
+    fun step(estimate: HopEstimate, hop: Long, micGain: Double = 1.0, bleedEvidenceReady: Boolean = true): Decision {
         lastHop = hop
         val level = estimate.rms * micGain
         var reason: RejectReason? = when {
@@ -185,7 +185,7 @@ class Detector(
 
         silentHops = if (reason == RejectReason.SILENCE) silentHops + 1 else 0
 
-        val bleedStep = BleedPolicy.step(bleed, sounding.current(), midi, level, duckable)
+        val bleedStep = BleedPolicy.step(bleed, sounding.current(), midi, level, duckable, bleedEvidenceReady)
         bleed = bleedStep.state
         val duck = bleedStep.duck
 

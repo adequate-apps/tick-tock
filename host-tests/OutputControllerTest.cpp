@@ -579,3 +579,54 @@ TEST(OutputController, aMetronomeStartedWhileParkedClicksAtOnceOnResume) {
     const auto clicks = pull(device, 24000 + 100);
     EXPECT_EQ((std::vector<std::int64_t>{0, 24000}), clicks);
 }
+
+TEST(OutputController, duckAcknowledgementWaitsForTheRenderedRampAndCarriesPresentationTime) {
+    FakeDevice device;
+    device.timestampValid = true;
+    device.tsNanos = 5000000000LL;
+    OutputController c(device);
+    c.registerTool(OutputTool::Drone);
+    drainAll(c);
+    ASSERT_TRUE(c.duck(0.3f, 71));
+    EXPECT_TRUE(drainAll(c).empty());
+    pull(device, 48);
+    EXPECT_TRUE(drainAll(c).empty());
+    pull(device, 240);
+    auto events = drainAll(c);
+    ASSERT_EQ(1u, events.size());
+    EXPECT_EQ(EventKind::DuckSettled, events[0].kind);
+    EXPECT_EQ(71, events[0].a);
+    EXPECT_GE(events[0].c, 167);
+    EXPECT_LE(events[0].c, 170);
+    EXPECT_EQ(device.tsNanos + static_cast<std::int64_t>(events[0].c * 1e9 / 48000), events[0].d);
+    pull(device, 480);
+    EXPECT_TRUE(drainAll(c).empty());
+    ASSERT_TRUE(c.duck(1.0f, 72));
+    ASSERT_TRUE(c.duck(0.3f, 73));
+    pull(device, 1);
+    events = drainAll(c);
+    ASSERT_EQ(1u, events.size());
+    EXPECT_EQ(73, events[0].a);
+}
+
+TEST(OutputController, aReopenedStreamStartsAtFullGainAndCannotAcknowledgeAnOldRamp) {
+    FakeDevice device;
+    OutputController c(device);
+    c.registerTool(OutputTool::Drone);
+    drainAll(c);
+    ASSERT_TRUE(c.duck(0.3f, 81));
+    pull(device, 48);
+    c.park(ParkReason::HeadphonesDisconnected);
+    drainAll(c);
+    c.resume();
+    drainAll(c);
+    pull(device, 480);
+    EXPECT_TRUE(drainAll(c).empty());
+    ASSERT_TRUE(c.duck(0.3f, 82));
+    pull(device, 48);
+    EXPECT_TRUE(drainAll(c).empty());
+    pull(device, 240);
+    const auto events = drainAll(c);
+    ASSERT_EQ(1u, events.size());
+    EXPECT_EQ(82, events[0].a);
+}

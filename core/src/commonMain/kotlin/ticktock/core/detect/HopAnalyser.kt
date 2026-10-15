@@ -62,6 +62,34 @@ class HopAnalyser(
     private var current = FloatArray(0)
     private var window = FloatArray(0)
     private var nextHop = 0L
+    private var nextFrame = 0L
+    private var bleedEpoch = 0L
+    @Volatile private var bleedFromFrame = 0L
+    @Volatile private var inputBufferFrames = 0
+
+    /**
+     * Suspends unison proof immediately. Call the returned acknowledgement only
+     * after the output presents the completed duck ramp. Already delivered audio,
+     * the platform input buffer and every window overlapping them stay excluded.
+     * An older acknowledgement cannot release a newer request or capture stream.
+     */
+    @Synchronized
+    fun deferBleedEvidence(): () -> Unit {
+        val epoch = ++bleedEpoch
+        val source = ring
+        bleedFromFrame = Long.MAX_VALUE
+        return { acknowledgeDuck(epoch, source) }
+    }
+
+    @Synchronized
+    private fun acknowledgeDuck(epoch: Long, source: HopRing?) {
+        if (epoch == bleedEpoch && source != null && ring === source) {
+            bleedFromFrame = source.writePosition() + inputBufferFrames
+        }
+    }
+
+    /** Route resumes may grant a different platform input buffer. */
+    fun inputBufferChanged(frames: Int) { inputBufferFrames = frames.coerceAtLeast(0) }
 
     /** True when the hop in [previous] ends before audio the ring dropped, so it can only be context. */
     private var contextOnly = false
@@ -138,10 +166,13 @@ class HopAnalyser(
         analysisErrors = 0
         lastAnalysisError = null
         nextHop = 0
+        nextFrame = 0
+        bleedFromFrame = 0
         contextOnly = false
     }
 
     private fun configure(info: InputInfo) {
+        inputBufferChanged(info.bufferFrames)
         sampleRate = info.sampleRate
         hopFrames = Hop.frames(sampleRate)
         previous = FloatArray(hopFrames)
@@ -157,13 +188,15 @@ class HopAnalyser(
      * Analyses every whole hop in the ring, in order, and returns their
      * decisions. Call from the analysis thread, or directly in a test.
      */
-    fun drain(): List<Decision> {
+    fun drain(onDecision: (Decision) -> Unit = {}): List<Decision> {
         val target = ring ?: return emptyList()
         val decisions = ArrayList<Decision>()
         while (true) {
             val lost = target.readHop(current, hopFrames) ?: break
             if (lost > 0) skipGap(lost)
             val hop = nextHop++
+            val firstFrame = nextFrame - hopFrames
+            nextFrame += hopFrames
             if (contextOnly) {
                 // The first hop after a gap: the window it would complete, half
                 // from before the gap, never existed. It is kept as the context
@@ -194,7 +227,9 @@ class HopAnalyser(
                 continue
             }
             hopsAnalysed++
-            decisions += detector.step(estimate, hop, micGain)
+            val decision = detector.step(estimate, hop, micGain, firstFrame >= bleedFromFrame)
+            decisions += decision
+            onDecision(decision)
             swapHops()
         }
         // Audio pushed out while no whole hop was readable counts now, and the
@@ -208,6 +243,7 @@ class HopAnalyser(
     private fun skipGap(lostFrames: Long) {
         addDropped(lostFrames)
         nextHop += lostFrames / hopFrames
+        nextFrame += lostFrames
         contextOnly = true
     }
 

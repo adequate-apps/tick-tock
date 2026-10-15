@@ -88,10 +88,11 @@ bool OutputController::setA4(double hz) {
     return engine_.send(cmd);
 }
 
-bool OutputController::duck(float gain) {
+bool OutputController::duck(float gain, std::int32_t generation) {
     Command cmd;
     cmd.kind = CommandKind::Duck;
     cmd.gain = gain;
+    cmd.generation = generation;
     return engine_.send(cmd);
 }
 
@@ -273,11 +274,25 @@ std::int32_t OutputController::latencyMillis() {
 
 bool OutputController::hasEvents() {
     std::lock_guard<std::mutex> lock(mutex_);
-    return eventCount_ > 0 || engine_.beats().size() > 0 || pendingError_.load(std::memory_order_acquire) != 0;
+    return eventCount_ > 0 || engine_.beats().size() > 0 || engine_.ducks().size() > 0 || pendingError_.load(std::memory_order_acquire) != 0;
 }
 
 std::int32_t OutputController::drain(ControlEvent* out, std::int32_t max) {
     std::lock_guard<std::mutex> lock(mutex_);
+
+    render::DuckEvent duck;
+    while (eventCount_ < kEventCapacity - kEventsReserved && engine_.ducks().tryPop(duck)) {
+        ControlEvent event;
+        event.kind = EventKind::DuckSettled;
+        event.a = duck.generation;
+        event.c = duck.frame;
+        // Without a timestamp, wait a full output buffer beyond the drain.
+        std::int64_t position = 0, nanos = 0;
+        event.d = device_.timestamp(position, nanos)
+            ? nanos + static_cast<std::int64_t>((duck.frame - position) * 1e9 / sampleRate_)
+            : nowNanos() + static_cast<std::int64_t>(latencyLocked()) * 1000000;
+        push(event);
+    }
 
     // Beats move over only while the ring has room for them and for what
     // follows below; the rest wait in the render queue, whose own overflow

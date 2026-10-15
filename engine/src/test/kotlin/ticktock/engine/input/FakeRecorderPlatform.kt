@@ -19,6 +19,7 @@ class FakeRecorderPlatform : RecorderPlatform {
     val refused = mutableSetOf<Pair<InputSource, Int>>()
     var denied = false
     var busy = false
+    var bufferFrames = 0
 
     /** While true every open blocks until [releaseHung]. */
     @Volatile
@@ -97,6 +98,7 @@ class FakeRecorder(
     override val device: InputDevice,
     private val refuseStart: Boolean,
 ) : Recorder {
+    override val bufferFrames: Int get() = platform.bufferFrames
     private val lock = ReentrantLock()
     private val arrived = lock.newCondition()
     private val pending = ArrayDeque<Float>()

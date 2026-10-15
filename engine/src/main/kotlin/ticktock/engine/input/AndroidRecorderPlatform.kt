@@ -143,6 +143,7 @@ class AndroidRecorder(
     override val device: InputDevice,
 ) : Recorder {
     override val sampleRate: Int = record.sampleRate
+    override val bufferFrames: Int get() = record.bufferSizeInFrames
 
     private var callback: AudioManager.AudioRecordingCallback? = null
 
