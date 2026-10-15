@@ -39,7 +39,7 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 | PLAY-04 | under ±15 c vibrato the note's centre is within 0.3 c and each reading within 4 c of its window's mean | U | 2.0 | PlayTest `vibrato long tones keep their centre` | green |
 | PLAY-05 | in a live hall with hiss and mains hum 38 dB down, each held reading is within 1 c | U | 2.0 | PlayTest `a noisy room with hum, hiss and a live hall` | green |
 | PLAY-06 | every note of 0.45 s or longer reaches the readout within 400 ms of its onset and history within 500 ms (measured worst 230 ms and 462 ms, slurred) | U | 2.0 | PlayTest, all nine tests | green |
-| PLAY-07 | the refinement holds a breathy tone 20 dB over noise within 0.2 c where YIN alone is worse, reads a weak fundamental from A0 within 0.01 c, ignores a microphone offset, and stays within its search span; no note a hair under the quarter-tone changes note | U | 2.0 | HarmonicRefinerTest (five tests), EstimatorSweepTest `a note a hair under the quarter-tone` | green | U | 2.0 | HarmonicRefinerTest (four tests) | green |
+| PLAY-07 | the refinement holds a breathy tone 20 dB over noise within 0.2 c where YIN alone is worse, reads a weak fundamental from A0 within 0.01 c, ignores a microphone offset, and stays within its search span; no note a hair under the quarter-tone changes note | U | 2.0 | HarmonicRefinerTest (five tests), EstimatorSweepTest `a note a hair under the quarter-tone` | green |
 
 ## Detector policy
 
