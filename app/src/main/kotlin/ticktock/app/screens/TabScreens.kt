@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -148,7 +149,9 @@ fun TableScreen(graph: AppGraph = TickTockApp.graph(LocalContext.current)) {
                             val name = tableNoteName(note, prefs)
                             val mean = Cents.shown(note.meanCents)
                             val description = stringResource(R.string.table_row_spoken, spokenNote(name), spokenCents(mean),
-                                Cents.shown(note.spreadCents) ?: 0, note.attacks, note.n)
+                                Cents.shown(note.spreadCents) ?: 0,
+                                pluralStringResource(R.plurals.table_attack_total, note.attacks.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), note.attacks),
+                                pluralStringResource(R.plurals.table_reading_total, note.n.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), note.n))
                             HistoryRow(name, "${pluralStringResource(R.plurals.table_attack_total, note.attacks.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), note.attacks)}\n${pluralStringResource(R.plurals.table_reading_total, note.n.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), note.n)}", description, note.n < MIN_TABLE_READINGS,
                                 { selected = note.label to note.midiSounding }, tag = "table-note-${note.midiSounding}",
                                 mean = { TableMean(mean, note.n < MIN_TABLE_READINGS) }, chart = {
@@ -198,7 +201,7 @@ internal fun tableDate(millis: Long): String = java.time.Instant.ofEpochMilli(mi
 
 @Composable
 private fun TableGhost(gated: Boolean) {
-    Field(Modifier.fillMaxWidth()) {
+    Field(Modifier.fillMaxWidth().testTag(if (gated) "table-locked" else "table-empty")) {
         Icon(GlIcon.TABLE, tint = GridlineColors.textDisabled)
         GlText(stringResource(if (gated) R.string.table_locked else R.string.table_empty), color = GridlineColors.textDisabled)
     }

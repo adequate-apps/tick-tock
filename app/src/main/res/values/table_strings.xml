@@ -16,7 +16,7 @@
     <string name="table_free_play">Free play</string>
     <string name="table_with_drone">Include drone</string>
     <string name="table_since">Since %1$s · %2$s</string>
-    <string name="table_row_spoken">%1$s, mean %2$s, spread %3$d, %4$d attacks, %5$d readings</string>
+    <string name="table_row_spoken">%1$s, mean %2$s, spread %3$d, %4$s, %5$s</string>
     <string name="table_save_session">Save session</string>
     <string name="table_sessions">Sessions</string>
     <string name="table_new_session">New session</string>
