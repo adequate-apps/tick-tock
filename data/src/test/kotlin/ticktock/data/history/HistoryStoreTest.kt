@@ -369,6 +369,135 @@ class HistoryStoreTest {
         store.saveSession(store.currentSessionId()!!, "   ", "")
     }
 
+    @Test
+    fun `EQP-02 saved metadata and captured time survive raw retention and session resumption`() = runBlocking {
+        repeat(20) { store.accept(reading(), firstSettled = it % 10 == 0) }
+        store.flushAndWait()
+        val id = store.currentSessionId()!!
+        store.newSession()
+        now += 10 * HistoryStore.DAY_MILLIS
+        store.applyRetentionNow()
+        assertEquals(0L, count("SELECT COUNT(*) FROM readings"))
+        store.saveSession(id, " Study ", " Reed ", SessionPurpose.SHOP, " Cold start\nNew reed ")
+        store.resumeSession(id)
+        repeat(10) { store.accept(reading(midi = 71), firstSettled = it == 0) }
+        store.flushAndWait()
+        val row = store.sessions(namedOnly = true).single()
+        assertEquals("Study", row.name)
+        assertEquals("Reed", row.equipment)
+        assertEquals(SessionPurpose.SHOP, row.purpose)
+        assertEquals("Cold start\nNew reed", row.notes)
+        assertEquals(30L, row.readings)
+        assertEquals(3L, row.attacks)
+        assertEquals(2, row.distinctNotes)
+        assertEquals(30 * ticktock.core.detect.Hop.SECONDS, row.capturedSeconds, 1e-9)
+        assertTrue(row.current)
+    }
+
+    @Test
+    fun `EXP-01 export preserves each stored context equipment session and graded A4`() = runBlocking {
+        store.accept(reading(cents = 3.2), firstSettled = true)
+        store.accept(reading(cents = 5.2))
+        store.flushAndWait()
+        val first = store.currentSessionId()!!
+        store.saveSession(first, "Morning", "Reed A")
+        store.setContext(alto.copy(kind = RunKind.DRONE, droneMidi = 69))
+        store.accept(reading(cents = -2.0), firstSettled = true)
+        store.newSession()
+        now += 1_000
+        store.setContext(alto.copy(nickname = "Horn B"))
+        store.accept(reading(a4 = 442.0, cents = 7.5), firstSettled = true)
+        val all = store.export(Scope.AllHistory(includeDroneRuns = true))
+        assertEquals(3, all.size)
+        assertEquals(listOf(RunKind.FREE, RunKind.DRONE, RunKind.FREE), all.map { it.kind })
+        assertEquals(listOf("Reed A", "Reed A", ""), all.map { it.equipment })
+        assertEquals(listOf("Morning", "Morning", ""), all.map { it.session })
+        assertEquals(listOf(440.0, 440.0, 442.0), all.map { it.note.label.a4Hz })
+        assertEquals("Horn B", all.last().note.label.nickname)
+        assertEquals(4.2, all.first().note.meanCents, 1e-9)
+        assertEquals(1.0, all.first().note.spreadCents, 1e-9)
+        assertEquals(1L, all.first().note.attacks)
+        assertEquals(2L, all.first().note.n)
+        assertEquals(1_000L, all.last().startedAt - all.first().startedAt)
+        assertEquals(2, store.export(Scope.AllHistory()).size)
+        assertEquals(2, store.export(Scope.Session(first)).size)
+        assertEquals(442.0, store.export(Scope.CurrentSession).single().note.label.a4Hz, 0.0)
+        val snapshot = store.snapshot(Scope.AllHistory(), includeDroneRuns = false)
+        assertEquals(2, snapshot.scopeSessions)
+        assertEquals(all.first().startedAt, snapshot.since)
+        assertEquals(2, snapshot.sessions.size)
+        assertEquals(store.currentSessionId(), snapshot.currentSessionId)
+        assertEquals(listOf(440.0, 442.0), snapshot.rows.map { it.label.a4Hz })
+        assertEquals(snapshot.rows.map { it.n }, snapshot.history.map { it.n })
+    }
+
+    @Test
+    fun `SES-03 clearing one note preserves other labels sessions and subsequent live capture`() = runBlocking {
+        store.accept(reading(cents = 8.0))
+        store.flushAndWait()
+        val previous = store.currentSessionId()!!
+        store.newSession()
+        store.accept(reading(cents = 9.0))
+        store.accept(reading(midi = 71, cents = 11.0))
+        store.accept(reading(cents = 2.0, a4 = 442.0))
+        store.flushAndWait()
+        val label = RunLabel("alto-sax", -9, 440.0, "")
+        store.clearNote(Scope.CurrentSession, label, 69)
+        assertEquals(listOf(71, 69), store.summaries(Scope.CurrentSession).map { it.midiSounding })
+        assertEquals(8.0, store.summaries(Scope.Session(previous)).single().meanCents, 0.0)
+        assertEquals(3L, count("SELECT COUNT(*) FROM readings"))
+        store.accept(reading(cents = -4.0))
+        store.flushAndWait()
+        val restored = store.summaries(Scope.CurrentSession).single { it.label == label && it.midiSounding == 69 }
+        assertEquals(1L, restored.n)
+        assertEquals(-4.0, restored.meanCents, 0.0)
+        store.setContext(alto.copy(kind = RunKind.DRONE, droneMidi = 69))
+        store.accept(reading(cents = 6.0))
+        store.flushAndWait()
+        store.clearNote(Scope.AllHistory(), label, 69)
+        assertTrue(store.export(Scope.AllHistory()).none { it.note.label == label && it.note.midiSounding == 69 })
+        assertEquals(6.0, store.export(Scope.AllHistory(true)).single { it.kind == RunKind.DRONE }.note.meanCents, 0.0)
+    }
+
+    @Test
+    fun `SES-08 clearing a live note cannot restore its cached counts on the next flush`() = runBlocking {
+        repeat(4) { store.accept(reading(cents = 10.0)) }
+        store.accept(reading(midi = 71))
+        store.flushAndWait()
+        store.clearNote(Scope.CurrentSession, RunLabel("alto-sax", -9, 440.0, ""), 69)
+        store.accept(reading(cents = -8.0), firstSettled = true)
+        store.flushAndWait()
+        val note = store.summaries(Scope.CurrentSession).single { it.midiSounding == 69 }
+        assertEquals(1L, note.n)
+        assertEquals(1L, note.attacks)
+        assertEquals(-8.0, note.meanCents, 0.0)
+        assertEquals(2L, count("SELECT COUNT(*) FROM readings"))
+    }
+
+    @Test
+    fun `SES-07 a failed flush refuses clear and recovery can clear every retained row`() = runBlocking {
+        store.accept(reading())
+        store.flushAndWait()
+        store.accept(reading(midi = 71))
+        database.failWrites = true
+        try {
+            store.clearHistory()
+            org.junit.Assert.fail("clear accepted a failed pending write")
+        } catch (expected: HistoryWriteException) { assertTrue(expected.message!!.isNotBlank()) }
+        database.failWrites = false
+        assertEquals(1, store.sessions().size)
+        assertEquals(1L, count("SELECT COUNT(*) FROM readings"))
+        store.clearHistory()
+        assertTrue(store.sessions().isEmpty())
+        assertTrue(store.summaries(Scope.AllHistory(true)).isEmpty())
+        assertEquals(0L, count("SELECT COUNT(*) FROM readings"))
+        assertEquals(null, store.currentSessionId())
+        store.accept(reading(midi = 74))
+        store.flushAndWait()
+        assertEquals(74, store.summaries(Scope.CurrentSession).single().midiSounding)
+        assertEquals(1L, count("SELECT COUNT(*) FROM readings"))
+    }
+
     /** A database whose writes can be made to fail, standing in for a full or broken disk. */
     private class FlakyDatabase(context: Context) : HistoryDatabase(context, DB_NAME) {
         @Volatile

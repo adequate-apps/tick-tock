@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import ticktock.core.contracts.HistorySink
 import ticktock.core.detect.Reading
+import ticktock.core.detect.Hop
 import ticktock.core.prefs.PrefsSchema
 import ticktock.data.StorageThread
 import ticktock.data.db.HistoryDatabase
@@ -68,6 +69,33 @@ data class SessionRow(
     val runs: Int,
     val readings: Long,
     val current: Boolean,
+    val purpose: SessionPurpose = SessionPurpose.PRACTICE,
+    val notes: String = "",
+    val attacks: Long = 0,
+    val distinctNotes: Int = 0,
+) {
+    /** Accepted capture time survives raw-reading retention and excludes time between visits. */
+    val capturedSeconds: Double get() = readings * Hop.SECONDS
+}
+
+enum class SessionPurpose(val sql: String) { PRACTICE("practice"), SHOP("shop"), EQUIPMENT("equipment") }
+
+/** One note_hist row, retaining the labels that an aggregate table combines. */
+data class ExportSummary(
+    val note: NoteSummary,
+    val kind: RunKind,
+    val equipment: String,
+    val session: String,
+    val startedAt: Long,
+)
+
+data class HistorySnapshot(
+    val rows: List<NoteSummary>,
+    val history: List<NoteSummary>,
+    val sessions: List<SessionRow>,
+    val currentSessionId: Long?,
+    val scopeSessions: Int,
+    val since: Long?,
 )
 
 /**
@@ -357,13 +385,16 @@ class HistoryStore(
     }
 
     /** Names (saves) a session and records its equipment (EQP-02). */
-    suspend fun saveSession(id: Long, name: String, equipment: String) = onStorage {
+    suspend fun saveSession(id: Long, name: String, equipment: String,
+        purpose: SessionPurpose = SessionPurpose.PRACTICE, notes: String = "") = onStorage {
         val cleanName = name.trim().take(PrefsSchema.TEXT_MAX)
         require(cleanName.isNotEmpty()) { "a saved session needs a name" }
         flushOrThrow()
         val values = ContentValues().apply {
             put("name", cleanName)
             put("equipment", equipment.trim().take(PrefsSchema.TEXT_MAX))
+            put("purpose", purpose.sql)
+            put("notes", notes.trim().take(SESSION_NOTES_MAX))
         }
         val updated = database.writableDatabase.update("sessions", values, "id = ?", arrayOf(id.toString()))
         require(updated == 1) { "no session $id" }
@@ -386,14 +417,18 @@ class HistoryStore(
         database.readableDatabase.rawQuery(
             """SELECT s.id, s.started_at, s.name, s.equipment,
                       (SELECT COUNT(*) FROM runs r WHERE r.session_id = s.id),
-                      (SELECT COALESCE(SUM(h.n), 0) FROM note_hist h JOIN runs r ON r.id = h.run_id WHERE r.session_id = s.id)
+                      (SELECT COALESCE(SUM(h.n), 0) FROM note_hist h JOIN runs r ON r.id = h.run_id WHERE r.session_id = s.id),
+                      s.purpose, s.notes,
+                      (SELECT COALESCE(SUM(h.n_attacks), 0) FROM note_hist h JOIN runs r ON r.id = h.run_id WHERE r.session_id = s.id),
+                      (SELECT COUNT(DISTINCT h.midi_sounding) FROM note_hist h JOIN runs r ON r.id = h.run_id WHERE r.session_id = s.id)
                FROM sessions s $where ORDER BY s.started_at DESC, s.id DESC""",
             null,
         ).use { c ->
             buildList {
                 while (c.moveToNext()) {
                     val id = c.getLong(0)
-                    add(SessionRow(id, c.getLong(1), c.getString(2), c.getString(3), c.getInt(4), c.getLong(5), id == current))
+                    add(SessionRow(id, c.getLong(1), c.getString(2), c.getString(3), c.getInt(4), c.getLong(5), id == current,
+                        SessionPurpose.entries.first { it.sql == c.getString(6) }, c.getString(7), c.getLong(8), c.getInt(9)))
                 }
             }
         }
@@ -401,11 +436,7 @@ class HistoryStore(
 
     /** Per-label, per-note statistics for [scope], from the stored summaries (SES-03, SES-04, SES-08). */
     suspend fun summaries(scope: Scope): List<NoteSummary> = onStorage {
-        val (where, args) = when (scope) {
-            Scope.CurrentSession -> (sessionId ?: return@onStorage emptyList()).let { "r.session_id = ?" to arrayOf(it.toString()) }
-            is Scope.Session -> "r.session_id = ?" to arrayOf(scope.id.toString())
-            is Scope.AllHistory -> (if (scope.includeDroneRuns) "1" else "r.context != '${RunKind.DRONE.sql}'") to emptyArray()
-        }
+        val (where, args) = selection(scope)
         val groups = LinkedHashMap<Pair<RunLabel, Int>, NoteAggregate>()
         database.readableDatabase.rawQuery(
             """SELECT r.instrument_key, r.transposition, r.a4_hz, r.nickname, h.midi_sounding,
@@ -439,6 +470,70 @@ class HistoryStore(
                 bins = a.bins,
             )
         }
+    }
+
+    /** CSV uses stored rows so session, equipment and capture context survive export (EXP-01). */
+    suspend fun export(scope: Scope): List<ExportSummary> = onStorage {
+        flushOrThrow()
+        val (where, args) = selection(scope)
+        database.readableDatabase.rawQuery(
+            """SELECT r.instrument_key, r.transposition, r.a4_hz, r.nickname, h.midi_sounding,
+                      h.n, h.sum_cents, h.sum_sq, h.bins, h.n_attacks, h.sum_attack_cents,
+                      r.context, s.equipment, s.name, r.started_at
+               FROM note_hist h JOIN runs r ON r.id = h.run_id JOIN sessions s ON s.id = r.session_id
+               WHERE $where ORDER BY s.started_at, s.id, r.id, h.midi_sounding""", args,
+        ).use { c -> buildList {
+            while (c.moveToNext()) {
+                val n = c.getLong(5)
+                val mean = c.getDouble(6) / n
+                val attacks = c.getLong(9)
+                add(ExportSummary(NoteSummary(RunLabel(c.getString(0), c.getInt(1), c.getDouble(2), c.getString(3)),
+                    c.getInt(4), n, mean, sqrt((c.getDouble(7) / n - mean * mean).coerceAtLeast(0.0)), attacks,
+                    if (attacks > 0) c.getDouble(10) / attacks else Double.NaN, NoteAggregate.binsFrom(c.getBlob(8))),
+                    RunKind.of(c.getString(11)), c.getString(12), c.getString(13), c.getLong(14)))
+            }
+        } }
+    }
+
+    /** Every table fact comes from one storage turn, between scheduled flushes. */
+    suspend fun snapshot(scope: Scope, includeDroneRuns: Boolean): HistorySnapshot = withContext(storage.dispatcher) {
+        val (where, args) = selection(scope)
+        val totals = database.readableDatabase.rawQuery(
+            "SELECT COUNT(DISTINCT r.session_id), MIN(r.started_at) FROM runs r JOIN note_hist h ON h.run_id = r.id WHERE $where", args,
+        ).use { c -> c.moveToFirst(); c.getInt(0) to if (c.isNull(1)) null else c.getLong(1) }
+        HistorySnapshot(summaries(scope), summaries(Scope.AllHistory(includeDroneRuns)), sessions(), sessionId, totals.first, totals.second)
+    }
+
+    /** Clears a confirmed note in the displayed scope, including raw rows and cached aggregates. */
+    suspend fun clearNote(scope: Scope, label: RunLabel, midi: Int) = onStorage {
+        flushOrThrow()
+        val (where, args) = selection(scope)
+        val runs = """SELECT r.id FROM runs r WHERE ($where) AND r.instrument_key = ? AND r.transposition = ?
+            AND r.a4_hz = ? AND r.nickname = ?"""
+        val values = args + arrayOf(label.instrumentKey, label.transposition.toString(), label.a4Hz.toString(), label.nickname, midi.toString())
+        val db = database.writableDatabase
+        db.beginTransaction()
+        try {
+            for (table in listOf("readings", "note_hist")) db.delete(table, "run_id IN ($runs) AND midi_sounding = ?", values)
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+        // A new run prevents the live in-memory aggregate from bringing cleared readings back.
+        leaveSession(sessionId)
+        publish { it.copy(flushes = it.flushes + 1) }
+    }
+
+    /** Settings calls this only after a confirmation covering every stored session. */
+    suspend fun clearHistory() = onStorage {
+        flushOrThrow()
+        database.writableDatabase.delete("sessions", null, null)
+        leaveSession(null)
+        publish { it.copy(flushes = it.flushes + 1) }
+    }
+
+    private fun selection(scope: Scope): Pair<String, Array<String>> = when (scope) {
+        Scope.CurrentSession -> sessionId?.let { "r.session_id = ?" to arrayOf(it.toString()) } ?: ("0" to emptyArray())
+        is Scope.Session -> "r.session_id = ?" to arrayOf(scope.id.toString())
+        is Scope.AllHistory -> (if (scope.includeDroneRuns) "1" else "r.context != '${RunKind.DRONE.sql}'") to emptyArray()
     }
 
     /** The database file's size in bytes, from its page count (SES-10). */
@@ -481,6 +576,7 @@ class HistoryStore(
         const val FAILURES_BEFORE_BANNER = 3
         const val RETENTION_DAYS = 7L
         const val DAY_MILLIS = 24L * 60 * 60 * 1000
+        const val SESSION_NOTES_MAX = 2_000
 
         /** About fifteen minutes of readings at 21.5 a second: room for a long write outage, bounded memory. */
         const val MAX_PENDING = 20_000
