@@ -53,7 +53,7 @@ RENAMES = {
     "fs-measure": "fontSizeMeasure",
     "fs-small": "fontSizeSmall",
     "fs-stepper": "fontSizeStepper",
-    "fs-cents": "fontSizeCents",
+    "fs-readout": "fontSizeReadout",
     "fs-note": "fontSizeNote",
     "lh-dense": "lineHeightDense",
     "lh-ui": "lineHeightUi",

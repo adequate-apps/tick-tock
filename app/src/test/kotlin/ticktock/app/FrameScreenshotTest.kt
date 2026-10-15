@@ -67,7 +67,7 @@ class FrameScreenshotTest {
     fun `tune at font scale 1_0`() {
         launch(1f)
         assertFrameReadable()
-        compose.onNodeWithTag("tune-empty", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("readout").assertIsDisplayed()
         golden("frame-tune-360x640-fs1.0")
     }
 
@@ -75,7 +75,7 @@ class FrameScreenshotTest {
     fun `tune at font scale 1_3`() {
         launch(1.3f)
         assertFrameReadable()
-        compose.onNodeWithTag("tune-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("readout").performScrollTo().assertIsDisplayed()
         golden("frame-tune-360x640-fs1.3")
     }
 
@@ -83,7 +83,7 @@ class FrameScreenshotTest {
     fun `tune at font scale 1_5`() {
         launch(1.5f)
         assertFrameReadable()
-        compose.onNodeWithTag("tune-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("readout").performScrollTo().assertIsDisplayed()
         golden("frame-tune-360x640-fs1.5")
     }
 
@@ -91,7 +91,7 @@ class FrameScreenshotTest {
     fun `tune at font scale 2_0`() {
         launch(2f)
         assertFrameReadable()
-        compose.onNodeWithTag("tune-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("readout").performScrollTo().assertIsDisplayed()
         golden("frame-tune-360x640-fs2.0")
     }
 

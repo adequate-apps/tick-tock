@@ -66,7 +66,7 @@ object GridlineType {
     val octave = base.copy(fontSize = GridlineTypeScale.fontSizeMeasure, lineHeight = GridlineTypeScale.fontSizeMeasure, fontWeight = FontWeight.Medium)
 
     /** The readout's cents: Mono 500 at 40 sp. */
-    val cents = mono.copy(fontSize = GridlineTypeScale.fontSizeCents, lineHeight = GridlineTypeScale.fontSizeCents, fontWeight = FontWeight.Medium)
+    val cents = mono.copy(fontSize = GridlineTypeScale.fontSizeReadout, lineHeight = GridlineTypeScale.fontSizeReadout, fontWeight = FontWeight.Medium)
 
     /** A stepper's value: Mono 500 at 16 sp. */
     val stepper = mono.copy(fontSize = GridlineTypeScale.fontSizeStepper, lineHeight = GridlineTypeScale.lineHeightUi, fontWeight = FontWeight.Medium)

@@ -30,6 +30,9 @@ object Cents {
 
     const val NO_READING = "–"
 
+    /** True when a printed reading sits above the note; the band cue points up for it. */
+    fun sharp(shown: Int): Boolean = shown > 0
+
     private fun roundHalfAwayFromZero(value: Double): Int {
         // Compare the fraction rather than adding 0.5 first: the addition can
         // round the largest double below one half up to 1.0 before the floor.

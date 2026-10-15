@@ -27,6 +27,7 @@ import ticktock.core.catalogue.Catalogue
 import ticktock.core.catalogue.Instrument
 import ticktock.core.config.DisplayMode
 import ticktock.core.contracts.InputFailure
+import ticktock.core.music.Cents
 import ticktock.core.music.CentsBand
 import ticktock.core.music.NoteSpelling
 import ticktock.core.music.Pitch
@@ -51,7 +52,6 @@ import ticktock.design.components.Stepper
 import ticktock.design.plots.CentsScale
 import ticktock.design.plots.LevelMeter
 import ticktock.design.plots.Trace
-import kotlin.math.abs
 
 /** Why the readout cannot show a reading, and so what its notice offers. */
 enum class Gate { MIC_NOT_ASKED, MIC_DENIED, MIC_DENIED_ALWAYS, MIC_BUSY, NO_INPUT }
@@ -105,6 +105,7 @@ fun TuneScreen(graph: AppGraph, mic: MicAccess) {
             cents = if (hidden) null else readout.cents,
             flat = stringResource(R.string.tune_flat),
             sharp = stringResource(R.string.tune_sharp),
+            description = if (hidden) "—" else readout.cents?.let(::signed) ?: "—",
             modifier = Modifier.fillMaxWidth(),
         )
         LevelMeter(
@@ -205,8 +206,7 @@ private fun ReadoutField(
                 },
                 kind = if (gate == Gate.MIC_BUSY) NoticeKind.Attention else NoticeKind.Plain,
                 icon = if (gate == Gate.MIC_BUSY) GlIcon.MIC_BUSY else GlIcon.MIC_SLASH,
-                tag = "gate",
-                modifier = Modifier.testTag("gate-${gate.name.lowercase()}"),
+                tag = "gate-${gate.name.lowercase()}",
             ) {
                 when (gate) {
                     Gate.MIC_NOT_ASKED, Gate.MIC_DENIED ->
@@ -229,8 +229,8 @@ private fun NoteName(midi: Int?, accidentals: ticktock.core.music.Accidentals) {
         return
     }
     Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.testTag("readout-note")) {
-        GlText(text = letter(midi, accidentals), style = GridlineType.note, maxLines = 1)
-        GlText(text = Pitch.octave(midi).toString(), style = GridlineType.octave, maxLines = 1)
+        GlText(text = letter(midi, accidentals), style = GridlineType.note, maxLines = 1, modifier = Modifier.testTag("readout-letter"))
+        GlText(text = Pitch.octave(midi).toString(), style = GridlineType.octave, maxLines = 1, modifier = Modifier.testTag("readout-octave"))
     }
 }
 
@@ -249,8 +249,8 @@ private fun CentsReadout(cents: Int?) {
     }
     val cue = when (band) {
         CentsBand.IN_TUNE -> GlIcon.CHECK
-        CentsBand.CLOSE -> if (cents > 0) GlIcon.CUE_SHARP else GlIcon.CUE_FLAT
-        CentsBand.OFF -> if (cents > 0) GlIcon.CUE_SHARP_2 else GlIcon.CUE_FLAT_2
+        CentsBand.CLOSE -> if (Cents.sharp(cents)) GlIcon.CUE_SHARP else GlIcon.CUE_FLAT
+        CentsBand.OFF -> if (Cents.sharp(cents)) GlIcon.CUE_SHARP_2 else GlIcon.CUE_FLAT_2
     }
     Column(horizontalAlignment = Alignment.End) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(GridlineSpacing.sp3)) {
@@ -346,12 +346,8 @@ fun letter(midi: Int, accidentals: ticktock.core.music.Accidentals): String =
 /** The full name with its octave, as the readout's second line prints it: "A5", "B♭3". */
 fun spell(midi: Int, accidentals: ticktock.core.music.Accidentals): String = letter(midi, accidentals) + Pitch.octave(midi)
 
-/** Signed whole cents with a true minus: "+4", "−7", "0". */
-fun signed(cents: Int): String = when {
-    cents > 0 -> "+$cents"
-    cents < 0 -> "−${abs(cents)}"
-    else -> "0"
-}
+/** Signed whole cents as core prints them ("+4", "+0"), with a true minus sign for print: "−7". */
+fun signed(shown: Int): String = Cents.format(shown).replace('-', '−')
 
 /** A4 as the stepper and the status bar print it: whole hertz without a decimal. */
 fun formatA4(hz: Double): String = if (hz == Math.rint(hz)) hz.toInt().toString() else "%.1f".format(java.util.Locale.ROOT, hz)

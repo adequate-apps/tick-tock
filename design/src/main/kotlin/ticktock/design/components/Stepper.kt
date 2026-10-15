@@ -3,10 +3,12 @@ package ticktock.design.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,8 +23,8 @@ import ticktock.design.frame
 import ticktock.design.reliefInset
 
 /**
- * A value with a key either side: − lowers it, + raises it. Each key is a
- * 48 dp square; the value sits in a white inset field between them. The keys
+ * A value with a key either side: − lowers it, + raises it. Each key is at
+ * least 48 dp square and grows with large text; the value sits in a white inset field between them. The keys
  * carry [lowerLabel] and [raiseLabel] for TalkBack, since − and + alone say
  * nothing about what moves.
  */
@@ -38,18 +40,20 @@ fun Stepper(
     raiseEnabled: Boolean = true,
     tag: String = "stepper",
 ) {
-    Row(modifier.height(GridlineMetrics.touchTarget).testTag(tag), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.height(IntrinsicSize.Min).testTag(tag), verticalAlignment = Alignment.CenterVertically) {
         Button(
             label = "−",
             onClick = onLower,
             enabled = lowerEnabled,
-            modifier = Modifier.size(GridlineMetrics.touchTarget).semantics { contentDescription = lowerLabel },
+            modifier = Modifier.defaultMinSize(minWidth = GridlineMetrics.touchTarget).fillMaxHeight().semantics { contentDescription = lowerLabel },
             tag = "$tag-lower",
+            labelPadding = GridlineSpacing.sp2,
         )
         Box(
             Modifier
                 .weight(1f)
-                .height(GridlineMetrics.touchTarget)
+                .defaultMinSize(minHeight = GridlineMetrics.touchTarget)
+                .fillMaxHeight()
                 .background(GridlineColors.field)
                 .frame()
                 .padding(GridlineMetrics.line)
@@ -63,8 +67,9 @@ fun Stepper(
             label = "+",
             onClick = onRaise,
             enabled = raiseEnabled,
-            modifier = Modifier.size(GridlineMetrics.touchTarget).semantics { contentDescription = raiseLabel },
+            modifier = Modifier.defaultMinSize(minWidth = GridlineMetrics.touchTarget).fillMaxHeight().semantics { contentDescription = raiseLabel },
             tag = "$tag-raise",
+            labelPadding = GridlineSpacing.sp2,
         )
     }
 }

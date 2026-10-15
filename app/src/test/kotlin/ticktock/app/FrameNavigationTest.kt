@@ -56,6 +56,6 @@ class FrameNavigationTest {
         compose.waitForIdle()
         compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         compose.onNodeWithTag("tabs-0").assertIsSelected()
-        compose.onNodeWithTag("tune-empty", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("readout").assertIsDisplayed()
     }
 }

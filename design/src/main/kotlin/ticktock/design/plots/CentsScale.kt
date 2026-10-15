@@ -32,9 +32,16 @@ import ticktock.design.reliefInset
  * nothing to show.
  */
 @Composable
-fun CentsScale(cents: Int?, modifier: Modifier = Modifier, flat: String = "Flat", sharp: String = "Sharp", tag: String = "cents-scale") {
+fun CentsScale(
+    cents: Int?,
+    modifier: Modifier = Modifier,
+    flat: String = "Flat",
+    sharp: String = "Sharp",
+    /** What TalkBack reads for the pointer, the signed cents as the readout prints them; the caller formats it. */
+    description: String = "—",
+    tag: String = "cents-scale",
+) {
     val colors = GridlineColors
-    val description = cents?.let { if (it > 0) "+$it" else "$it" } ?: "—"
     Column(
         modifier = modifier
             .background(colors.field)

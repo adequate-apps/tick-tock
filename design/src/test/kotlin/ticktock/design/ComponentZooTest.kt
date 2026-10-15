@@ -36,6 +36,12 @@ import ticktock.design.components.Button
 import ticktock.design.components.ButtonTone
 import ticktock.design.components.Caption
 import ticktock.design.components.Field
+import ticktock.design.components.GlIcon
+import ticktock.design.components.Icon
+import ticktock.design.components.Stepper
+import ticktock.design.plots.CentsScale
+import ticktock.design.plots.LevelMeter
+import ticktock.design.plots.Trace
 import ticktock.design.components.GlText
 import ticktock.design.components.Notice
 import ticktock.design.components.NoticeKind
@@ -61,7 +67,7 @@ import ticktock.design.components.TitleBarAction
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = "w640dp-h2600dp-hdpi")
+@Config(qualifiers = "w640dp-h4000dp-hdpi")
 class ComponentZooTest(private val theme: GridlinePalette, private val fontScale: Float, private val widthDp: Int) {
     @get:Rule
     val compose = createComposeRule()
@@ -218,6 +224,22 @@ private fun Zoo() {
         Column(Modifier.fillMaxWidth().frame()) {
             SettingRow(label = "A4", value = "440 Hz", onClick = {}, tag = "zoo-a4")
             SettingRow(label = "Noise floor", value = "-45 dB", tag = "zoo-floor")
+        }
+        CentsScale(cents = 4, description = "+4", modifier = Modifier.fillMaxWidth(), tag = "zoo-scale")
+        CentsScale(cents = null, modifier = Modifier.fillMaxWidth(), tag = "zoo-scale-ghost")
+        LevelMeter(db = { -18.0 }, caption = "Level", tag = "zoo-level")
+        Trace(
+            points = { FloatArray(86) { i -> if (i < 10) Float.NaN else 6f * kotlin.math.exp(-(i - 10) / 12f) + 1f } },
+            timeLabels = listOf(0f to "−4 s", 0.5f to "−2 s", 1f to "now"),
+            modifier = Modifier.fillMaxWidth(),
+            tag = "zoo-trace",
+        )
+        Stepper(value = "440 Hz", onLower = {}, onRaise = {}, lowerLabel = "Lower A4", raiseLabel = "Raise A4", modifier = Modifier.fillMaxWidth(), tag = "zoo-a4")
+        Row(horizontalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
+            GlIcon.entries.forEach { Icon(it) }
+        }
+        Notice(text = "", kind = NoticeKind.Plain, icon = GlIcon.MIC_SLASH, tag = "zoo-mic") {
+            Button(label = "Allow microphone", onClick = {}, tone = ButtonTone.Primary, tag = "zoo-allow")
         }
         Notice(text = "Held by another app", kind = NoticeKind.Danger, tag = "zoo-busy") {
             Button(label = "Try again", onClick = {}, tag = "zoo-retry")

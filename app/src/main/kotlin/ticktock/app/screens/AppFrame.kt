@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +66,7 @@ fun AppFrame() {
     val a4Hz by remember { derivedStateOf { prefs.value.a4Hz } }
     val keepAwake by remember { derivedStateOf { capture.value.isListening && prefs.value.keepAwake } }
     KeepScreenOn(keepAwake)
+    SideEffect { FrameCompositions.count++ }
 
     // Both survive rotation and process death: the enum saves as a Serializable.
     var tab by rememberSaveable { mutableStateOf(Tab.Tune) }
@@ -130,4 +132,13 @@ private fun KeepScreenOn(active: Boolean) {
         view.keepScreenOn = active
         onDispose { view.keepScreenOn = false }
     }
+}
+
+/**
+ * How many times the frame has composed, for the POL-31 test: a held note must
+ * not recompose the frame. Counting is one increment per composition.
+ */
+internal object FrameCompositions {
+    @Volatile
+    var count: Int = 0
 }

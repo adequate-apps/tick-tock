@@ -342,7 +342,7 @@ object GridlineTypeScale {
     val fontSizeHeading = 18.sp
     val fontSizeTitle = 24.sp
     val fontSizeMeasure = 28.sp
-    val fontSizeCents = 40.sp
+    val fontSizeReadout = 40.sp
     val fontSizeNote = 64.sp
     val lineHeightDense = 1.35.em
     val lineHeightUi = 1.4.em
