@@ -2,6 +2,7 @@
 #include "OutputController.h"
 
 #include <chrono>
+#include <cmath>
 
 namespace ticktock::control {
 
@@ -274,23 +275,25 @@ std::int32_t OutputController::latencyMillis() {
 
 bool OutputController::hasEvents() {
     std::lock_guard<std::mutex> lock(mutex_);
-    return eventCount_ > 0 || engine_.beats().size() > 0 || engine_.ducks().size() > 0 || pendingError_.load(std::memory_order_acquire) != 0;
+    std::int64_t position = 0, nanos = 0;
+    const bool duckReady = streamOpen_ && engine_.ducks().size() > 0 && device_.timestamp(position, nanos);
+    return eventCount_ > 0 || engine_.beats().size() > 0 || duckReady || pendingError_.load(std::memory_order_acquire) != 0;
 }
 
 std::int32_t OutputController::drain(ControlEvent* out, std::int32_t max) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     render::DuckEvent duck;
-    while (eventCount_ < kEventCapacity - kEventsReserved && engine_.ducks().tryPop(duck)) {
+    std::int64_t position = 0, nanos = 0;
+    const bool timestampKnown = streamOpen_ && device_.timestamp(position, nanos);
+    // A buffer estimate cannot establish when the speaker presents a frame.
+    // Keep acknowledgements queued until the device supplies a timestamp.
+    while (timestampKnown && eventCount_ < kEventCapacity - kEventsReserved && engine_.ducks().tryPop(duck)) {
         ControlEvent event;
         event.kind = EventKind::DuckSettled;
         event.a = duck.generation;
         event.c = duck.frame;
-        // Without a timestamp, wait a full output buffer beyond the drain.
-        std::int64_t position = 0, nanos = 0;
-        event.d = device_.timestamp(position, nanos)
-            ? nanos + static_cast<std::int64_t>((duck.frame - position) * 1e9 / sampleRate_)
-            : nowNanos() + static_cast<std::int64_t>(latencyLocked()) * 1000000;
+        event.d = nanos + static_cast<std::int64_t>(std::ceil((duck.frame - position) * 1e9 / sampleRate_));
         push(event);
     }
 

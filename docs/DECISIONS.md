@@ -249,7 +249,10 @@ questions below.
 
 - Each requested duck can carry a generation. The render callback acknowledges that
   generation only when the master duck reaches its target. The control side maps that
-  frame to monotonic presentation time; queueing a command supplies no acknowledgement.
+  frame to monotonic presentation time using a device timestamp. Unknown presentation
+  timing leaves the acknowledgement queued; queueing a command supplies no acknowledgement.
+  Stream restart discards pending duck requests and acknowledgements while preserving
+  queued voice, mute and metronome edits.
 - JNI ABI 4 adds the duck generation and the DuckSettled event. Generation zero keeps
   fire-and-forget callers compatible. Superseded ramps need no acknowledgement; missing
   or stale acknowledgements leave matching drone notes excluded from unison proof.

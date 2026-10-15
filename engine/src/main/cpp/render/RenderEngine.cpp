@@ -13,6 +13,14 @@ void RenderEngine::onStreamStart(double sampleRate) {
     gate_ = 0.0f;
     duck_ = duckTarget_ = 1.0f;
     duckGeneration_ = 0;
+    // The stream is quiescent here. Preserve queued tool edits, and discard
+    // probes and acknowledgements belonging to the preceding stream.
+    Command pending;
+    while (commands_.tryPop(pending)) {
+        if (pending.kind != CommandKind::Duck) apply(pending);
+    }
+    DuckEvent obsolete;
+    while (ducks_.tryPop(obsolete)) {}
 }
 
 void RenderEngine::apply(const Command& cmd) {

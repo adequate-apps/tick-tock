@@ -599,7 +599,7 @@ TEST(OutputController, duckAcknowledgementWaitsForTheRenderedRampAndCarriesPrese
     EXPECT_EQ(71, events[0].a);
     EXPECT_GE(events[0].c, 167);
     EXPECT_LE(events[0].c, 170);
-    EXPECT_EQ(device.tsNanos + static_cast<std::int64_t>(events[0].c * 1e9 / 48000), events[0].d);
+    EXPECT_EQ(device.tsNanos + static_cast<std::int64_t>(std::ceil(events[0].c * 1e9 / 48000)), events[0].d);
     pull(device, 480);
     EXPECT_TRUE(drainAll(c).empty());
     ASSERT_TRUE(c.duck(1.0f, 72));
@@ -612,6 +612,7 @@ TEST(OutputController, duckAcknowledgementWaitsForTheRenderedRampAndCarriesPrese
 
 TEST(OutputController, aReopenedStreamStartsAtFullGainAndCannotAcknowledgeAnOldRamp) {
     FakeDevice device;
+    device.timestampValid = true;
     OutputController c(device);
     c.registerTool(OutputTool::Drone);
     drainAll(c);
