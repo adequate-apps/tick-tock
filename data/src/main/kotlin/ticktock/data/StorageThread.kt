@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.data
 
+import android.util.Log
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher
 import java.util.concurrent.Callable
@@ -41,8 +42,24 @@ class StorageThread(name: String = THREAD_NAME) {
     fun later(delayMillis: Long, block: () -> Unit): ScheduledFuture<*> =
         executor.schedule(block, delayMillis, TimeUnit.MILLISECONDS)
 
+    /**
+     * Runs [block] every [periodMillis]. A throw from one run is logged and the
+     * schedule goes on: the executor would otherwise cancel a repeating task
+     * after its first failure, silently, and the history would stop flushing.
+     */
     fun every(periodMillis: Long, initialDelayMillis: Long = periodMillis, block: () -> Unit): ScheduledFuture<*> =
-        executor.scheduleWithFixedDelay(block, initialDelayMillis, periodMillis, TimeUnit.MILLISECONDS)
+        executor.scheduleWithFixedDelay(
+            {
+                try {
+                    block()
+                } catch (failure: Throwable) {
+                    Log.e(THREAD_NAME, "a scheduled storage task failed", failure)
+                }
+            },
+            initialDelayMillis,
+            periodMillis,
+            TimeUnit.MILLISECONDS,
+        )
 
     /** Lets queued work finish, then stops the thread. */
     fun shutdown(timeoutMillis: Long = 2_000) {

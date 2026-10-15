@@ -68,6 +68,19 @@ class PrefsStore(
     private var written: Prefs? = null
     private var scheduled: ScheduledFuture<*>? = null
 
+    /**
+     * Why the file must not be written yet. While storage is unreadable, or a
+     * corrupt file has not been copied aside, a write could destroy the only
+     * copy of the player's prefs (ERR-04, ERR-05).
+     */
+    private enum class Guard { NONE, UNREADABLE, CORRUPT_UNCOPIED }
+
+    @Volatile
+    private var guard = Guard.NONE
+
+    /** Changes made while [guard] holds, replayed onto the stored prefs once they can be read. */
+    private val replay = ArrayList<(Prefs) -> Prefs>()
+
     /** Reads the file and publishes the result. Call once at start, before anything reads [prefs] for real. */
     fun load(): PrefsLoad = storage.call {
         val result = try {
@@ -84,7 +97,13 @@ class PrefsStore(
                         // The player had prefs, so this is not a first run (ERR-05 applies the same rule).
                         prefsFlow.value = Prefs(firstRunComplete = true)
                         written = null
-                        noticeFlow.value = PrefsNotice.CORRUPT_COPY_KEPT
+                        if (copy != null) {
+                            noticeFlow.value = PrefsNotice.CORRUPT_COPY_KEPT
+                        } else {
+                            // No copy, no write: the corrupt bytes stay the only record until one is kept.
+                            guard = Guard.CORRUPT_UNCOPIED
+                            noticeFlow.value = PrefsNotice.UNREADABLE
+                        }
                         PrefsLoad.Corrupt(read.reason, copy)
                     }
                 }
@@ -92,8 +111,9 @@ class PrefsStore(
         } catch (failure: Exception) {
             Log.w(TAG, "prefs could not be read", failure)
             prefsFlow.value = Prefs(firstRunComplete = true)
-            // Nothing is written until the player changes something: the file may be fine once storage recovers.
+            // Nothing is written until the file has been read: it may be fine once storage recovers.
             written = prefsFlow.value
+            guard = Guard.UNREADABLE
             noticeFlow.value = PrefsNotice.UNREADABLE
             PrefsLoad.Unreadable(failure.toString())
         }
@@ -115,8 +135,24 @@ class PrefsStore(
 
     /** Applies [change] to the latest prefs and schedules a write. Safe from any thread. */
     fun update(change: (Prefs) -> Prefs) {
-        prefsFlow.update(change)
+        synchronized(replay) {
+            prefsFlow.update(change)
+            if (guard != Guard.NONE) replay += change
+        }
+        listeners.forEach { it(prefsFlow.value) }
         storage.post { scheduleWrite(writeDelayMillis) }
+    }
+
+    private val listeners = java.util.concurrent.CopyOnWriteArrayList<(Prefs) -> Unit>()
+
+    /**
+     * Calls [listener] with the prefs now and after every change, on the
+     * changing thread, so a label reaches the history store before the next
+     * reading can (SES-02, CAP-01).
+     */
+    fun addListener(listener: (Prefs) -> Unit) {
+        listeners += listener
+        listener(prefsFlow.value)
     }
 
     /** Writes now if anything changed. The error reaches the caller, and the retry path keeps running (ERR-06). */
@@ -140,6 +176,13 @@ class PrefsStore(
 
     /** Storage thread only. */
     private fun writeIfChanged(): Result<Unit> {
+        // Nothing changed since the load: nothing to write, guarded or not.
+        if (prefsFlow.value == written && synchronized(replay) { replay.isEmpty() }) return Result.success(Unit)
+        if (!safeToWrite()) {
+            scheduled?.cancel(false)
+            scheduled = storage.later(retryMillis) { writeIfChanged() }
+            return Result.failure(java.io.IOException("the prefs file cannot be read, so it is not written"))
+        }
         val current = prefsFlow.value
         if (current == written) return Result.success(Unit)
         return try {
@@ -155,6 +198,42 @@ class PrefsStore(
             scheduled = storage.later(retryMillis) { writeIfChanged() }
             Result.failure(failure)
         }
+    }
+
+    /** Storage thread only. Clears the [guard] when its cause has gone, merging what was stored. */
+    private fun safeToWrite(): Boolean {
+        if (guard == Guard.UNREADABLE) {
+            val text = try {
+                file.read()
+            } catch (failure: Exception) {
+                Log.w(TAG, "prefs still unreadable", failure)
+                return false
+            }
+            val stored = text?.let(PrefsSchema::read)
+            if (stored is ReadResult.Corrupt) {
+                guard = Guard.CORRUPT_UNCOPIED
+            } else {
+                val base = (stored as? ReadResult.Ok)?.result?.prefs
+                synchronized(replay) {
+                    if (base != null) prefsFlow.value = replay.fold(base) { prefs, change -> change(prefs) }
+                    replay.clear()
+                    guard = Guard.NONE
+                }
+                written = base
+                if (noticeFlow.value == PrefsNotice.UNREADABLE) noticeFlow.value = null
+                listeners.forEach { it(prefsFlow.value) }
+                return true
+            }
+        }
+        if (guard == Guard.CORRUPT_UNCOPIED) {
+            if (keepCorruptCopy() == null) return false
+            synchronized(replay) {
+                replay.clear()
+                guard = Guard.NONE
+            }
+            noticeFlow.value = PrefsNotice.CORRUPT_COPY_KEPT
+        }
+        return true
     }
 
     companion object {

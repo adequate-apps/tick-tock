@@ -97,8 +97,8 @@ class HistoryStore(
     private val pending = ArrayDeque<Pending>()
     private var lastQueued: RunIdentity? = null
 
-    /** Entries pushed out of a full queue; guarded by [lock]. */
-    private var dropped = 0L
+    /** Entries pushed out of a full queue, counted on both threads. */
+    private val dropped = AtomicLong()
 
     private val rejectedCount = AtomicInteger()
     private val pausedCount = AtomicLong()
@@ -153,7 +153,7 @@ class HistoryStore(
         pending.addLast(entry)
         if (pending.size > MAX_PENDING) {
             pending.removeFirst()
-            dropped++
+            dropped.incrementAndGet()
         }
     }
 
@@ -224,7 +224,7 @@ class HistoryStore(
                 for (i in batch.indices.reversed()) pending.addFirst(batch[i])
                 while (pending.size > MAX_PENDING) {
                     pending.removeFirst()
-                    dropped++
+                    dropped.incrementAndGet()
                 }
             }
             consecutiveFailures++
@@ -234,7 +234,7 @@ class HistoryStore(
                     failing = consecutiveFailures >= FAILURES_BEFORE_BANNER,
                     failedFlushes = it.failedFlushes + 1,
                     lastError = failure.toString(),
-                    droppedOnOverflow = dropped,
+                    droppedOnOverflow = dropped.get(),
                 )
             }
             return false
@@ -243,7 +243,7 @@ class HistoryStore(
         run = draftRun
         notes = draftNotes
         consecutiveFailures = 0
-        publish { it.copy(failing = false, flushes = it.flushes + 1, droppedOnOverflow = dropped) }
+        publish { it.copy(failing = false, flushes = it.flushes + 1, droppedOnOverflow = dropped.get()) }
         return true
     }
 
@@ -306,10 +306,18 @@ class HistoryStore(
         )
     }
 
-    /** Deletes raw readings older than the retention period; summaries stay (SES-09). Storage thread only. */
+    /**
+     * Deletes raw readings older than the retention period from unsaved
+     * sessions; summaries stay (SES-09). A saved session keeps its readings
+     * until the player deletes it (decision 5). Storage thread only.
+     */
     private fun applyRetention() {
         val cutoff = wallClock() - RETENTION_DAYS * DAY_MILLIS
-        val deleted = database.writableDatabase.delete("readings", "ts < ?", arrayOf(cutoff.toString()))
+        val deleted = database.writableDatabase.delete(
+            "readings",
+            "ts < ? AND run_id IN (SELECT r.id FROM runs r JOIN sessions s ON s.id = r.session_id WHERE s.name = '')",
+            arrayOf(cutoff.toString()),
+        )
         if (deleted > 0) publish { it.copy(readingsDeletedByRetention = it.readingsDeletedByRetention + deleted) }
     }
 
@@ -318,28 +326,41 @@ class HistoryStore(
 
     // Sessions (decision 5: named sessions ship in 2.0).
 
-    /** Starts a new session at the next stored reading. */
+    /**
+     * Starts a new session at the next stored reading. Readings queued before
+     * the call belong to the old session, so they are written first; if that
+     * write fails the change is refused and nothing moves (SES-07).
+     */
     suspend fun newSession() = onStorage {
-        flush()
-        sessionId = null
-        run = null
-        notes = HashMap()
+        flushOrThrow()
+        leaveSession(next = null)
     }
 
     /** Continues a saved session: the next run opens inside it. */
     suspend fun resumeSession(id: Long) = onStorage {
-        flush()
+        flushOrThrow()
         require(exists(id)) { "no session $id" }
-        sessionId = id
+        leaveSession(next = id)
+    }
+
+    /** Storage thread only. Closes the open run; the next reading, captured or not, opens one in [next] or a new session. */
+    private fun leaveSession(next: Long?) {
+        sessionId = next
         run = null
         notes = HashMap()
+        // A paused stretch records the empty run its new session opens (CAP-03).
+        synchronized(lock) { lastQueued = null }
+    }
+
+    private fun flushOrThrow() {
+        if (!flush()) throw HistoryWriteException(status.value.lastError ?: "the history write failed")
     }
 
     /** Names (saves) a session and records its equipment (EQP-02). */
     suspend fun saveSession(id: Long, name: String, equipment: String) = onStorage {
         val cleanName = name.trim().take(PrefsSchema.TEXT_MAX)
         require(cleanName.isNotEmpty()) { "a saved session needs a name" }
-        flush()
+        flushOrThrow()
         val values = ContentValues().apply {
             put("name", cleanName)
             put("equipment", equipment.trim().take(PrefsSchema.TEXT_MAX))
@@ -350,13 +371,11 @@ class HistoryStore(
 
     /** Deletes a session with its runs, summaries and readings. The caller has already confirmed with the player. */
     suspend fun deleteSession(id: Long) = onStorage {
-        flush()
+        // Queued readings may belong to this session; once they are written the
+        // delete takes them too, and none come back inside the next session.
+        flushOrThrow()
         database.writableDatabase.delete("sessions", "id = ?", arrayOf(id.toString()))
-        if (sessionId == id) {
-            sessionId = null
-            run = null
-            notes = HashMap()
-        }
+        if (sessionId == id) leaveSession(next = null)
     }
 
     suspend fun currentSessionId(): Long? = onStorage { sessionId }
@@ -470,3 +489,6 @@ class HistoryStore(
         private const val TAG = "HistoryStore"
     }
 }
+
+/** A history write failed, so the session change that needed it did not happen (SES-07). */
+class HistoryWriteException(message: String) : RuntimeException(message)

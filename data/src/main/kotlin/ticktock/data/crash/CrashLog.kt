@@ -33,8 +33,9 @@ class CrashLog(
             val kept = (if (log.isFile) log.readText() else "") + entry
             log.writeText(capped(kept))
             pending.writeText("")
-        } catch (ignored: Exception) {
-            // The process is already dying; a log that cannot be written must not hide the original crash.
+        } catch (ignored: Throwable) {
+            // The process is already dying; a log that cannot be written, even for want
+            // of memory, must not hide the original crash or keep the platform from ending it.
         }
     }
 
@@ -61,8 +62,16 @@ class CrashLog(
     fun install(nickname: () -> String) {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
-            record(thread, error, runCatching(nickname).getOrDefault(""))
-            previous?.uncaughtException(thread, error)
+            try {
+                val name = try {
+                    nickname()
+                } catch (ignored: Throwable) {
+                    ""
+                }
+                record(thread, error, name)
+            } finally {
+                previous?.uncaughtException(thread, error)
+            }
         }
     }
 
