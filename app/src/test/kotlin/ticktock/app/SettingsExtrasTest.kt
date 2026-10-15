@@ -82,12 +82,16 @@ class SettingsExtrasTest {
         click("config-import")
         chooseDocument(Intent.ACTION_OPEN_DOCUMENT, document)
         awaitState { compose.onAllNodesWithTag("config-preview").fetchSemanticsNodes().isNotEmpty() }
+        scenario!!.recreate()
+        compose.onNodeWithTag("config-preview").assertExists()
         assertEquals(440.0, graph.prefs.prefs.value.a4Hz, 0.0)
         click("config-cancel")
         assertEquals(440.0, graph.prefs.prefs.value.a4Hz, 0.0)
         click("config-import")
         chooseDocument(Intent.ACTION_OPEN_DOCUMENT, document)
         awaitState { compose.onAllNodesWithTag("config-preview").fetchSemanticsNodes().isNotEmpty() }
+        scenario!!.recreate()
+        compose.onNodeWithTag("config-preview").assertExists()
         click("config-apply")
         awaitState { graph.prefs.prefs.value.a4Hz == 442.0 && compose.onAllNodesWithTag("config-preview").fetchSemanticsNodes().isEmpty() }
         assertEquals(-60, graph.prefs.prefs.value.noiseFloorDb)
@@ -136,4 +140,40 @@ class SettingsExtrasTest {
         assertEquals(Intent.ACTION_VIEW, intent.action)
         assertEquals("https://github.com/adequate-apps/tick-tock/blob/main/docs/privacy.md", intent.dataString)
     }
+    @Test fun `ordinary instrument choices clear a named identity before capture`() {
+        launch()
+        graph.prefs.update { it.copy(personalConfig = PersonalConfig(hornProfiles = listOf(HornProfile("alto", "eb_alto", "Silver alto")))) }
+        for ((index, instrument) in listOf("eb_alto", "flute_c").withIndex()) {
+            click("setting-instrument")
+            click("horn-profile-alto")
+            click("setting-instrument")
+            compose.onNodeWithTag("instrument-eb_alto").assertIsNotSelected()
+            click("instrument-$instrument")
+            assertEquals("", graph.prefs.prefs.value.hornNickname)
+            graph.captureHistory.accept(Reading(index.toLong(), 69, 440.0, 0.0, 440.0, 0), true)
+            runBlocking { graph.history.flushAndWait() }
+            assertTrue(runBlocking { graph.history.summaries(ticktock.data.history.Scope.CurrentSession) }
+                .any { it.label.instrumentKey == instrument && it.label.nickname.isEmpty() })
+        }
+        graph.prefs.update { it.copy(instrumentKey = "eb_alto", hornNickname = "Silver alto") }
+        click("settings-first-run")
+        click("first-run-later")
+        click("first-run-eb_alto")
+        assertEquals("", graph.prefs.prefs.value.hornNickname)
+    }
+
+    @Test fun `deep import displays failure preserves preferences and leaves controls usable`() {
+        launch()
+        val before = graph.prefs.prefs.value
+        val document = File(RuntimeEnvironment.getApplication().cacheDir, "deep.json")
+        document.writeText("[".repeat(10_000) + "0" + "]".repeat(10_000))
+        click("config-import")
+        chooseDocument(Intent.ACTION_OPEN_DOCUMENT, document)
+        awaitState { compose.onAllNodesWithText("Phone refused invalid settings").fetchSemanticsNodes().isNotEmpty() }
+        assertEquals(before, graph.prefs.prefs.value)
+        compose.onNodeWithTag("config-preview").assertDoesNotExist()
+        click("settings-noise-floor-lower")
+        assertEquals(before.noiseFloorDb - 1, graph.prefs.prefs.value.noiseFloorDb)
+    }
+
 }

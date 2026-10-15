@@ -33,4 +33,13 @@ class ConfigurationFilesTest {
         file.writeText("""{"format":"ticktock-personal-config","version":99}""")
         assertTrue(ConfigurationFiles.read(context, Uri.fromFile(file)) is ParseResult.Failed)
     }
+    @Test fun `deep configuration below the byte cap fails without exhausting the stack`() {
+        val file = File(context.cacheDir, "deep.json")
+        for ((open, close) in listOf("[" to "]", "{\"nested\":" to "}")) {
+            file.writeText(open.repeat(10_000) + "0" + close.repeat(10_000))
+            assertTrue(file.length() < ConfigurationFiles.MAX_BYTES)
+            assertTrue(ConfigurationFiles.read(context, Uri.fromFile(file)) is ParseResult.Failed)
+        }
+    }
+
 }

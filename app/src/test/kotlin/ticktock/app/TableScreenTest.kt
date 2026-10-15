@@ -101,6 +101,11 @@ class TableScreenTest {
         compose.onNodeWithTag("session-name").performTextInput("Practice room")
         compose.onNodeWithTag("session-purpose-1").performScrollTo().performClick()
         compose.onNodeWithTag("session-notes").performScrollTo().performTextInput("Warm horn\nSoft reed")
+        scenario!!.recreate()
+        compose.onNodeWithTag("session-name").assertTextEquals("Practice room")
+        compose.onNodeWithTag("session-equipment").assertTextEquals("Reed 3")
+        compose.onNodeWithTag("session-purpose-1").assertIsSelected()
+        compose.onNodeWithTag("session-notes").assertTextEquals("Warm horn\nSoft reed")
         click("session-save")
         awaitState { graph.table.state.value.snapshot?.sessions?.any { it.name == "Practice room" } == true }
         val savedNow = graph.table.state.value.snapshot!!.sessions.single { it.name == "Practice room" }
@@ -136,6 +141,9 @@ class TableScreenTest {
         compose.onNode(hasText("Phone storage refused save") and hasAnyAncestor(hasTestTag("save-session-dialog")))
             .performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("session-name").assertTextEquals("Retained draft")
+        scenario!!.recreate()
+        compose.onNodeWithTag("session-name").assertTextEquals("Retained draft")
+        compose.onNode(hasText("Phone storage refused save") and hasAnyAncestor(hasTestTag("save-session-dialog"))).assertExists()
         sql("DROP TRIGGER refuse_session_save")
         click("session-save")
         awaitState { graph.table.state.value.snapshot?.sessions?.any { it.name == "Retained draft" } == true }

@@ -146,6 +146,7 @@ class TableSessionTest {
         assertNull(owner.csv())
         access.granted += GatedFeature.EXPORT
         assertNotNull(owner.csv())
+        assertTrue("denied historical comparison is absent", owner.state.value.snapshot!!.history.isEmpty())
         assertFalse(owner.allHistory.allowed)
         assertFalse(owner.namedSessions.allowed)
     }
