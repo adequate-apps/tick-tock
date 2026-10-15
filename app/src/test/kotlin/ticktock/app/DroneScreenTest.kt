@@ -82,6 +82,7 @@ class DroneScreenTest {
     fun `a sustained drone has an immediate visible stop even while scrolling at double text`() {
         launch(2f)
         tap("drone-ensemble-0")
+        compose.onAllNodesWithText("Stop").assertCountEquals(1)
         compose.onNodeWithTag("drone-quick-toggle").assertIsDisplayed().assertTextEquals("Stop").performClick()
         assertFalse(graph.output.state.value.droneWanted)
         compose.onNodeWithTag("drone-quick-toggle").assertDoesNotExist()
