@@ -159,6 +159,11 @@ object PrefsSchema {
         IntField("metroSubdivision", 1, 1..MetroSetup.SUBDIVISION_MAX, get = { it.metroSubdivision }, set = { p, v -> p.copy(metroSubdivision = v) }),
         IntField("metroBarsOn", 1, 1..MetroSetup.GAP_BARS_MAX, get = { it.metroBarsOn }, set = { p, v -> p.copy(metroBarsOn = v) }),
         IntField("metroBarsOff", 0, 0..MetroSetup.GAP_BARS_MAX, get = { it.metroBarsOff }, set = { p, v -> p.copy(metroBarsOff = v) }),
+        ChoiceField(
+            "theme", Theme.GRIDLINE, Theme.entries, { it.wire },
+            get = { it.theme },
+            set = { p, v -> p.copy(theme = v) },
+        ),
     )
 
     private val byKey: Map<String, PrefField<*>> = fields.associateBy { it.key }

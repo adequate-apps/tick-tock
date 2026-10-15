@@ -62,6 +62,8 @@ data class Prefs(
     val metroSubdivision: Int = 1,
     val metroBarsOn: Int = 1,
     val metroBarsOff: Int = 0,
+    /** The screen theme. Device-bound: a theme suits a room and a screen, so it never travels in a personal config. */
+    val theme: Theme = Theme.GRIDLINE,
     /** Fields this version does not know, written back unchanged (SES-12). */
     val unknownFields: Map<String, JsonValue> = emptyMap(),
 ) {
@@ -84,3 +86,6 @@ data class Prefs(
         fun defaultAccentRow(beatsPerBar: Int): List<Accent> = List(beatsPerBar) { if (it == 0) Accent.ACCENT else Accent.NORMAL }
     }
 }
+
+/** The four screen themes (OWNER-FEEDBACK item 6); [wire] is the stored value. */
+enum class Theme(val wire: String) { GRIDLINE("gridline"), DAYLIGHT("daylight"), DARK("dark"), PIT("pit") }
