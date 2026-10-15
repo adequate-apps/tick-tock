@@ -73,8 +73,8 @@ class AdaptiveRowsTest(private val fontScale: Float, private val widthDp: Int) {
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
                 GridlineTheme {
                     Column(Modifier.width(widthDp.dp).testTag("rows")) {
-                        SettingRow("Instrument", "Tenor saxophone", onClick = {}, tag = "tenor")
-                        SettingRow("Instrument", "Contrabass clarinet", onClick = {}, tag = "contrabass")
+                        SettingRow("Instrument", "Tenor saxophone in Bb", onClick = {}, tag = "tenor")
+                        SettingRow("Instrument", "Contrabass clarinet in Bb", onClick = {}, tag = "contrabass")
                     }
                 }
             }

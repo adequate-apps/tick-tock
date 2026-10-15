@@ -345,7 +345,8 @@ class TuneScreenTest {
         launch(null)
         val graph = TickTockApp.graph(ApplicationProvider.getApplicationContext())
         compose.runOnIdle {
-            graph.prefs.update { it.copy(instrumentKey = "flute", displayMode = ticktock.core.config.DisplayMode.CONCERT) }
+            graph.prefs.update { it.copy(instrumentKey = ticktock.core.catalogue.Catalogue.get("flute_c").key,
+                displayMode = ticktock.core.config.DisplayMode.CONCERT) }
         }
         compose.onNodeWithTag("names").assertDoesNotExist()
         assertEquals(ticktock.core.config.DisplayMode.CONCERT, graph.prefs.prefs.value.displayMode)
