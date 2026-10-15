@@ -50,7 +50,7 @@ class PlayTest {
             if (card.phantoms.isNotEmpty()) problems += "$label: phantom notes ${card.phantoms.take(5)}"
             if (card.wrongNotes.isNotEmpty()) problems += "$label: wrong notes ${card.wrongNotes.take(5)}"
             if (card.maxError > steady) problems += "$label: worst held-note error %.2f c, bound %.2f".format(card.maxError, steady)
-            if (exactPrint && card.shownOff > 0) problems += "$label: ${card.shownOff} printed cents off by more than rounding"
+            if (exactPrint && card.shownOff > 0) problems += "$label: ${card.shownOff} printed cents over 1 c from the played pitch"
             if (card.maxNoteMeanError > noteMean) problems += "$label: worst note mean error %.2f c, bound %.2f".format(card.maxNoteMeanError, noteMean)
             if (card.missedNotes.isNotEmpty()) problems += "$label: notes never read ${card.missedNotes}"
             if ((card.readoutLatenciesMs.maxOrNull() ?: 0.0) > READOUT_MS) problems += "$label: worst readout latency ${card.readoutLatenciesMs.maxOrNull()} ms"
@@ -108,8 +108,8 @@ class PlayTest {
     @Test
     fun `a noisy room with hum, hiss and a live hall`() {
         val room = Room(noiseDb = -42.0, humDb = -38.0, reverbDb = -8.0, reverbSeconds = 1.2)
-        take("alto sax noisy hall", Instrument.ALTO_SAX, longTones(listOf(49, 58, 65, 72, 80)), room = room, steady = HALL_STEADY_CENTS, exactPrint = false)
-        take("bari sax noisy hall", Instrument.BARI_SAX, longTones(listOf(36, 43, 50, 57)), room = room, steady = HALL_STEADY_CENTS, exactPrint = false)
+        take("alto sax noisy hall", Instrument.ALTO_SAX, longTones(listOf(49, 58, 65, 72, 80)), room = room, steady = HALL_STEADY_CENTS, noteMean = HALL_NOTE_MEAN_CENTS, exactPrint = false)
+        take("bari sax noisy hall", Instrument.BARI_SAX, longTones(listOf(36, 43, 50, 57)), room = room, steady = HALL_STEADY_CENTS, noteMean = HALL_NOTE_MEAN_CENTS, exactPrint = false)
     }
 
     @Test
@@ -149,8 +149,8 @@ class PlayTest {
         /** A held note, past its attack, in a room a player practises in. Measured worst: 0.15 c. */
         const val STEADY_CENTS = 0.25
 
-        /** The mean of a note's readings, as the table keeps it. Measured worst: 0.06 c. */
-        const val NOTE_MEAN_CENTS = 0.1
+        /** The mean of a note's readings, as the table keeps it. Measured worst: 0.01 c. */
+        const val NOTE_MEAN_CENTS = 0.05
 
         /**
          * A reading under ±15 c vibrato. Half a vibrato cycle fits in one window,
@@ -168,6 +168,9 @@ class PlayTest {
          * worst 0.66 c, so the printed whole cent can be one off at a rounding edge.
          */
         const val HALL_STEADY_CENTS = 1.0
+
+        /** A note's mean in that hall; the hum's pull on the lowest notes does not average away. Measured worst: 0.10 c. */
+        const val HALL_NOTE_MEAN_CENTS = 0.25
 
         /** Onset to the note on the readout. POL-02 puts a legato change at about 372 ms. */
         const val READOUT_MS = 400.0

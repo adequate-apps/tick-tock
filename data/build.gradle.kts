@@ -46,3 +46,11 @@ fun robolectricOffline(root: Project): Map<String, String> = mapOf(
     "robolectric.offline" to "true",
     "robolectric.dependency.dir" to root.file("tools/robolectric-deps").absolutePath,
 )
+
+// A failing case prints its assertion in the console, which is all CI keeps.
+tasks.withType<Test>().configureEach {
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}
