@@ -129,8 +129,9 @@ class LiveCapture(
     private val history: HistorySink? = null,
     sounding: SoundingNotes = NoSoundingNotes,
     private val onDuck: (Float, () -> Unit) -> Unit = { _, settled -> settled() },
+    noiseFloorDb: Int? = null,
 ) : InputListener {
-    private val detector = Detector(mode, sounding = sounding).also { it.setA4(a4Hz) }
+    private val detector = Detector(mode, sounding = sounding).also { it.setA4(a4Hz); it.setNoiseFloor(noiseFloorDb) }
     private val duckLock = Any()
     private var duckEnabled = false
     val a4Hz: Double get() = detector.a4.hz
@@ -190,6 +191,7 @@ class LiveCapture(
     // alone touches the detector, and take effect from the next batch of hops.
     private val requestedA4 = AtomicReference<Double?>(null)
 
+    private val requestedNoiseFloor = AtomicReference<Int?>(null)
     private val requestedMode = AtomicReference<ResponseMode?>(null)
     private val resetAfterInterruption = AtomicBoolean(false)
 
@@ -202,6 +204,9 @@ class LiveCapture(
     fun requestMode(mode: ResponseMode) {
         requestedMode.set(mode)
     }
+
+    /** Noise-floor changes are consumed by the analysis owner before the next batch. */
+    fun requestNoiseFloor(db: Int) { requestedNoiseFloor.set(db) }
 
     /** Hops since the diagnostics were last sampled; the analysis thread's alone. */
     private var hopsSinceDiagnostics = 0
@@ -288,6 +293,7 @@ class LiveCapture(
         requestedA4.getAndSet(null)?.let { hz ->
             if (hz != detector.a4.hz) detector.setA4(hz)?.let(::endNote)
         }
+        requestedNoiseFloor.getAndSet(null)?.let(detector::setNoiseFloor)
         requestedMode.getAndSet(null)?.let { mode ->
             if (mode != detector.mode) detector.setMode(mode)?.let(::endNote)
         }
