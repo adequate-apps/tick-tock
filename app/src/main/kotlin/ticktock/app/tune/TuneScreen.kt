@@ -29,6 +29,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ticktock.app.AppGraph
 import ticktock.app.config.effectiveRange
@@ -140,6 +142,13 @@ fun TuneScreen(graph: AppGraph, mic: MicAccess) {
         else -> live
     }
 
+    val spoken = readout.midi?.let { midi -> readout.cents?.let { cents ->
+        val shown = shownMidi(midi, prefs, instrument)
+        val name = letter(shown, NoteSpelling.resolve(instrument, prefs.spelling.accidentals))
+            .replace("♭", " flat").replace("♯", " sharp") + " " + Pitch.octave(shown)
+        stringResource(when { Cents.sharp(cents) -> R.string.tune_spoken_sharp; Cents.sharp(-cents) -> R.string.tune_spoken_flat; else -> R.string.tune_spoken_even }, name, kotlin.math.abs(cents))
+    } }
+
     Column(Modifier.fillMaxWidth().testTag("tune"), verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
         ReadoutField(
             readout.midi, readout.cents, readout.hz, prefs, instrument, hidden, gate, mic,
@@ -153,8 +162,9 @@ fun TuneScreen(graph: AppGraph, mic: MicAccess) {
             flat = stringResource(R.string.tune_flat),
             sharp = stringResource(R.string.tune_sharp),
             description = readout.cents?.let(::signed) ?: "—",
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().semantics { stateDescription = spoken ?: "—" },
         )
+        SettledAnnouncement(readout.midi, spoken, prefs.announceSettledNotes && !hidden)
         LevelMeter(
             db = { if (listening) level.value.db.takeIf { it > Level.LEVEL_FLOOR_DB } else null },
             caption = stringResource(R.string.tune_level),
