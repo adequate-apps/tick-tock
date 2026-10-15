@@ -288,6 +288,11 @@ std::int32_t OutputController::drain(ControlEvent* out, std::int32_t max) {
         event.kind = EventKind::Beat;
         event.a = beat.index;
         event.b = beat.beatInBar;
+        event.intCount = 4;
+        event.ints[0] = static_cast<std::int32_t>(static_cast<std::uint64_t>(beat.bar) & 0xffffffffu);
+        event.ints[1] = static_cast<std::int32_t>(static_cast<std::uint64_t>(beat.bar) >> 32);
+        event.ints[2] = (beat.audible ? 1 : 0) | (beat.silentBar ? 2 : 0);
+        event.ints[3] = beat.generation;
         event.c = beat.frame;
         event.d = frameToNanos(beat.frame);
         push(event);

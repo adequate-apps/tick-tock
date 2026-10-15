@@ -356,6 +356,8 @@ class AudioControlThread(
             routeClass = classification.routeClass,
             deviceName = routed?.name ?: UNKNOWN_DEVICE,
             latencyMillis = open.latencyMillis(),
+            deviceId = routed?.id,
+            wireless = classification.wireless,
         )
     }
 

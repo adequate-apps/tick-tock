@@ -534,3 +534,78 @@ TEST(Metronome, stopLeavesNoFurtherBeats) {
     EXPECT_EQ(2u, out.beats.size());
     EXPECT_EQ(2u, onsets(out.mono).size());
 }
+
+// BTC-01: the callback owns the bound even when no UI command arrives.
+TEST(Metronome, calibrationEndsAfterEightClicksWithoutAStopCommand) {
+    for (double rate : {48000.0, 44100.0}) {
+        RenderEngine engine;
+        engine.onStreamStart(rate);
+        auto setup = params(100);
+        setup.beatLimit = 8;
+        setup.generation = 37;
+        ASSERT_TRUE(engine.send(start(setup)));
+        const auto out = renderFrames(engine, static_cast<std::int64_t>(rate * 12), 256);
+        ASSERT_EQ(8u, out.beats.size());
+        EXPECT_EQ(8u, onsets(out.mono).size());
+        for (std::size_t i = 0; i < out.beats.size(); ++i) {
+            EXPECT_EQ(onsetFormula(0, static_cast<std::int64_t>(i), rate, 100), out.beats[i].frame);
+            EXPECT_EQ(37, out.beats[i].generation);
+            EXPECT_EQ(static_cast<std::int64_t>(i / 4), out.beats[i].bar);
+        }
+    }
+}
+
+TEST(Metronome, completedCalibrationStaysFinishedThroughReplayAndRestartsOnlyOnStart) {
+    RenderEngine engine;
+    engine.onStreamStart(48000);
+    auto setup = params(100);
+    setup.beatLimit = 8;
+    ASSERT_TRUE(engine.send(start(setup)));
+    EXPECT_EQ(8u, renderBeats(engine, 48000 * 6, 256).size());
+    engine.onStreamStart(44100);
+    setup.generation = 12;
+    ASSERT_TRUE(engine.send(update(setup)));
+    EXPECT_TRUE(renderBeats(engine, 44100 * 6, 256).empty());
+    ASSERT_TRUE(engine.send(start(setup)));
+    const auto restarted = renderBeats(engine, 44100 * 6, 256);
+    ASSERT_EQ(8u, restarted.size());
+    EXPECT_EQ(0, restarted.front().index);
+    EXPECT_EQ(12, restarted.front().generation);
+}
+
+TEST(Metronome, finiteRunKeepsItsRemainingCountThroughRateAndTempoChanges) {
+    RenderEngine engine;
+    engine.onStreamStart(48000);
+    auto setup = params(100);
+    setup.beatLimit = 8;
+    setup.generation = 1;
+    ASSERT_TRUE(engine.send(start(setup)));
+    const auto first = renderBeats(engine, 28800 * 3, 256);
+    ASSERT_EQ(3u, first.size());
+    engine.onStreamStart(44100);
+    setup.bpm = 120;
+    setup.generation = 2;
+    ASSERT_TRUE(engine.send(update(setup)));
+    const auto rest = renderBeats(engine, 44100 * 6, 256);
+    ASSERT_EQ(5u, rest.size());
+    EXPECT_EQ(3, rest.front().index);
+    EXPECT_EQ(7, rest.back().index);
+    for (const auto& beat : rest) EXPECT_EQ(2, beat.generation);
+}
+
+TEST(Metronome, eachBeatReportsTheGenerationThatRenderedIt) {
+    RenderEngine engine;
+    engine.onStreamStart(48000);
+    auto setup = params(120);
+    setup.generation = 17;
+    ASSERT_TRUE(engine.send(start(setup)));
+    const auto first = renderBeats(engine, 30000, 256);
+    ASSERT_EQ(2u, first.size());
+    for (const auto& beat : first) EXPECT_EQ(17, beat.generation);
+    setup.generation = 18;
+    ASSERT_TRUE(engine.send(update(setup)));
+    const auto next = renderBeats(engine, 24000, 256);
+    ASSERT_EQ(1u, next.size());
+    EXPECT_EQ(18, next.front().generation);
+    EXPECT_EQ(2, next.front().index);
+}

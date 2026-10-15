@@ -20,6 +20,10 @@ data class OutputInfo(
     val deviceName: String,
     /** Measured output latency, for the visual beat offset. */
     val latencyMillis: Int,
+    /** Platform identity of the routed output, so two devices with the same name remain distinct. */
+    val deviceId: Int? = null,
+    /** Bluetooth-class output, including LE audio and hearing aids. */
+    val wireless: Boolean = false,
 )
 
 /**

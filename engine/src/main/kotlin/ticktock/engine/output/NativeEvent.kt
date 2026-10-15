@@ -45,7 +45,14 @@ sealed interface NativeEvent {
             KIND_OPENED -> Opened(a.toInt(), b.toInt(), c.toInt(), d.toInt(), emptySet())
             KIND_RESUMED -> Opened(a.toInt(), b.toInt(), c.toInt(), d.toInt(), toolSet(tools))
             KIND_CLOSED -> Closed
-            KIND_BEAT -> Beat(OutputEvent.Beat(index = a, beatInBar = b.toInt(), frame = c, nanos = d))
+            KIND_BEAT -> {
+                require(ints?.size == 4) { "native beat needs bar, flags and generation" }
+                val bar = (ints[1].toLong() shl 32) or (ints[0].toLong() and 0xffffffffL)
+                Beat(OutputEvent.Beat(
+                    index = a, beatInBar = b.toInt(), frame = c, nanos = d,
+                    bar = bar, silentBar = ints[2] and 2 != 0, generation = ints[3], audible = ints[2] and 1 != 0,
+                ))
+            }
             KIND_PARKED -> Parked(ParkReason.entries[a.toInt()], toolSet(tools))
             KIND_FAILED -> Failed(a.toInt(), ints?.toList().orEmpty())
             KIND_COUNTERS -> Counters(OutputEvent.Counters(lateBeatsDropped = a.toInt(), underruns = b.toInt()))

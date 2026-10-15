@@ -105,8 +105,11 @@ class FakeOutputPort(private val foregroundOwner: ForegroundOwner = NoForeground
         emit(OutputEvent.Failed(deviceName, refusedRates))
     }
 
-    fun beat(index: Long, beatInBar: Int, frame: Long, nanos: Long) {
-        emit(OutputEvent.Beat(index, beatInBar, frame, nanos))
+    fun beat(
+        index: Long, beatInBar: Int, frame: Long, nanos: Long,
+        bar: Long = 0, silentBar: Boolean = false, generation: Int = 0, audible: Boolean = true,
+    ) {
+        emit(OutputEvent.Beat(index, beatInBar, frame, nanos, bar, silentBar, generation, audible))
     }
 
     companion object {

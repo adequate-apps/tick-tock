@@ -2,6 +2,7 @@
 package ticktock.engine.output
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import ticktock.core.contracts.OutputEvent
 import ticktock.core.contracts.OutputTool
@@ -32,7 +33,27 @@ class NativeEventTest {
 
     @Test
     fun `Beat is index, beat in bar, frame and nanos`() {
-        assertEquals(NativeEvent.Beat(OutputEvent.Beat(index = 41, beatInBar = 1, frame = 98_304, nanos = 1_234_567_890)), decode(2, 41, 1, 98_304, 1_234_567_890))
+        assertEquals(NativeEvent.Beat(OutputEvent.Beat(index = 41, beatInBar = 1, frame = 98_304, nanos = 1_234_567_890)),
+            decode(2, 41, 1, 98_304, 1_234_567_890, ints = intArrayOf(0, 0, 1, 0)))
+    }
+
+    @Test
+    fun `Beat carries a full width bar and separates silent bars from muted onsets`() {
+        val bar = 0x1ffffffffL
+        assertEquals(
+            NativeEvent.Beat(OutputEvent.Beat(41, 1, 98_304, 1_234_567_890, bar, true, 17, false)),
+            decode(2, 41, 1, 98_304, 1_234_567_890, ints = intArrayOf(-1, 1, 2, 17)),
+        )
+        assertEquals(
+            NativeEvent.Beat(OutputEvent.Beat(42, 2, 100_000, 2_000_000_000, bar, false, 18, false)),
+            decode(2, 42, 2, 100_000, 2_000_000_000, ints = intArrayOf(-1, 1, 0, 18)),
+        )
+    }
+
+    @Test
+    fun `an incomplete beat payload is refused`() {
+        assertThrows(IllegalArgumentException::class.java) { decode(2) }
+        assertThrows(IllegalArgumentException::class.java) { decode(2, ints = intArrayOf(0, 0, 1)) }
     }
 
     @Test

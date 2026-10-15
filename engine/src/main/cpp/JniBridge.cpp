@@ -57,7 +57,7 @@ struct Bridge {
 Bridge* bridge(jlong handle) { return reinterpret_cast<Bridge*>(static_cast<std::intptr_t>(handle)); }
 
 MetroParams metroParams(JNIEnv* env, jint bpm, jint beatsPerBar, jint beatUnit, jboolean compoundPulse,
-                        jintArray accents, jint subdivision, jint click, jfloat gain, jint barsOn, jint barsOff) {
+                        jintArray accents, jint subdivision, jint click, jfloat gain, jint barsOn, jint barsOff, jint beatLimit, jint generation) {
     MetroParams p;
     p.bpm = bpm;
     p.beatsPerBar = beatsPerBar;
@@ -68,6 +68,8 @@ MetroParams metroParams(JNIEnv* env, jint bpm, jint beatsPerBar, jint beatUnit, 
     p.gain = gain;
     p.barsOn = barsOn;
     p.barsOff = barsOff;
+    p.beatLimit = beatLimit;
+    p.generation = generation;
     for (Accent& a : p.accents) a = Accent::Normal;
     if (accents != nullptr) {
         const jsize n = env->GetArrayLength(accents);
@@ -134,17 +136,17 @@ JNIEXPORT jboolean JNICALL Java_ticktock_engine_NativeBridge_nativeDuck(JNIEnv*,
 
 JNIEXPORT jboolean JNICALL Java_ticktock_engine_NativeBridge_nativeMetroStart(
     JNIEnv* env, jobject, jlong handle, jint bpm, jint beatsPerBar, jint beatUnit, jboolean compoundPulse,
-    jintArray accents, jint subdivision, jint click, jfloat gain, jint barsOn, jint barsOff) {
+    jintArray accents, jint subdivision, jint click, jfloat gain, jint barsOn, jint barsOff, jint beatLimit, jint generation) {
     const MetroParams p = metroParams(env, bpm, beatsPerBar, beatUnit, compoundPulse, accents, subdivision, click, gain,
-                                      barsOn, barsOff);
+                                      barsOn, barsOff, beatLimit, generation);
     return bridge(handle)->controller.metroStart(p) ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL Java_ticktock_engine_NativeBridge_nativeMetroUpdate(
     JNIEnv* env, jobject, jlong handle, jint bpm, jint beatsPerBar, jint beatUnit, jboolean compoundPulse,
-    jintArray accents, jint subdivision, jint click, jfloat gain, jint barsOn, jint barsOff) {
+    jintArray accents, jint subdivision, jint click, jfloat gain, jint barsOn, jint barsOff, jint beatLimit, jint generation) {
     const MetroParams p = metroParams(env, bpm, beatsPerBar, beatUnit, compoundPulse, accents, subdivision, click, gain,
-                                      barsOn, barsOff);
+                                      barsOn, barsOff, beatLimit, generation);
     return bridge(handle)->controller.metroUpdate(p) ? JNI_TRUE : JNI_FALSE;
 }
 

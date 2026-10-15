@@ -246,6 +246,26 @@ TEST(OutputController, beatMetadataKeepsTheGapBarWhenAMetreEditCutsABarShort) {
     EXPECT_EQ(2, events[0].ints[2]);
 }
 
+TEST(OutputController, beatMetadataPreservesBothHalvesOfTheBarAndTheEditIdentity) {
+    FakeDevice device;
+    OutputController c(device);
+    c.registerTool(OutputTool::Metronome);
+    drainAll(c);
+    render::BeatEvent beat;
+    beat.bar = 0x1ffffffffLL;
+    beat.silentBar = true;
+    beat.audible = false;
+    beat.generation = 37;
+    ASSERT_TRUE(c.engine().beats().tryPush(beat));
+    const auto events = drainAll(c);
+    ASSERT_EQ(1u, events.size());
+    ASSERT_EQ(4, events[0].intCount);
+    EXPECT_EQ(-1, events[0].ints[0]);
+    EXPECT_EQ(1, events[0].ints[1]);
+    EXPECT_EQ(2, events[0].ints[2]);
+    EXPECT_EQ(37, events[0].ints[3]);
+}
+
 TEST(OutputController, aDisconnectParksOnTheControlThreadAndResumeReopensAtTheNewRate) {
     FakeDevice device;
     OutputController c(device);

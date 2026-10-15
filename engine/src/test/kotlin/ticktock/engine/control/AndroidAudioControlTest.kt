@@ -117,7 +117,7 @@ class AndroidAudioControlTest {
         startWithSpeaker()
         send(OutputCommand.Register(OutputTool.METRONOME), OutputCommand.MetroStart(setup))
         assertEquals(
-            listOf(Call("metroStart", listOf(120, 4, 4, false, listOf(0, 1, 1, 1), 1, 0, 0.8f, 1, 0))),
+            listOf(Call("metroStart", listOf(120, 4, 4, false, listOf(0, 1, 1, 1), 1, 0, 0.8f, 1, 0, 0, 0))),
             native.single.calls("metroStart"),
         )
 
@@ -188,7 +188,7 @@ class AndroidAudioControlTest {
         assertEquals(1, native.handles.size)
         assertEquals(1, native.single.calls("resume").size)
         assertEquals(1, native.single.calls("metroStart").size)
-        assertEquals(listOf(Call("metroUpdate", listOf(120, 4, 4, false, listOf(0, 1, 1, 1), 1, 0, 0.8f, 1, 0))), native.single.calls("metroUpdate"))
+        assertEquals(listOf(Call("metroUpdate", listOf(120, 4, 4, false, listOf(0, 1, 1, 1), 1, 0, 0.8f, 1, 0, 0, 0))), native.single.calls("metroUpdate"))
         assertEquals(44_100, control.info.value?.sampleRate)
         assertEquals(RouteClass.HEADPHONES, control.info.value?.routeClass)
     }

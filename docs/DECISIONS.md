@@ -224,3 +224,20 @@ questions below.
   owner's device check for the per-hop median (decision 3) covers the phone.
 - Under vibrato a reading lands where the pitch dwells in its window, up to about 3 c from the
   window's plain mean; the note's centre stays within 0.1 c.
+
+## 20. Output timing facts and finite calibration runs
+
+- Beat events carry the generator's bar, silent-bar flag and setup generation. A metre edit
+  may finish a partial bar, so the global beat index cannot recover the gap cycle's position.
+  The onset flag describes the configured accent before master mute and gain.
+- The event time is already a monotonic presentation timestamp. Visual scheduling adds the
+  route's chosen offset once; it does not add the stream latency a second time.
+- A runtime beat limit bounds calibration inside the audio callback. Zero retains continuous
+  playback. A completed finite run stays complete through setup replay and a route reopen;
+  an explicit start begins a new run. The final click retains its sample tail.
+- Beat limits and generations are runtime setup fields; persisted preferences contain the
+  player's metronome choices. JNI ABI 3 carries both fields and four event integers for the
+  64-bit bar, onset/silent-bar flags and generation. Native, Kotlin and fake round-trips pin
+  this layout together.
+- Output information carries routed-device identity and wireless classification together.
+  Same-name devices remain distinguishable for notice dismissal and calibration cancellation.

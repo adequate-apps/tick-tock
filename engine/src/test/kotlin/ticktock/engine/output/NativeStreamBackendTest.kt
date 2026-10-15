@@ -48,7 +48,7 @@ class NativeStreamBackendTest {
     private val setup = MetroSetup(
         bpm = 132, beatsPerBar = 3, beatUnit = 8, compoundPulse = true,
         accents = listOf(Accent.ACCENT, Accent.SOFT, Accent.MUTE),
-        subdivision = 2, click = ClickSound.BEEP, gain = 0.6f, barsOn = 2, barsOff = 1,
+        subdivision = 2, click = ClickSound.BEEP, gain = 0.6f, barsOn = 2, barsOff = 1, beatLimit = 8, generation = 37,
     )
 
     @After
@@ -146,7 +146,7 @@ class NativeStreamBackendTest {
         opened.send(OutputCommand.Unregister(OutputTool.DRONE))
         opened.send(OutputCommand.Mute(MuteReason.BACKGROUND, true))
 
-        val metro = listOf(132, 3, 8, true, listOf(0, 2, 3), 2, 2, 0.6f, 2, 1)
+        val metro = listOf(132, 3, 8, true, listOf(0, 2, 3), 2, 2, 0.6f, 2, 1, 8, 37)
         assertEquals(
             listOf(
                 Call("register", listOf(NativeStreamBackend.HOLDER.ordinal)),
@@ -179,14 +179,16 @@ class NativeStreamBackendTest {
         val opened = open()
         val handle = native.single
         handle.beat(index = 0, beatInBar = 0, frame = 0, nanos = 1_000)
-        handle.beat(index = 1, beatInBar = 1, frame = 21_818, nanos = 455_000_000)
+        handle.beat(index = 1, beatInBar = 1, frame = 21_818, nanos = 455_000_000,
+            bar = 0x1ffffffffL, silentBar = true, generation = 37, audible = false)
         handle.counters(late = 1, underruns = 2)
 
         await("three events") { events.size == 3 }
         assertEquals(
             listOf(
                 OutputEvent.Beat(0, 0, 0, 1_000),
-                OutputEvent.Beat(1, 1, 21_818, 455_000_000),
+                OutputEvent.Beat(1, 1, 21_818, 455_000_000,
+                    bar = 0x1ffffffffL, silentBar = true, generation = 37, audible = false),
                 OutputEvent.Counters(1, 2),
             ),
             events.map { it.second },

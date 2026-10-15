@@ -21,11 +21,11 @@ interface NativeCalls {
     fun nativeDuck(handle: Long, gain: Float): Boolean
     fun nativeMetroStart(
         handle: Long, bpm: Int, beatsPerBar: Int, beatUnit: Int, compoundPulse: Boolean, accents: IntArray,
-        subdivision: Int, click: Int, gain: Float, barsOn: Int, barsOff: Int,
+        subdivision: Int, click: Int, gain: Float, barsOn: Int, barsOff: Int, beatLimit: Int, generation: Int,
     ): Boolean
     fun nativeMetroUpdate(
         handle: Long, bpm: Int, beatsPerBar: Int, beatUnit: Int, compoundPulse: Boolean, accents: IntArray,
-        subdivision: Int, click: Int, gain: Float, barsOn: Int, barsOff: Int,
+        subdivision: Int, click: Int, gain: Float, barsOn: Int, barsOff: Int, beatLimit: Int, generation: Int,
     ): Boolean
     fun nativeMetroStop(handle: Long): Boolean
     fun nativeMute(handle: Long, reason: Int, active: Boolean): Boolean

@@ -27,6 +27,8 @@ enum class ParkReason : std::int32_t { HeadphonesDisconnected = 0, IncomingCall 
 //   Opened, Resumed  a = sampleRate, b = framesPerBlock, c = deviceId, d = latencyMillis,
 //                    tools = Resumed's tool mask (Opened: 0)
 //   Beat             a = index, b = beatInBar, c = frame, d = nanos
+//                    ints = [bar low 32 bits, bar high 32 bits, flags, generation]
+//                    flags: bit 0 onset audible, bit 1 silent bar
 //   Parked           a = reason, tools = tool mask
 //   Failed           a = deviceId, ints = the refused rates
 //   Counters         a = lateBeatsDropped, b = underruns
