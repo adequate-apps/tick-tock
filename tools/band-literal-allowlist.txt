@@ -9,3 +9,6 @@
 # Example:
 #   # a page of five rows, unrelated to cents
 #   ^app/src/main/kotlin/ticktock/app/screens/Table.kt:if \(rows > 5\)
+
+# SES-05: the storage range for a reading's cents, the edge of the note itself
+^core/src/commonMain/kotlin/ticktock/core/contracts/HistorySink.kt:abs\(r\.cents\) <= 50\.0$

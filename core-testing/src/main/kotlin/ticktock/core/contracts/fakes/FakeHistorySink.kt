@@ -10,19 +10,19 @@ import ticktock.core.detect.Reading
  */
 class FakeHistorySink : HistorySink {
     val accepted = mutableListOf<Reading>()
+
+    /** The first-settled mark of each accepted reading, in the same order. */
+    val firstSettled = mutableListOf<Boolean>()
+
     override var rejected: Int = 0
         private set
 
-    override fun accept(reading: Reading) {
-        if (isValid(reading)) accepted += reading else rejected++
-    }
-
-    companion object {
-        /** The storage validation rule, stated once (SES-05). */
-        fun isValid(r: Reading): Boolean =
-            r.hz.isFinite() && r.cents.isFinite() && r.a4Hz.isFinite() &&
-                r.hz in 1.0..20_000.0 &&
-                r.midiSounding in 0..127 &&
-                kotlin.math.abs(r.cents) <= 50.0
+    override fun accept(reading: Reading, firstSettled: Boolean) {
+        if (HistorySink.storable(reading)) {
+            accepted += reading
+            this.firstSettled += firstSettled
+        } else {
+            rejected++
+        }
     }
 }
