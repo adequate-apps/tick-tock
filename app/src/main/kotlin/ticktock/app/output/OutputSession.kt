@@ -5,6 +5,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,9 +36,17 @@ data class OutputState(
     val parked: ParkReason? = null,
     val failed: OutputEvent.Failed? = null,
     val bluetoothNotice: Boolean = false,
+    val calibrating: Boolean = false,
 ) {
-    val toolRunning: Boolean get() = droneSounding || metroSounding
+    val toolRunning: Boolean get() = droneSounding || metroSounding || (calibrating && info != null)
 }
+
+data class CalibrationState(
+    val clicks: Int = 0,
+    val taps: Int = 0,
+    val complete: Boolean = false,
+    val offsetMs: Int? = null,
+)
 
 /** One owner across panes and Settings. Preferences survive; sounding intent belongs to this foreground session. */
 class OutputSession(
@@ -61,6 +71,18 @@ class OutputSession(
     private var route: Pair<Int?, String>? = null
     private var dismissed: Pair<Int?, String>? = null
     private var closed = false
+    private val calibrationState = MutableStateFlow<CalibrationState?>(null)
+    val calibration: StateFlow<CalibrationState?> = calibrationState
+    private var measuring: CalibrationRun? = null
+    private var calibrationTimeout: Job? = null
+    private var calibrationTail: Job? = null
+
+    private data class CalibrationRun(
+        val measurement: DelayMeasurement,
+        val route: Pair<Int?, String>,
+        val restoreDrone: Boolean,
+        val restoreMetro: Boolean,
+    )
 
     /** The debug build can observe the same stream without opening another engine. */
     var observeEvent: (OutputEvent) -> Unit = {}
@@ -81,7 +103,7 @@ class OutputSession(
 
     @Synchronized
     fun startDrone() {
-        if (closed || mutableState.value.droneWanted) return
+        if (closed || measuring != null || mutableState.value.droneWanted) return
         prefs = readPrefs()
         mutableState.value = mutableState.value.copy(droneWanted = true, parked = null, failed = null)
         send(listOf(OutputCommand.SetA4(prefs.a4Hz), OutputCommand.Register(OutputTool.DRONE), droneCommand()))
@@ -105,7 +127,7 @@ class OutputSession(
 
     @Synchronized
     fun startMetro() {
-        if (closed || mutableState.value.metroWanted) return
+        if (closed || measuring != null || mutableState.value.metroWanted) return
         prefs = readPrefs()
         mutableState.value = mutableState.value.copy(metroWanted = true, parked = null, failed = null)
         val setup = nextSetup()
@@ -153,7 +175,7 @@ class OutputSession(
 
     @Synchronized
     fun duck(gain: Float) {
-        if (gain == lastDuck || connection == null) return
+        if ((measuring != null && gain != 1f) || gain == lastDuck || connection == null) return
         lastDuck = gain
         val command = OutputCommand.Duck(gain)
         observeCommand(command)
@@ -167,7 +189,115 @@ class OutputSession(
     }
 
     @Synchronized
+    fun beginCalibration() {
+        val info = connection?.port?.info?.value ?: return
+        if (closed || measuring != null || !info.wireless) return
+        val restoreDrone = state.value.droneWanted
+        val restoreMetro = state.value.metroWanted
+        clearBeat()
+        val run = CalibrationRun(DelayMeasurement(generation), info.deviceId to info.deviceName, restoreDrone, restoreMetro)
+        measuring = run
+        duck(1f)
+        calibrationState.value = CalibrationState()
+        mutableState.value = state.value.copy(droneWanted = false, metroWanted = false, calibrating = true)
+        // Keep the route open while the drone yields to the finite click run.
+        send(listOf(OutputCommand.Register(OutputTool.METRONOME), OutputCommand.VoiceOff(DRONE_SLOT),
+            OutputCommand.Unregister(OutputTool.DRONE), OutputCommand.MetroStart(run.measurement.setup())))
+        armCalibrationTimeout(run)
+    }
+
+    @Synchronized
+    fun calibrationTap() {
+        val run = measuring ?: return
+        if (calibrationState.value?.complete == true || !run.measurement.tap(nanoTime())) return
+        updateCalibration(run)
+    }
+
+    @Synchronized
+    fun retryCalibration() {
+        val previous = measuring ?: return
+        if (calibrationState.value?.complete != true) return
+        calibrationTimeout?.cancel()
+        calibrationTail?.cancel()
+        calibrationTail = null
+        clearBeat()
+        val run = previous.copy(measurement = DelayMeasurement(generation))
+        measuring = run
+        calibrationState.value = CalibrationState()
+        mutableState.value = state.value.copy(calibrating = true)
+        send(listOf(OutputCommand.MetroStart(run.measurement.setup())))
+        armCalibrationTimeout(run)
+    }
+
+    @Synchronized
+    fun useCalibration() {
+        val offset = calibrationState.value?.takeIf { it.complete }?.offsetMs ?: return
+        val run = measuring ?: return
+        val info = connection?.port?.info?.value ?: return
+        if (!info.wireless || run.route != (info.deviceId to info.deviceName)) return
+        writePrefs { it.copy(bluetoothVisualOffsetMs = offset) }
+        finishCalibration(restore = true)
+    }
+
+    @Synchronized
+    fun cancelCalibration() = finishCalibration(restore = true)
+
+    private fun armCalibrationTimeout(run: CalibrationRun) {
+        calibrationTimeout = scope.launch {
+            delay(DelayMeasurement.TIMEOUT_MILLIS)
+            synchronized(this@OutputSession) {
+                if (measuring === run && calibrationState.value?.complete != true) {
+                    calibrationState.value = CalibrationState(run.measurement.clicksReceived, run.measurement.tapsReceived, complete = true)
+                    mutableState.value = state.value.copy(calibrating = false)
+                    send(listOf(OutputCommand.MetroStop))
+                }
+            }
+        }
+    }
+
+    private fun updateCalibration(run: CalibrationRun) {
+        val measurement = run.measurement
+        calibrationState.value = CalibrationState(measurement.clicksReceived, measurement.tapsReceived)
+        val median = measurement.medianMs() ?: return
+        if (calibrationTail != null) return
+        calibrationTail = scope.launch {
+            val remaining = measurement.lastClickNanos!! + DelayMeasurement.CLICK_TAIL_NANOS - nanoTime()
+            if (remaining > 0) delay((remaining + DelayMeasurement.NANOS_PER_MILLI - 1) / DelayMeasurement.NANOS_PER_MILLI)
+            synchronized(this@OutputSession) {
+                if (measuring === run) {
+                    calibrationTimeout?.cancel()
+                    calibrationState.value = CalibrationState(measurement.clicksReceived, measurement.tapsReceived, true, median)
+                    mutableState.value = state.value.copy(calibrating = false)
+                }
+            }
+        }
+    }
+
+    private fun finishCalibration(restore: Boolean) {
+        val run = measuring ?: return
+        measuring = null
+        calibrationTimeout?.cancel()
+        calibrationTail?.cancel()
+        calibrationTail = null
+        calibrationState.value = null
+        val info = connection?.port?.info?.value
+        val sameRoute = info != null && run.route == (info.deviceId to info.deviceName)
+        val drone = restore && sameRoute && run.restoreDrone
+        val metro = restore && sameRoute && run.restoreMetro
+        prefs = readPrefs()
+        mutableState.value = state.value.copy(droneWanted = drone, metroWanted = metro, calibrating = false)
+        clearBeat()
+        val commands = mutableListOf<OutputCommand>(OutputCommand.MetroStop)
+        if (drone) commands += listOf(OutputCommand.SetA4(prefs.a4Hz), OutputCommand.Register(OutputTool.DRONE), droneCommand())
+        else commands += listOf(OutputCommand.VoiceOff(DRONE_SLOT), OutputCommand.Unregister(OutputTool.DRONE))
+        if (metro) commands += listOf(OutputCommand.Register(OutputTool.METRONOME), OutputCommand.MetroStart(nextSetup()))
+        else commands += OutputCommand.Unregister(OutputTool.METRONOME)
+        send(commands)
+    }
+
+    @Synchronized
     fun background() {
+        finishCalibration(restore = false)
         stopMetro()
         stopDrone()
         duck(1f)
@@ -242,7 +372,11 @@ class OutputSession(
     private fun event(event: OutputEvent) {
         observeEvent(event)
         when (event) {
-            is OutputEvent.Beat -> if (state.value.metroWanted && connection?.port?.info?.value != null) visuals.accept(event)
+            is OutputEvent.Beat -> {
+                val run = measuring
+                if (run != null && calibrationState.value?.complete != true && run.measurement.beat(event)) updateCalibration(run)
+                else if (state.value.metroWanted && connection?.port?.info?.value != null) visuals.accept(event)
+            }
             is OutputEvent.Parked -> if (connection?.port?.info?.value == null) {
                 val retain = pending || event.reason == ParkReason.HEADPHONES_DISCONNECTED
                 mutableState.value = state.value.copy(
@@ -266,6 +400,10 @@ class OutputSession(
     private fun refresh() {
         val info = connection?.port?.info?.value
         val nextRoute = info?.let { it.deviceId to it.deviceName }
+        if (measuring?.let { it.route != nextRoute } == true) {
+            finishCalibration(restore = false)
+            return
+        }
         if (nextRoute != route) {
             route = nextRoute
             dismissed = null
