@@ -34,6 +34,8 @@ import ticktock.design.reliefInset
 @Composable
 fun CentsScale(
     cents: Int?,
+    inTuneMax: Float,
+    closeMax: Float,
     modifier: Modifier = Modifier,
     flat: String = "Flat",
     sharp: String = "Sharp",
@@ -62,10 +64,10 @@ fun CentsScale(
             val line = GridlineMetrics.line.toPx()
             val bottom = size.height
             // Close band, then in-tune band, each with its edges ruled in its own colour.
-            drawRect(colors.yellowBg, Offset(x(-CLOSE), 0f), Size(x(CLOSE) - x(-CLOSE), bottom))
-            drawRect(colors.positiveBg, Offset(x(-IN_TUNE), 0f), Size(x(IN_TUNE) - x(-IN_TUNE), bottom))
-            for (edge in listOf(-CLOSE, CLOSE)) drawRect(colors.attention, Offset(x(edge) - line / 2, 0f), Size(line, bottom))
-            for (edge in listOf(-IN_TUNE, IN_TUNE)) drawRect(colors.positive, Offset(x(edge) - line / 2, 0f), Size(line, bottom))
+            drawRect(colors.yellowBg, Offset(x(-closeMax), 0f), Size(x(closeMax) - x(-closeMax), bottom))
+            drawRect(colors.positiveBg, Offset(x(-inTuneMax), 0f), Size(x(inTuneMax) - x(-inTuneMax), bottom))
+            for (edge in listOf(-closeMax, closeMax)) drawRect(colors.attention, Offset(x(edge) - line / 2, 0f), Size(line, bottom))
+            for (edge in listOf(-inTuneMax, inTuneMax)) drawRect(colors.positive, Offset(x(edge) - line / 2, 0f), Size(line, bottom))
             // The baseline and a tick every 5 c, long at every 25 c.
             drawRect(colors.textBody, Offset(0f, bottom - line), Size(size.width, line))
             val minor = 8.dp.toPx()
@@ -86,8 +88,6 @@ fun CentsScale(
 }
 
 private const val RANGE = 50f
-private const val CLOSE = 12f
-private const val IN_TUNE = 5f
 private val POINTER_WIDTH = 4.dp
 private val BAND_HEIGHT = 48.dp
 private val INSET = 24.dp

@@ -4,6 +4,7 @@ package ticktock.app.audio
 import android.os.Process
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import ticktock.core.contracts.AudioInput
 import ticktock.core.contracts.HistorySink
 import ticktock.core.contracts.InputException
@@ -13,6 +14,7 @@ import ticktock.core.detect.AnalysisCounters
 import ticktock.core.detect.Decision
 import ticktock.core.detect.Detector
 import ticktock.core.detect.HopAnalyser
+import ticktock.core.detect.Release
 import ticktock.core.detect.ResponseMode
 import ticktock.core.detect.YinEstimator
 import ticktock.core.music.Cents
@@ -60,8 +62,8 @@ data class Level(val hop: Long = -1, val db: Double = LEVEL_FLOOR_DB) {
 }
 
 /**
- * The last [TRACE_HOPS] hops of the readout's cents, oldest first, NaN where
- * the readout was blank, and the attacks that began inside that window.
+ * The last [TRACE_HOPS] hops of accepted cents, oldest first, NaN where
+ * a hop had no reading, and the attacks that began inside that window.
  */
 class TraceSnapshot(val cents: FloatArray, val attacks: Int) {
     companion object {
@@ -148,6 +150,7 @@ class LiveCapture(
     // The analysis thread's alone: the note being held, from its attack.
     private var noteMidi: Int? = null
     private var noteStartHop = 0L
+    private var noteLastReadingHop = 0L
     private var noteCentsSum = 0.0
     private var noteHzSum = 0.0
     private var noteReadings = 0
@@ -159,7 +162,7 @@ class LiveCapture(
     // The analysis thread's alone: the trace's ring and the hops at which attacks began.
     private val traceRing = FloatArray(TraceSnapshot.TRACE_HOPS) { Float.NaN }
     private var traceHead = 0
-    private var lastShownCents = Float.NaN
+    private var traceHop = -1L
     private val attackHops = ArrayDeque<Long>()
 
     // Settings changed on the UI thread wait here for the analysis thread, which
@@ -186,25 +189,27 @@ class LiveCapture(
         hopsSinceDiagnostics = 0
         levelFlow.value = Level()
         diagnosticsFlow.value = CaptureDiagnostics()
-        stateFlow.value = result.fold(
-            onSuccess = { info -> CaptureState(info = info, absentDevice = stateFlow.value.absentDevice) },
-            onFailure = { error ->
-                val failure = (error as? InputException)?.failure
-                    ?: InputFailure.Refused(UNKNOWN_DEVICE, emptyList())
-                CaptureState(failure = failure)
-            },
-        )
+        stateFlow.update { previous ->
+            result.fold(
+                onSuccess = { info -> CaptureState(info = info, absentDevice = previous.absentDevice) },
+                onFailure = { error ->
+                    val failure = (error as? InputException)?.failure
+                        ?: InputFailure.Refused(UNKNOWN_DEVICE, emptyList())
+                    CaptureState(failure = failure)
+                },
+            )
+        }
     }
 
     fun stop() {
         thread.stop()
-        stateFlow.value = CaptureState()
+        stateFlow.update { CaptureState() }
         levelFlow.value = Level()
         diagnosticsFlow.value = CaptureDiagnostics()
         // The analysis thread has stopped, so its trace state is safe to clear here.
         traceRing.fill(Float.NaN)
         traceHead = 0
-        lastShownCents = Float.NaN
+        traceHop = -1L
         attackHops.clear()
         traceFlow.value = TraceSnapshot.EMPTY
         noteMidi = null
@@ -213,27 +218,27 @@ class LiveCapture(
 
     /** The platform's recording report, from the source's flow; the screen forwards it here. */
     fun recordingReported(recording: RecordingState?) {
-        stateFlow.value = stateFlow.value.copy(recording = recording)
+        stateFlow.update { it.copy(recording = recording) }
     }
 
     override fun onStopped(failure: InputFailure) {
-        stateFlow.value = stateFlow.value.copy(info = null, failure = failure, recording = null)
+        stateFlow.update { it.copy(info = null, failure = failure, recording = null) }
     }
 
     override fun onResumed(info: InputInfo) {
-        stateFlow.value = stateFlow.value.copy(info = info, failure = null)
+        stateFlow.update { it.copy(info = info, failure = null) }
     }
 
     override fun onDeviceAbsent(failure: InputFailure.Disconnected) {
-        stateFlow.value = stateFlow.value.copy(absentDevice = failure)
+        stateFlow.update { it.copy(absentDevice = failure) }
     }
 
     private fun applyRequests() {
         requestedA4.getAndSet(null)?.let { hz ->
-            if (hz != detector.a4.hz) detector.setA4(hz)
+            if (hz != detector.a4.hz) detector.setA4(hz)?.let(::endNote)
         }
         requestedMode.getAndSet(null)?.let { mode ->
-            detector.setMode(mode)
+            if (mode != detector.mode) detector.setMode(mode)?.let(::endNote)
         }
     }
 
@@ -243,11 +248,11 @@ class LiveCapture(
         }
         val newest = decisions.last()
         levelFlow.value = Level(newest.hop, Level.db(newest.level))
-        val previous = stateFlow.value
-        val readout = previous.readout.after(newest)
-        // Equal values would conflate in the flow anyway; the comparison
-        // saves the copy on the hops, most of them, that change nothing.
-        if (readout != previous.readout) stateFlow.value = previous.copy(readout = readout)
+        stateFlow.update { previous ->
+            val readout = previous.readout.after(newest)
+            // A held readout reuses the state; retries preserve concurrent stream reports.
+            if (readout == previous.readout) previous else previous.copy(readout = readout)
+        }
         recordTrace(decisions)
         recordNotes(decisions)
         hopsSinceDiagnostics += decisions.size
@@ -260,24 +265,10 @@ class LiveCapture(
     private fun recordNotes(decisions: List<Decision>) {
         for (decision in decisions) {
             // A note change releases the old note and attacks the new one on the same hop.
-            val release = decision.release
-            if (noteMidi != null && release != null && release.midiSounding == noteMidi) {
-                if (noteReadings > 0) {
-                    lastNoteFlow.value = LastNote(
-                        midi = release.midiSounding,
-                        meanCents = noteCentsSum / noteReadings,
-                        meanHz = noteHzSum / noteReadings,
-                        settledCents = noteSettled,
-                        seconds = (release.hop - noteStartHop) * ticktock.core.detect.Hop.SECONDS,
-                        points = notePoints.copyOf(notePointCount),
-                        serial = ++noteSerial,
-                    )
-                }
-                noteMidi = null
-            }
+            decision.release?.let(::endNote)
             decision.attack?.let { attack ->
                 noteMidi = attack.midiSounding
-                noteStartHop = decision.hop
+                noteStartHop = attack.hop
                 noteCentsSum = 0.0
                 noteHzSum = 0.0
                 noteReadings = 0
@@ -287,6 +278,7 @@ class LiveCapture(
             val held = noteMidi
             val reading = decision.display
             if (held != null && reading != null && reading.midiSounding == held) {
+                noteLastReadingHop = reading.hop
                 noteCentsSum += reading.cents
                 noteHzSum += reading.hz
                 noteReadings++
@@ -296,22 +288,42 @@ class LiveCapture(
         }
     }
 
+    /** Completes both hop-stream releases and settings releases on the analysis thread. */
+    private fun endNote(release: Release) {
+        if (noteMidi != null && release.midiSounding == noteMidi) {
+            if (noteReadings > 0) {
+                lastNoteFlow.value = LastNote(
+                    midi = release.midiSounding,
+                    meanCents = noteCentsSum / noteReadings,
+                    meanHz = noteHzSum / noteReadings,
+                    settledCents = noteSettled,
+                    seconds = (noteLastReadingHop - noteStartHop + 1) * ticktock.core.detect.Hop.SECONDS,
+                    points = notePoints.copyOf(notePointCount),
+                    serial = ++noteSerial,
+                )
+            }
+            noteMidi = null
+        }
+    }
+
     private fun recordTrace(decisions: List<Decision>) {
         for (decision in decisions) {
+            // Missing decisions still occupy their elapsed hop time in the fixed window.
+            val missing = (decision.hop - traceHop - 1).coerceIn(0L, traceRing.size.toLong()).toInt()
+            repeat(missing) { appendTrace(Float.NaN) }
             if (decision.attack != null) attackHops.addLast(decision.hop)
-            lastShownCents = when {
-                decision.incumbent == null -> Float.NaN
-                decision.display != null -> decision.display!!.cents.toFloat()
-                // A held note with no fresh reading this hop keeps its line.
-                else -> lastShownCents
-            }
-            traceRing[traceHead] = lastShownCents
-            traceHead = (traceHead + 1) % traceRing.size
+            appendTrace(decision.display?.cents?.toFloat() ?: Float.NaN)
+            traceHop = decision.hop
         }
         val newest = decisions.last().hop
         while (attackHops.isNotEmpty() && attackHops.first() <= newest - traceRing.size) attackHops.removeFirst()
         val ordered = FloatArray(traceRing.size) { traceRing[(traceHead + it) % traceRing.size] }
         traceFlow.value = TraceSnapshot(ordered, attackHops.size)
+    }
+
+    private fun appendTrace(cents: Float) {
+        traceRing[traceHead] = cents
+        traceHead = (traceHead + 1) % traceRing.size
     }
 
     private fun Readout.after(decision: Decision): Readout {

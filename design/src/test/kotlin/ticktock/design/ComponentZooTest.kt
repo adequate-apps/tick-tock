@@ -225,10 +225,11 @@ private fun Zoo() {
             SettingRow(label = "A4", value = "440 Hz", onClick = {}, tag = "zoo-a4")
             SettingRow(label = "Noise floor", value = "-45 dB", tag = "zoo-floor")
         }
-        CentsScale(cents = 4, description = "+4", modifier = Modifier.fillMaxWidth(), tag = "zoo-scale")
-        CentsScale(cents = null, modifier = Modifier.fillMaxWidth(), tag = "zoo-scale-ghost")
+        CentsScale(inTuneMax = 5f, closeMax = 12f, cents = 4, description = "+4", modifier = Modifier.fillMaxWidth(), tag = "zoo-scale")
+        CentsScale(inTuneMax = 5f, closeMax = 12f, cents = null, modifier = Modifier.fillMaxWidth(), tag = "zoo-scale-ghost")
         LevelMeter(db = { -18.0 }, caption = "Level", tag = "zoo-level")
         Trace(
+            inTuneMax = 5f, closeMax = 12f,
             points = { FloatArray(108) { i -> if (i < 10) Float.NaN else 14f * kotlin.math.exp(-(i - 10) / 12f) + 1f } },
             timeLabels = listOf(0f to "−5 s", 0.6f to "−2 s", 1f to "now"),
             description = "Pitch trace, last five seconds",

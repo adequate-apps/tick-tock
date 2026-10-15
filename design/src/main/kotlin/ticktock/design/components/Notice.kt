@@ -46,6 +46,7 @@ fun Notice(
     kind: NoticeKind = NoticeKind.Plain,
     tag: String = "notice",
     icon: GlIcon? = null,
+    iconDescription: String? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
     val (bar, background) = when (kind) {
@@ -56,7 +57,7 @@ fun Notice(
     Row(modifier = modifier.fillMaxWidth().height(IntrinsicSize.Min).background(background).testTag(tag)) {
         Box(Modifier.width(GridlineSpacing.sp1).fillMaxHeight().background(bar))
         if (icon != null) {
-            Icon(icon, knockout = background, modifier = Modifier.align(Alignment.CenterVertically).padding(start = GridlineSpacing.sp3))
+            Icon(icon, description = iconDescription, knockout = background, modifier = Modifier.align(Alignment.CenterVertically).padding(start = GridlineSpacing.sp3))
         }
         GlText(
             text = text,

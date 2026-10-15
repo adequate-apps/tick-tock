@@ -15,7 +15,7 @@
     <string name="status_mic_off">Mic off</string>
     <string name="status_mic_denied">Mic denied</string>
     <string name="status_mic_busy">Mic busy</string>
-    <string name="status_paused">Paused</string>
+    <string name="status_capture_paused">Capture paused</string>
     <string name="status_a4">A4 %1$s</string>
 
     <!-- Tabs -->
@@ -90,7 +90,8 @@
     <string name="tune_written">written %1$s</string>
     <string name="tune_hidden">Needle hidden</string>
     <string name="tune_allow_mic">Allow microphone</string>
-    <string name="tune_open_settings">Open settings</string>
+    <string name="tune_denied">Denied.</string>
+    <string name="tune_open_settings">System settings</string>
     <string name="tune_try_again">Try again</string>
     <string name="tune_held">Held by another app</string>
     <string name="tune_no_input">No input</string>

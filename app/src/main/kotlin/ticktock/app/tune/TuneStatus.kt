@@ -28,7 +28,10 @@ fun micWord(mic: MicState, capture: CaptureState, prefs: Prefs): MicWord? = when
 fun statusWords(word: MicWord?, a4Hz: Double): List<String> = buildList {
     when (word) {
         MicWord.LISTENING -> add(stringResource(R.string.status_listening))
-        MicWord.PAUSED -> add(stringResource(R.string.status_paused))
+        MicWord.PAUSED -> {
+            add(stringResource(R.string.status_listening))
+            add(stringResource(R.string.status_capture_paused))
+        }
         MicWord.MIC_OFF -> add(stringResource(R.string.status_mic_off))
         MicWord.MIC_DENIED -> add(stringResource(R.string.status_mic_denied))
         MicWord.MIC_BUSY -> add(stringResource(R.string.status_mic_busy))

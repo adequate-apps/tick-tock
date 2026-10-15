@@ -28,7 +28,7 @@ enum class MicState {
     /** Refused, and Android will still ask again. */
     DENIED,
 
-    /** Refused for good: only Android's settings can allow it now. */
+    /** A request was denied without a rationale this session; Android settings are the next action. */
     DENIED_ALWAYS,
 }
 
@@ -44,14 +44,17 @@ class MicAccess(val state: MicState, val request: () -> Unit, val openSettings: 
 @Composable
 fun rememberMicAccess(graph: AppGraph): MicAccess {
     val activity = LocalActivity.current
+    var deniedInSession by remember { mutableStateOf(false) }
     var state by remember { mutableStateOf(micState(activity, graph)) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         graph.prefs.update { it.copy(micAsked = true) }
-        state = micState(activity, graph, asked = true)
+        deniedInSession = !granted && activity?.shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) == false
+        state = if (granted) MicState.ALLOWED else micState(activity, graph, asked = true, deniedInSession = deniedInSession)
         if (granted) graph.tune.resume()
     }
     LifecycleResumeEffect(Unit) {
-        state = micState(activity, graph)
+        state = micState(activity, graph, deniedInSession = deniedInSession)
+        if (state == MicState.ALLOWED) deniedInSession = false
         onPauseOrDispose { }
     }
     return MicAccess(
@@ -65,13 +68,20 @@ fun rememberMicAccess(graph: AppGraph): MicAccess {
     )
 }
 
-private fun micState(activity: Activity?, graph: AppGraph, asked: Boolean = graph.prefs.prefs.value.micAsked): MicState {
+private fun micState(
+    activity: Activity?,
+    graph: AppGraph,
+    asked: Boolean = graph.prefs.prefs.value.micAsked,
+    deniedInSession: Boolean = false,
+): MicState {
     if (activity == null) return MicState.NOT_ASKED
     return when {
         graph.tune.micAllowed() ||
             activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED -> MicState.ALLOWED
         !asked -> MicState.NOT_ASKED
         activity.shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) -> MicState.DENIED
-        else -> MicState.DENIED_ALWAYS
+        deniedInSession -> MicState.DENIED_ALWAYS
+        // A saved request can precede a system revoke or auto-reset, when Android can ask again.
+        else -> MicState.DENIED
     }
 }

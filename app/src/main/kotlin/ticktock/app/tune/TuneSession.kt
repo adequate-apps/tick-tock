@@ -48,6 +48,8 @@ class TuneSession(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val capture = LiveCapture(mode = prefs.responseMode, a4Hz = prefs.a4Hz, history = history)
+    private var requestedA4 = prefs.a4Hz
+    private var requestedMode = prefs.responseMode
     private var input: AudioInput? = null
     private var reporting: Job? = null
 
@@ -89,8 +91,14 @@ class TuneSession(
     }
 
     fun settingsChanged(prefs: Prefs) {
-        capture.requestA4(prefs.a4Hz)
-        capture.requestMode(prefs.responseMode)
+        if (prefs.a4Hz != requestedA4) {
+            requestedA4 = prefs.a4Hz
+            capture.requestA4(prefs.a4Hz)
+        }
+        if (prefs.responseMode != requestedMode) {
+            requestedMode = prefs.responseMode
+            capture.requestMode(prefs.responseMode)
+        }
     }
 
     /** Tests only. */

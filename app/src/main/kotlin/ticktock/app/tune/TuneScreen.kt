@@ -111,9 +111,10 @@ fun TuneScreen(graph: AppGraph, mic: MicAccess) {
     val seenSerial = remember { mutableStateOf(lastNote?.serial) }
     var reveal by remember { mutableStateOf<LastNote?>(null) }
     val countdown = remember { Animatable(1f) }
-    LaunchedEffect(lastNote?.serial, prefs.earsFirst) {
+    LaunchedEffect(lastNote?.serial, prefs.earsFirst, live.midi) {
         val ended = lastNote
-        if (!prefs.earsFirst || ended == null || ended.serial == seenSerial.value) {
+        if (!prefs.earsFirst || live.midi != null || ended == null || ended.serial == seenSerial.value) {
+            seenSerial.value = ended?.serial
             reveal = null
             return@LaunchedEffect
         }
@@ -144,6 +145,8 @@ fun TuneScreen(graph: AppGraph, mic: MicAccess) {
             countdown = if (shownReveal != null) ({ countdown.value }) else null,
         )
         CentsScale(
+            inTuneMax = CentsBand.IN_TUNE_MAX.toFloat(),
+            closeMax = CentsBand.CLOSE_MAX.toFloat(),
             cents = readout.cents,
             flat = stringResource(R.string.tune_flat),
             sharp = stringResource(R.string.tune_sharp),
@@ -180,6 +183,8 @@ private fun LiveTrace(trace: State<TraceSnapshot>, listening: Boolean) {
         )
     }
     Trace(
+        inTuneMax = CentsBand.IN_TUNE_MAX.toFloat(),
+        closeMax = CentsBand.CLOSE_MAX.toFloat(),
         points = { trace.value.cents },
         timeLabels = listOf(
             0f to stringResource(R.string.trace_minus_5),
@@ -215,6 +220,8 @@ private fun LastNoteTrace(note: LastNote?, revealing: Boolean, prefs: Prefs, ins
         GlText(text = summary ?: "—", style = GridlineType.value, modifier = Modifier.testTag("last-note"))
     }
     Trace(
+        inTuneMax = CentsBand.IN_TUNE_MAX.toFloat(),
+        closeMax = CentsBand.CLOSE_MAX.toFloat(),
         points = { note?.points ?: TraceSnapshot.EMPTY.cents },
         timeLabels = listOf(0f to stringResource(R.string.trace_attack), 1f to stringResource(R.string.trace_end)),
         description = stringResource(R.string.trace_last_note_description),
@@ -296,10 +303,20 @@ private fun ReadoutField(
                 text = when (gate) {
                     Gate.MIC_BUSY -> stringResource(R.string.tune_held)
                     Gate.NO_INPUT -> stringResource(R.string.tune_no_input)
+                    Gate.MIC_DENIED, Gate.MIC_DENIED_ALWAYS -> stringResource(R.string.tune_denied)
                     else -> ""
                 },
-                kind = if (gate == Gate.MIC_BUSY) NoticeKind.Attention else NoticeKind.Plain,
+                kind = when (gate) {
+                    Gate.MIC_BUSY, Gate.MIC_DENIED -> NoticeKind.Attention
+                    Gate.MIC_DENIED_ALWAYS -> NoticeKind.Danger
+                    else -> NoticeKind.Plain
+                },
                 icon = if (gate == Gate.MIC_BUSY) GlIcon.MIC_BUSY else GlIcon.MIC_SLASH,
+                iconDescription = stringResource(when (gate) {
+                    Gate.MIC_DENIED, Gate.MIC_DENIED_ALWAYS -> R.string.status_mic_denied
+                    Gate.MIC_BUSY -> R.string.status_mic_busy
+                    else -> R.string.status_mic_off
+                }),
                 tag = "gate-${gate.name.lowercase()}",
             ) {
                 when (gate) {

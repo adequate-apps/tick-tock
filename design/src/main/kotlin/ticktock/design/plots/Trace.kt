@@ -38,6 +38,8 @@ import ticktock.design.reliefInset
 @Composable
 fun Trace(
     points: () -> FloatArray,
+    inTuneMax: Float,
+    closeMax: Float,
     timeLabels: List<Pair<Float, String>>,
     description: String,
     modifier: Modifier = Modifier,
@@ -58,9 +60,9 @@ fun Trace(
         Canvas(Modifier.fillMaxWidth().height(PLOT_HEIGHT)) {
             fun y(c: Float) = size.height / 2f - c.coerceIn(-RANGE, RANGE) / RANGE * size.height / 2f
             val line = GridlineMetrics.line.toPx()
-            drawRect(colors.positiveBg, Offset(0f, y(IN_TUNE)), Size(size.width, y(-IN_TUNE) - y(IN_TUNE)))
-            for (edge in listOf(-CLOSE, CLOSE)) drawRect(colors.attention, Offset(0f, y(edge) - line / 2), Size(size.width, line))
-            for (edge in listOf(-IN_TUNE, IN_TUNE)) drawRect(colors.positive, Offset(0f, y(edge) - line / 2), Size(size.width, line))
+            drawRect(colors.positiveBg, Offset(0f, y(inTuneMax)), Size(size.width, y(-inTuneMax) - y(inTuneMax)))
+            for (edge in listOf(-closeMax, closeMax)) drawRect(colors.attention, Offset(0f, y(edge) - line / 2), Size(size.width, line))
+            for (edge in listOf(-inTuneMax, inTuneMax)) drawRect(colors.positive, Offset(0f, y(edge) - line / 2), Size(size.width, line))
             drawLine(
                 colors.borderLight,
                 Offset(0f, y(0f)),
@@ -92,6 +94,4 @@ fun Trace(
 
 /** The trace shows ±50 c, as the cents scale does; anything further sits on the edge. */
 private const val RANGE = 50f
-private const val CLOSE = 12f
-private const val IN_TUNE = 5f
 private val PLOT_HEIGHT = 56.dp

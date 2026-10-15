@@ -84,7 +84,7 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 | BND-01 | one rounding function | U | 2.0 | CentsBandTest `BND-01` | green |
 | BND-02 | one band rule | U | 2.0 | CentsBandTest `BND-02` | green |
 | BND-03 | colour agrees with digits | U | 2.0 | CentsBandTest `BND-03` | green |
-| BND-04 | no other thresholds exist | U + source grep | 2.0 | CentsBandTest `BND-04` (three tests) + `tools/verify.sh` sources stage, shared allowlist `tools/band-literal-allowlist.txt` | green |
+| BND-04 | no other thresholds exist | U + source grep | 2.0 | CentsBandTest `BND-04` (three tests) + `tools/verify.sh` sources stage, shared allowlist `tools/band-literal-allowlist.txt`; SourceGuardTest `band plots receive their edges without declaring local thresholds`; the app supplies both plot edges from CentsBand | green |
 | BND-05 | no data | U | 2.0 | CentsBandTest `BND-05` | green |
 | BND-06 | whole cents only | U | 2.0 |  | open |
 
@@ -252,7 +252,7 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| CAP-01 | paused capture drives the needle and reaches no store | H | 2.0 | HistoryStoreTest `CAP-01 and CAP-03`; TuneScreenTest `Paused capture keeps the readout and says Paused, and leaving the app closes the microphone` prove storage gating and continued readout separately; live trace and meter assertions remain, and the status currently says Paused instead of Listening with capture paused | open |
+| CAP-01 | paused capture drives the needle and reaches no store | H | 2.0 | TuneScreenTest `CAP-01 paused capture keeps listening and live plots while history waits until On` proves Listening plus Capture paused, live needle/trace/level, unchanged stored count while paused and resumed writes on On; HistoryStoreTest `CAP-01 and CAP-03 paused readings are counted and only the empty run is recorded` | green |
 | CAP-02 | paused state survives process death | H | 2.0 | prefs field `capturePaused`, device-bound | open |
 | CAP-03 | a run opened while paused counts skipped readings | H | 2.0 | HistoryStoreTest `CAP-01 and CAP-03` | green |
 
@@ -299,17 +299,17 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| EAR-01 | readout hidden, capture unchanged | H | 2.0 | TuneScreenTest `ears first hides the cents, Hz and needle while a note sounds, shows its mean for two seconds after it ends, then hides` and `tune-ears-first-hidden.png` prove hidden cents and Hz; unchanged history capture and the needle still need explicit assertions; the trace uses the adopted last-note mockup | open |
-| EAR-02 | reveal after the note | H | 2.0 | TuneScreenTest `ears first hides the cents, Hz and needle while a note sounds, shows its mean for two seconds after it ends, then hides` checks reveal, countdown at 1.9 s and hiding after 2 s; LiveCaptureTest `EAR-02 last note keeps the held mean, settled attack, duration, trace and serial` and `EAR-02 a new attack releases the previous note before tracking its own readings`; `tune-ears-first-reveal.png`; suppressing reveal makes the screen test fail | green |
+| EAR-01 | readout hidden, capture unchanged | H | 2.0 | TuneScreenTest `EAR-01 ears first hides the needle and preserves every held history reading` compares ten saved hops in Show with ten in Ears first, asserts hidden cents/Hz and the blank needle label; `tune-ears-first-hidden-needle.png` verifies the ghost pointer; the existing ears-first reveal test and hidden readout golden cover sounding feedback | green |
+| EAR-02 | reveal after the note | H | 2.0 | TuneScreenTest `ears first hides the cents, Hz and needle while a note sounds, shows its mean for two seconds after it ends, then hides`, `EAR-02 enabling ears first never replays a note ended in Show`, and `EAR-02 a new note without readings cancels the previous reveal permanently`; LiveCaptureTest `EAR-02 duration ends after the last accepted hop and excludes release silence`, held-mean/settled/serial tracking, same-hop note changes, and A4/mode release tests; reveal golden and round-one reveal mutation | green |
 | EAR-03 | setting persists | H | 2.0 | PrefsSchemaTest `SES-12 a full round trip keeps every field and every unknown field` includes `earsFirst = true`; PrefsStoreTest `SES-01 saved prefs come back on a cold start` exercises other fields; an ears-first cold restart test remains | open |
 
 ### Pitch trace
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| TRC-01 | five-second trace from a fixed ring, no root recomposition | H | 2.0 | ComponentZooTest `labels fit, targets are 48 dp and every control is labelled` goldens cover the five-second labels and band rules; TuneScreenTest `POL-31 five seconds of a held note recompose the frame not once` proves root isolation; fixed-ring capacity and time-window assertions remain | open |
-| TRC-02 | silence breaks the line | H | 2.0 | No dedicated silence-gap test; Trace breaks at NaN, but LiveCapture holds its last point until the incumbent releases, so a silence shorter than the release window can still be bridged | open |
-| TRC-03 | TalkBack reads the trace once | H | 2.0 | Trace uses clearAndSetSemantics with Pitch trace, last five seconds; the test tag survives, but no test yet asserts the exact sole accessibility node and label | open |
+| TRC-01 | five-second trace from a fixed ring, no root recomposition | H | 2.0 | LiveCaptureTest `TRC-01 dropped hops occupy time and old attacks leave the five second ring` proves capacity, missing-hop padding and attack expiry; TuneScreenTest `POL-31 five seconds of a held note recompose the frame not once`; ComponentZooTest goldens cover the five-second labels and band rules supplied by CentsBand through the app | green |
+| TRC-02 | silence breaks the line | H | 2.0 | LiveCaptureTest `TRC-02 rejected hops break the trace while the readout holds its note` proves two silent NaN points during an incumbent hold and a fresh point after the gap; Trace starts a new path after NaN | green |
+| TRC-03 | TalkBack reads the trace once | H | 2.0 | TuneScreenTest `TRC-03 the live trace exposes one stable accessibility label` checks the exact Pitch trace, last five seconds description, no semantic children or text, and no live region, before and during a note | green |
 
 ### Gap bars and offbeats
 
