@@ -73,6 +73,10 @@ class EntitlementContractTest {
         val MAIN_SOURCE_ROOTS = listOf("src/main/kotlin", "src/commonMain/kotlin", "src/jvmMain/kotlin")
 
         /** Repository-relative paths of the files allowed to call the seam; one per gated feature. */
-        val allowedCallSites: Set<String> = emptySet()
+        val allowedCallSites: Set<String> = setOf(
+            "app/src/main/kotlin/ticktock/app/history/AllHistoryAccess.kt",
+            "app/src/main/kotlin/ticktock/app/history/NamedSessionsAccess.kt",
+            "app/src/main/kotlin/ticktock/app/history/TableExport.kt",
+        )
     }
 }
