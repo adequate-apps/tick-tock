@@ -108,6 +108,7 @@ class PrefsSchemaTest {
         "metroBarsOff" to 1,
         "theme" to Theme.PIT,
         "micAsked" to true,
+        "personalConfig" to ticktock.core.config.PersonalConfig(unknownFields = mapOf("futureRange" to Json.str("saved"))),
     )
 
     @Test

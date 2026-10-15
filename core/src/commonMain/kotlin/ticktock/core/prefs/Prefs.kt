@@ -70,6 +70,8 @@ data class Prefs(
      * the Tune pane needs this to offer the right key.
      */
     val micAsked: Boolean = false,
+    /** Portable ranges, named horns and unread fields, saved together with the settings they accompany. */
+    val personalConfig: ticktock.core.config.PersonalConfig = ticktock.core.config.PersonalConfig(),
     /** Fields this version does not know, written back unchanged (SES-12). */
     val unknownFields: Map<String, JsonValue> = emptyMap(),
 ) {
