@@ -102,10 +102,14 @@ class AndroidRecorderPlatformTest {
         // AudioRecord on a loaded CI runner has been seen to take longer to open,
         // which reads as a hung driver. This case is about the preset order.
         val beginReads = CountDownLatch(if (stopBeforeFirstRead) 1 else 0)
+        val requested = CopyOnWriteArrayList<InputSource>()
+        val recorders = CopyOnWriteArrayList<Recorder>()
         val controlled = object : RecorderPlatform by platform {
             override fun open(source: InputSource, sampleRate: Int, device: InputDevice?): OpenResult {
+                requested += source
                 val result = platform.open(source, sampleRate, device)
                 if (result !is OpenResult.Opened) return result
+                recorders += result.recorder
                 return OpenResult.Opened(object : Recorder by result.recorder {
                     override fun stop() {
                         try {
@@ -128,8 +132,12 @@ class AndroidRecorderPlatformTest {
             val info = source.start { _, _ -> }.getOrThrow()
             source.stop()
 
+            // The shadow provider observes reads; the open call proves preset order even before any read.
+            assertEquals(listOf(InputSource.VOICE_RECOGNITION), requested)
             assertEquals(InputSource.VOICE_RECOGNITION, info.source)
-            assertEquals(MediaRecorder.AudioSource.VOICE_RECOGNITION, opened.first().audioSource)
+            assertEquals(InputSource.VOICE_RECOGNITION, recorders.single().source)
+            assertEquals(AudioRecord.ERROR_DEAD_OBJECT, recorders.single().read(FloatArray(1), 1))
+            if (stopBeforeFirstRead) assertTrue(opened.isEmpty())
             assertTrue(opened.all { it.state == AudioRecord.STATE_UNINITIALIZED })
         } finally {
             beginReads.countDown()
