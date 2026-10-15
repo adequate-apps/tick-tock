@@ -51,8 +51,8 @@ class RangeScreenTest {
             for (y in 0 until image.height) for (x in 0 until image.width) if (image[x, y] == color) count++
             return count
         }
-        assertTrue("out of range note stays visible in disabled ink", pixels("readout-letter", GridlineThemes.gridline.textDisabled) > 0)
-        assertTrue("out of range cents stay visible in disabled ink", pixels("readout-cents", GridlineThemes.gridline.textDisabled) > 0)
+        assertTrue("out of range note stays visible in disabled ink", pixels("readout-letter", GridlineThemes.gridline.textDisabled) > pixels("readout-letter", GridlineThemes.gridline.textBody))
+        assertTrue("out of range cents stay visible in disabled ink", pixels("readout-cents", GridlineThemes.gridline.textDisabled) > pixels("readout-cents", GridlineThemes.gridline.positive))
         compose.runOnIdle { graph.prefs.update { it.copy(personalConfig = PersonalConfig(rangeOverrides = mapOf("eb_alto" to UserRangeOverride(WrittenRange(57, 105))))) } }
         assertTrue("imported extension restores note ink", pixels("readout-letter", GridlineThemes.gridline.textBody) > 0)
         assertTrue("imported extension restores tuning colour", pixels("readout-cents", GridlineThemes.gridline.positive) > 0)
