@@ -100,7 +100,10 @@ class TuneScreenTest {
         play(input, 440.0, 18)
         compose.waitUntil(TIMEOUT) { text("readout-cents") == "+0" }
         assertEquals(null, text("settled-announcement"))
-        assertEquals("B 5, 0 cents", compose.onNodeWithTag("cents-scale").fetchSemanticsNode().config.getOrNull(SemanticsProperties.StateDescription))
+        scenario!!.onActivity { activity ->
+            val view = activity.window.decorView.findViewWithTag<android.view.View>("needle-accessibility")
+            assertEquals("B 5, 0 cents", androidx.core.view.accessibility.AccessibilityNodeInfoCompat.wrap(view.createAccessibilityNodeInfo()).stateDescription)
+        }
         compose.mainClock.autoAdvance = false
         compose.runOnIdle { graph.prefs.update { it.copy(announceSettledNotes = true) } }
         compose.mainClock.advanceTimeByFrame()

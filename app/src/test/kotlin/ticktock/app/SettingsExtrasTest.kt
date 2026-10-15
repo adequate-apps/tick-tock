@@ -176,4 +176,52 @@ class SettingsExtrasTest {
         assertEquals(before.noiseFloorDb - 1, graph.prefs.prefs.value.noiseFloorDb)
     }
 
+    @Test fun `configuration read finishes after recreation and its preview still cancels and applies`() {
+        launch()
+        val context = RuntimeEnvironment.getApplication()
+        val uri = Uri.parse("content://test.settings/slow")
+        val entered = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val config = PersonalConfig(settings = PortableSettings(a4Hz = 443.0))
+        val input = object : java.io.ByteArrayInputStream(PersonalConfigCodec.write(config).toByteArray()) {
+            override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                entered.countDown()
+                check(release.await(10, java.util.concurrent.TimeUnit.SECONDS))
+                return super.read(buffer, offset, length)
+            }
+        }
+        shadowOf(context.contentResolver).registerInputStream(uri, input)
+        click("config-import")
+        scenario!!.onActivity { activity ->
+            val requested = shadowOf(activity).nextStartedActivityForResult.intent
+            shadowOf(activity).receiveResult(requested, Activity.RESULT_OK, Intent().setData(uri))
+        }
+        assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        try { scenario!!.recreate() } finally { release.countDown() }
+        awaitState { compose.onAllNodesWithTag("config-preview").fetchSemanticsNodes().isNotEmpty() }
+        assertEquals(440.0, graph.prefs.prefs.value.a4Hz, 0.0)
+        click("config-apply")
+        awaitState { graph.prefs.prefs.value.a4Hz == 443.0 }
+    }
+
+    @Test fun `restored import reports how to recover when its retained payload was lost`() {
+        launch()
+        val document = File(RuntimeEnvironment.getApplication().cacheDir, "pending.json")
+        document.writeText(PersonalConfigCodec.write(PersonalConfig(settings = PortableSettings(a4Hz = 442.0))))
+        click("config-import")
+        chooseDocument(Intent.ACTION_OPEN_DOCUMENT, document)
+        awaitState { compose.onAllNodesWithTag("config-preview").fetchSemanticsNodes().isNotEmpty() }
+        // Model a new process owner while retaining the activity's small workflow marker.
+        scenario!!.onActivity { graph.configuration.cancel() }
+        scenario!!.recreate()
+        compose.onNodeWithText("Phone interrupted settings import; choose the file again").assertExists()
+        assertEquals(440.0, graph.prefs.prefs.value.a4Hz, 0.0)
+        click("config-import")
+        chooseDocument(Intent.ACTION_OPEN_DOCUMENT, document)
+        awaitState { compose.onAllNodesWithTag("config-preview").fetchSemanticsNodes().isNotEmpty() }
+        click("config-cancel")
+        scenario!!.recreate()
+        compose.onNodeWithTag("config-preview").assertDoesNotExist()
+    }
+
 }

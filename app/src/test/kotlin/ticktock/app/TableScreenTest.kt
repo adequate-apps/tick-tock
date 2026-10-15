@@ -69,7 +69,7 @@ class TableScreenTest {
 
     @Test fun `SES-03 table scope and note clear retain saved history and historical A4`() {
         launch()
-        compose.onNodeWithTag("table-note-71").assertContentDescriptionEquals("A flat 5, mean minus 8, spread 0, 1 attack, 8 readings")
+        compose.onNodeWithTag("table-note-71").assertContentDescriptionEquals("A flat 5, mean minus 8 cents, spread 0 cents, 1 attack, 8 readings")
         compose.onAllNodesWithTag("table-note-69").assertCountEquals(0)
         click("table-scope-1")
         awaitRows(69, 71)
@@ -159,7 +159,7 @@ class TableScreenTest {
         compose.onNodeWithText("Plots −25 to +25 cents").assertExists()
         compose.onNodeWithText("Dimmed <5 readings").assertExists()
         click("table-note-69")
-        compose.onNodeWithText("Session", substring = false).assertExists()
+        compose.onAllNodesWithText("Session", substring = false).assertCountEquals(2)
         compose.onNodeWithText("Share of readings · −50 to +50 cents").assertExists()
         compose.onNode(hasTestTag("table-stats-selected") and hasAnyDescendant(hasText("Mean -10 cents · Spread 0 cents"))).assertExists()
         compose.onNode(hasTestTag("table-stats-history") and hasAnyDescendant(hasText("Readings 46", substring = true))).assertExists()
@@ -188,6 +188,7 @@ class TableScreenTest {
         click("table-scope-1")
         awaitRows(69, 71)
         click("table-note-69")
+        compose.onNodeWithText("History · Drone runs excluded").assertExists()
         click("table-clear-note")
         compose.onNode(hasText("All matching history") and hasAnyAncestor(hasTestTag("table-confirmation"))).assertExists()
         compose.onNode(hasText("Drone runs excluded") and hasAnyAncestor(hasTestTag("table-confirmation"))).assertExists()

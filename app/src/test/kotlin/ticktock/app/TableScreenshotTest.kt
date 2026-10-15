@@ -40,6 +40,13 @@ class TableScreenshotTest(private val scale: Float, private val theme: Theme, pr
         graph.prefs.update { it.copy(firstRunComplete = true, instrumentKey = "eb_alto", theme = theme, lastEquipment = "Mouthpiece 6 · Reed 3") }
         runBlocking {
             var hop = 0L
+            repeat(30) { n ->
+                val cents = -15.0 + n % 5
+                graph.history.accept(Reading(hop++, 49, 440.0 * 2.0.pow((49 - 69 + cents / 100) / 12), cents, 440.0, 0), n % 10 == 0)
+            }
+            graph.history.flushAndWait()
+            graph.history.saveSession(graph.history.currentSessionId()!!, "Earlier session", "Reed 2")
+            graph.history.newSession()
             for ((midi, center) in listOf(49 to -3, 51 to 2, 52 to -9, 53 to 11, 62 to 9, 66 to 4)) {
                 repeat(if (midi == 66) 3 else 48) { n ->
                     val cents = center + (n % 9 - 4).toDouble()
@@ -58,7 +65,12 @@ class TableScreenshotTest(private val scale: Float, private val theme: Theme, pr
         compose.onNodeWithTag("table-note-49").performScrollTo().performClick()
         compose.onNodeWithTag("table-back").performScrollTo().assertIsDisplayed()
         golden("detail")
-        compose.onNodeWithTag("table-clear-note").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("table-stats-history").performScrollTo().assertIsDisplayed()
+        golden("detail-statistics")
+        compose.onNodeWithTag("table-clear-note").performScrollTo().performClick()
+        compose.onNodeWithTag("clear-cancel").performScrollTo().assertIsDisplayed()
+        golden("clear-note")
+        compose.onNodeWithTag("clear-cancel").performClick()
         compose.onNodeWithTag("table-back").performScrollTo().performClick()
         compose.onNodeWithTag("table-save").performScrollTo().performClick()
         compose.onNodeWithTag("session-name").performTextInput("Tuesday long tones")
