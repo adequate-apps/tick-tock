@@ -34,6 +34,15 @@ class StatisticsCsvTest {
         } finally { Locale.setDefault(previous) }
     }
 
+    @Test fun `SES-15 exported text cannot become a spreadsheet formula while signed statistics stay numeric`() {
+        for (text in listOf("=1+1", "+SUM(1)", "-1+2", "@SUM(1)", "\tformula", "\rformula")) {
+            val row = StatisticsRow(text, 440.0, text, text, 8, 1, -4.2, 2.0, text, text, text, text)
+            val fields = parse(StatisticsCsv.encode(listOf(row)).decodeToString())[1]
+            for (index in listOf(0, 2, 3, 8, 9, 10, 11)) assertEquals("'" + text, fields[index])
+            assertEquals(-4.2, fields[6].toDouble(), 0.0)
+        }
+    }
+
     private fun parse(text: String): List<List<String>> {
         val rows = mutableListOf<List<String>>()
         val fields = mutableListOf<String>()
