@@ -126,20 +126,20 @@ ledgered under their own prefixes below.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| SES-01 | the first run starts with saved prefs | H | 2.0 | | open |
-| SES-02 | new-run triggers | H | 2.0 | | open |
-| SES-03 | SESSION means this session | H | 2.0 | | open |
-| SES-04 | per-nickname separation | H | 2.0 | | open |
-| SES-05 | validate before storing | H | 2.0 | | open |
-| SES-06 | batched writes | H | 2.0 | | open |
-| SES-07 | write errors surface | H | 2.0 | | open |
-| SES-08 | summaries and indexes | H | 2.0 | | open |
-| SES-09 | retention | H | 2.0 | | open |
-| SES-10 | storage budget | H | 2.0 | | open |
-| SES-11 | one writer | H | 2.0 | the field table and the normaliser derived from it: PrefsSchemaTest `SES-11`; the noise-floor range tops out where the gate stays reachable under every preset (ResponseModeTableTest `the top of the noise-floor range`); the one writer lands with `PrefsStore` in M3 | open |
-| SES-12 | unknown and newer fields | H | 2.0 | the normaliser's round trip of unknown and newer-version fields: PrefsSchemaTest `SES-12`; the store's half lands in M3 | open |
-| SES-13 | zero stays zero | H | 2.0 | the normaliser keeps a gain of 0: PrefsSchemaTest `SES-13`; the restart path lands in M3 | open |
-| SES-14 | golden stored data | H | 2.0 | | open |
+| SES-01 | the first run starts with saved prefs | H | 2.0 | HistoryStoreTest `SES-01`; AppGraphTest `SES-01` (cold start from a saved prefs file labels the first run, a prefs change relabels the next); PrefsStoreTest `SES-01`; AVD: a 442 Hz tone stored 206 readings in one run at A4 = 442, and a relaunch kept the session and opened a second | green |
+| SES-02 | new-run triggers | H | 2.0 | HistoryStoreTest `SES-02` (nickname, A4 generation, instrument, transposition, cleared nickname) | green |
+| SES-03 | SESSION means this session | H | 2.0 | HistoryStoreTest `SES-03` (the summaries query; the table screen lands in M6) | green |
+| SES-04 | per-nickname separation | H | 2.0 | HistoryStoreTest `SES-04` | green |
+| SES-05 | validate before storing | H | 2.0 | HistoryStoreTest `SES-05`; the rule is `HistorySink.storable` in :core, SmallContractsTest | green |
+| SES-06 | batched writes | H | 2.0 | HistoryStoreTest `SES-06` (a burst is one transaction; 3.2 s of continuous readings at about 200 a second is at most one transaction a second) | green |
+| SES-07 | write errors surface | H | 2.0 | HistoryStoreTest `SES-07` (batch kept, counted, banner state after three failures in a row, recovery); the banner itself lands with the screens in M4 | green |
+| SES-08 | summaries and indexes | H | 2.0 | HistoryStoreTest `SES-08`; SchemaTest `SES-08` (indexes); `StoreStatus.flushes` is the refresh signal | green |
+| SES-09 | retention | H | 2.0 | HistoryStoreTest `SES-09` | green |
+| SES-10 | storage budget | H | 2.0 | HistoryStoreTest `SES-10` (a simulated year: 53 MB against 100 MB) | green |
+| SES-11 | one writer | H | 2.0 | the field table and the normaliser derived from it: PrefsSchemaTest `SES-11`; the noise-floor range tops out where the gate stays reachable under every preset (ResponseModeTableTest `the top of the noise-floor range`); the one writer lands with `PrefsStore` in M3; PrefsStoreTest `SES-11` (two threads updating different fields lose nothing) | green |
+| SES-12 | unknown and newer fields | H | 2.0 | the normaliser's round trip of unknown and newer-version fields: PrefsSchemaTest `SES-12`; PrefsStoreTest `SES-12` (the store keeps unknown and newer-version fields through a save) | green |
+| SES-13 | zero stays zero | H | 2.0 | the normaliser keeps a gain of 0: PrefsSchemaTest `SES-13`; PrefsStoreTest `SES-13` (restart path) | green |
+| SES-14 | golden stored data | H | 2.0 | SchemaTest `SES-14` (the created schema matches `data/src/test/resources/db/schema-v1.sql`); 2.0 is the first shipped schema and prefs version, so upgrade goldens start with the next version | green |
 | SES-15 | CSV and TXT export | H | v1.1 | | deferred |
 
 ## Output lifecycle and the microphone
@@ -213,11 +213,11 @@ ledgered under their own prefixes below.
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | ERR-01 | error boundary per screen | H | 2.0 | | open |
-| ERR-02 | fatal errors | H | 2.0 | | open |
+| ERR-02 | fatal errors | H | 2.0 | CrashLogTest `ERR-02` (offered once, capped at 256 KiB keeping whole newest entries, nickname only when set); the offer itself lands with the screens in M4 | green |
 | ERR-03 | no silent catches | H | 2.0 | | open |
-| ERR-04 | corrupt prefs | H | 2.0 | | open |
-| ERR-05 | unreadable prefs | H | 2.0 | | open |
-| ERR-06 | prefs save failure | H | 2.0 | | open |
+| ERR-04 | corrupt prefs | H | 2.0 | PrefsStoreTest `ERR-04`; the pane notice lands in M4 | green |
+| ERR-05 | unreadable prefs | H | 2.0 | PrefsStoreTest `ERR-05` | green |
+| ERR-06 | prefs save failure | H | 2.0 | PrefsStoreTest `ERR-06` | green |
 | ERR-07 | analysis errors | H | 2.0 | | open |
 
 ## Accessibility (font scale)
@@ -238,16 +238,16 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| CAP-01 | paused capture drives the needle and reaches no store | H | 2.0 | | open |
+| CAP-01 | paused capture drives the needle and reaches no store | H | 2.0 | HistoryStoreTest `CAP-01 and CAP-03` (the store half; the needle half is M4) | open |
 | CAP-02 | paused state survives process death | H | 2.0 | prefs field `capturePaused`, device-bound | open |
-| CAP-03 | a run opened while paused counts skipped readings | H | 2.0 | | open |
+| CAP-03 | a run opened while paused counts skipped readings | H | 2.0 | HistoryStoreTest `CAP-01 and CAP-03` | green |
 
 ### Attacks as the unit
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| ATK-01 | attack columns in note_hist | H | 2.0 | | open |
-| ATK-02 | one attack per attack edge, landing cents from the first settled reading | U, H | 2.0 | U: DetectorPolicyTest `ATK-02` (two tests: one `Attack` per attack edge carrying the landing cents of the confirming hops, and the first settled reading flagged `firstSettled`); H: the store counts them in M3 | open |
+| ATK-01 | attack columns in note_hist | H | 2.0 | SchemaTest `SES-01` and the golden schema | green |
+| ATK-02 | one attack per attack edge, landing cents from the first settled reading | U, H | 2.0 | U: DetectorPolicyTest `ATK-02` (two tests: one `Attack` per attack edge carrying the landing cents of the confirming hops, and the first settled reading flagged `firstSettled`); H: the store counts them in M3; H: HistoryStoreTest `ATK-02`, LiveCaptureTest (the first settled reading reaches history marked) | green |
 | ATK-03 | held note versus sweep | H | 2.0 | | open |
 | ATK-04 | attacks shown beside readings | H | 2.0 | | open |
 
@@ -255,16 +255,16 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| CTX-01 | context and target columns | H | 2.0 | | open |
-| CTX-02 | drone start and stop open runs | H | 2.0 | | open |
-| CTX-03 | drone runs enter All-history by toggle only | H | 2.0 | prefs field `includeDroneRuns`, default off | open |
-| CTX-04 | no 2.0 path writes `just` | H | 2.0 | | open |
+| CTX-01 | context and target columns | H | 2.0 | SchemaTest `CTX-01` and the golden schema; the drone note is a `runs.drone_midi` column rather than a `meta` row | green |
+| CTX-02 | drone start and stop open runs | H | 2.0 | HistoryStoreTest `CTX-02 to CTX-04` (the store half; the drone sets the context when the drone pane lands in M5) | open |
+| CTX-03 | drone runs enter All-history by toggle only | H | 2.0 | prefs field `includeDroneRuns`, default off; HistoryStoreTest `CTX-02 to CTX-04` | green |
+| CTX-04 | no 2.0 path writes `just` | H | 2.0 | HistoryStoreTest `CTX-02 to CTX-04` (no code path writes `just`) | green |
 
 ### Equipment
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| EQP-01 | equipment column | H | 2.0 | | open |
+| EQP-01 | equipment column | H | 2.0 | SchemaTest `SES-01` and the golden schema | green |
 | EQP-02 | equipment field on the session sheet | H | 2.0 | prefs field `lastEquipment` for the prefill | open |
 
 ### Tuning presets
