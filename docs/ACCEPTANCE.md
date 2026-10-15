@@ -239,7 +239,7 @@ ledgered under their own prefixes below.
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | A11Y-01 | tuner readout | H | 2.0 | FrameScreenshotTest `tune at font scale 1_0`, `1_3`, `1_5`, `2_0` cover the ghost readout; sounding note, cents and Hz clipping at every scale still need assertions | open |
-| A11Y-02 | every screen | H | 2.0 (supplemented by CLR-01..03) | FrameScreenshotTest covers Tune, Drone, Metronome and Settings at four scales; ComponentZooTest `labels fit, targets are 48 dp and every control is labelled` covers components in four themes and two widths; unfinished screens and all dialogs remain unproved | open |
+| A11Y-02 | every screen | H | 2.0 (supplemented by CLR-01..03) | AdaptiveRowsTest `denied notices keep the message and action on readable lines` and `setting rows keep labels whole and long values inside the row` assert text fit at four font scales and two widths; FrameScreenshotTest covers Tune, Drone, Metronome and Settings at four scales; ComponentZooTest `labels fit, targets are 48 dp and every control is labelled` covers components in four themes and two widths; unfinished screens and all dialogs remain unproved | open |
 | A11Y-03 | colour is never alone | H | 2.0 | TuneScreenTest `a played A4 on the default tenor sax reads written B5, in tune, concert A4, and the pane is listening` and `a sharp note shows the sharp cue, the close band and its cents` prove signed digits for in-tune and close; off-band and every other band-bearing surface remain unproved | open |
 | A11Y-04 | touch targets | H | 2.0 | ComponentZooTest `labels fit, targets are 48 dp and every control is labelled`; ControlsTest `a button fires once per tap and meets the touch target` prove component targets; an inventory of every screen and dialog control remains unproved | open |
 
@@ -252,7 +252,7 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| CAP-01 | paused capture drives the needle and reaches no store | H | 2.0 | TuneScreenTest `CAP-01 paused capture keeps listening and live plots while history waits until On` proves Listening plus Capture paused, live needle/trace/level, unchanged stored count while paused and resumed writes on On; HistoryStoreTest `CAP-01 and CAP-03 paused readings are counted and only the empty run is recorded` | green |
+| CAP-01 | paused capture drives the needle and reaches no store | H | 2.0 | TuneScreenTest `CAP-01 paused capture keeps listening and live plots while history waits until On` proves Listening plus Capture paused and the Tune tab running indicator, live needle/trace/level, unchanged stored count while paused and resumed writes on On; HistoryStoreTest `CAP-01 and CAP-03 paused readings are counted and only the empty run is recorded` | green |
 | CAP-02 | paused state survives process death | H | 2.0 | prefs field `capturePaused`, device-bound | open |
 | CAP-03 | a run opened while paused counts skipped readings | H | 2.0 | HistoryStoreTest `CAP-01 and CAP-03` | green |
 
@@ -300,7 +300,7 @@ revision document; the IDs are claimed here like any other.
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | EAR-01 | readout hidden, capture unchanged | H | 2.0 | TuneScreenTest `EAR-01 ears first hides the needle and preserves every held history reading` compares ten saved hops in Show with ten in Ears first, asserts hidden cents/Hz and the blank needle label; `tune-ears-first-hidden-needle.png` verifies the ghost pointer; the existing ears-first reveal test and hidden readout golden cover sounding feedback | green |
-| EAR-02 | reveal after the note | H | 2.0 | TuneScreenTest `ears first hides the cents, Hz and needle while a note sounds, shows its mean for two seconds after it ends, then hides`, `EAR-02 enabling ears first never replays a note ended in Show`, and `EAR-02 a new note without readings cancels the previous reveal permanently`; LiveCaptureTest `EAR-02 duration ends after the last accepted hop and excludes release silence`, held-mean/settled/serial tracking, same-hop note changes, and A4/mode release tests; reveal golden and round-one reveal mutation | green |
+| EAR-02 | reveal after the note | H | 2.0 | TuneScreenTest `ears first hides the cents, Hz and needle while a note sounds, shows its mean for two seconds after it ends, then hides`, `EAR-02 enabling ears first never replays a note ended in Show`, and `EAR-02 a new note without readings cancels the previous reveal permanently`; LiveCaptureTest `EAR-02 duration ends after the last accepted hop and excludes release silence`, held-mean/settled/serial tracking, same-hop note changes, and A4/mode release tests; LiveCaptureTest `EAR-02 last note preserves rejected and dropped hops through its last reading`; TuneScreenTest `EAR-02 a short note reveals a ghost attack when no settled reading exists`; TracePlotTest `a singleton reading and an isolated reading between gaps both draw a visible point`; reveal golden and round-one reveal mutation | green |
 | EAR-03 | setting persists | H | 2.0 | PrefsSchemaTest `SES-12 a full round trip keeps every field and every unknown field` includes `earsFirst = true`; PrefsStoreTest `SES-01 saved prefs come back on a cold start` exercises other fields; an ears-first cold restart test remains | open |
 
 ### Pitch trace
@@ -308,7 +308,7 @@ revision document; the IDs are claimed here like any other.
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | TRC-01 | five-second trace from a fixed ring, no root recomposition | H | 2.0 | LiveCaptureTest `TRC-01 dropped hops occupy time and old attacks leave the five second ring` proves capacity, missing-hop padding and attack expiry; TuneScreenTest `POL-31 five seconds of a held note recompose the frame not once`; ComponentZooTest goldens cover the five-second labels and band rules supplied by CentsBand through the app | green |
-| TRC-02 | silence breaks the line | H | 2.0 | LiveCaptureTest `TRC-02 rejected hops break the trace while the readout holds its note` proves two silent NaN points during an incumbent hold and a fresh point after the gap; Trace starts a new path after NaN | green |
+| TRC-02 | silence breaks the line | H | 2.0 | LiveCaptureTest `TRC-02 rejected hops break the trace while the readout holds its note` proves two silent NaN points during an incumbent hold and a fresh point after the gap; LiveCaptureTest `EAR-02 last note preserves rejected and dropped hops through its last reading` proves matching gaps in Last note; Trace starts a new path after NaN | green |
 | TRC-03 | TalkBack reads the trace once | H | 2.0 | TuneScreenTest `TRC-03 the live trace exposes one stable accessibility label` checks the exact Pitch trace, last five seconds description, no semantic children or text, and no live region, before and during a note | green |
 
 ### Gap bars and offbeats
