@@ -31,10 +31,10 @@ class FrameNavigationTest {
     fun `tapping a tab shows its panes`() {
         compose.onNodeWithTag("tabs-1").performClick()
         compose.onNodeWithTag("tabs-1").assertIsSelected()
-        compose.onNodeWithTag("drone-pane-titlebar-title", useUnmergedTree = true).assertTextEquals("Drone")
+        compose.onNodeWithTag("drone-readout", useUnmergedTree = true).assertIsDisplayed()
 
         compose.onNodeWithTag("tabs-2").performClick()
-        compose.onNodeWithTag("metronome-pane-titlebar-state", useUnmergedTree = true).assertTextEquals("Stopped")
+        compose.onNodeWithTag("metro-toggle").assertTextEquals("Start")
 
         compose.onNodeWithTag("tabs-3").performClick()
         compose.onNodeWithTag("table-empty", useUnmergedTree = true).assertIsDisplayed()

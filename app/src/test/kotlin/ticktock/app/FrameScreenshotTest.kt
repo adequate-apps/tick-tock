@@ -101,7 +101,7 @@ class FrameScreenshotTest {
         launch(1f)
         compose.onNodeWithTag("tabs-1").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("drone-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("drone-readout", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         golden("frame-drone-360x640-fs1.0")
     }
 
@@ -110,7 +110,7 @@ class FrameScreenshotTest {
         launch(1.3f)
         compose.onNodeWithTag("tabs-1").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("drone-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("drone-readout", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         golden("frame-drone-360x640-fs1.3")
     }
 
@@ -119,7 +119,7 @@ class FrameScreenshotTest {
         launch(1.5f)
         compose.onNodeWithTag("tabs-1").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("drone-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("drone-readout", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         golden("frame-drone-360x640-fs1.5")
     }
 
@@ -128,7 +128,7 @@ class FrameScreenshotTest {
         launch(2f)
         compose.onNodeWithTag("tabs-1").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("drone-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("drone-readout", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         golden("frame-drone-360x640-fs2.0")
     }
 
@@ -137,7 +137,7 @@ class FrameScreenshotTest {
         launch(1f)
         compose.onNodeWithTag("tabs-2").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("metro-bpm", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         golden("frame-metronome-360x640-fs1.0")
     }
 
@@ -146,7 +146,7 @@ class FrameScreenshotTest {
         launch(1.3f)
         compose.onNodeWithTag("tabs-2").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("metro-bpm", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         golden("frame-metronome-360x640-fs1.3")
     }
 
@@ -155,7 +155,7 @@ class FrameScreenshotTest {
         launch(1.5f)
         compose.onNodeWithTag("tabs-2").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("metro-bpm", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         golden("frame-metronome-360x640-fs1.5")
     }
 
@@ -164,7 +164,7 @@ class FrameScreenshotTest {
         launch(2f)
         compose.onNodeWithTag("tabs-2").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("metro-bpm", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
         golden("frame-metronome-360x640-fs2.0")
     }
 

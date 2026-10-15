@@ -117,6 +117,42 @@ class OutputSessionTest {
     }
 
     @Test
+    fun `OUT-02 queued command barriers retain new intent across an old park and ignore old acknowledgements`() = runTest {
+        val link = TestOutputConnection()
+        val batches = ArrayDeque<Pair<List<OutputCommand>, () -> Unit>>()
+        val deferred = object : OutputConnection by link {
+            override fun send(commands: List<OutputCommand>, applied: () -> Unit) {
+                if (commands.isEmpty()) applied() else batches.addLast(commands to applied)
+            }
+        }
+        val output = OutputSession({ Prefs() }, {}, { deferred }, scope = backgroundScope)
+        output.startDrone()
+        val first = batches.removeFirst()
+        first.first.forEach(link::send)
+        testScheduler.runCurrent()
+        assertTrue(output.state.value.droneSounding)
+        link.park(ParkReason.INCOMING_CALL)
+        output.stopDrone()
+        output.startDrone()
+        output.startMetro()
+        testScheduler.runCurrent()
+        assertTrue("new intent survives the queued old park", output.state.value.droneWanted && output.state.value.metroWanted)
+        first.second()
+        testScheduler.runCurrent()
+        assertTrue("old acknowledgement cannot settle the latest batch", output.state.value.droneWanted && output.state.value.metroWanted)
+        while (batches.isNotEmpty()) {
+            val next = batches.removeFirst()
+            next.first.forEach(link::send)
+            next.second()
+            testScheduler.runCurrent()
+        }
+        assertTrue(output.state.value.droneSounding && output.state.value.metroSounding)
+        link.park(ParkReason.INCOMING_CALL)
+        testScheduler.runCurrent()
+        assertFalse("a new call after the barrier clears both tools", output.state.value.droneWanted || output.state.value.metroWanted)
+    }
+
+    @Test
     fun `MET-06 stopped edits persist and running edits send a full generated update`() = runTest {
         val r = Rig(backgroundScope)
         r.session.bpm(900)
