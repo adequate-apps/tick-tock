@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import java.util.Properties
 import java.io.File
+import java.io.PrintStream
 import java.security.KeyStore
 import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.cert.X509Certificate
+import java.util.zip.ZipFile
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+import com.android.builder.internal.packaging.AabFlinger
+import com.android.tools.build.bundletool.commands.ValidateBundleCommand
+import com.android.tools.build.bundletool.commands.DumpCommand
 
 plugins {
     alias(libs.plugins.android.application)
@@ -90,6 +97,7 @@ android {
             isMinifyEnabled = false
             if (signingComplete()) {
                 signingConfigs.create("upload") {
+                    storeType = "PKCS12"
                     storeFile = signingStore()
                     storePassword = releaseSigning.getProperty("storePassword")
                     keyAlias = releaseSigning.getProperty("keyAlias")
@@ -229,3 +237,63 @@ val prepareNotices by tasks.registering(Copy::class) {
 }
 android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/notices").get().asFile)
 tasks.named("preBuild") { dependsOn(prepareNotices) }
+
+// This adapter uses the signer already pinned by AGP. Its fixed archive times
+// keep a separate upload signature reproducible across clean builds.
+fun signUploadBundle(source: File, destination: File, signing: ReleaseKey) {
+    val unsigned = File(temporaryDirForRelease(), "bundle-payload.zip")
+    val signature = Regex("META-INF/(MANIFEST\\.MF|[^/]+\\.(SF|RSA|DSA|EC)|SIG-[^/]+)", RegexOption.IGNORE_CASE)
+    ZipFile(source).use { input ->
+        ZipOutputStream(unsigned.outputStream()).use { output ->
+            input.entries().asSequence().sortedBy { it.name }.forEach { entry ->
+                if (!signature.matches(entry.name)) {
+                    output.putNextEntry(ZipEntry(entry.name).apply { time = 0 })
+                    input.getInputStream(entry).use { it.copyTo(output) }
+                    output.closeEntry()
+                }
+            }
+        }
+    }
+    // AabFlinger creates a new archive; remove only this task's prior output.
+    destination.delete()
+    AabFlinger(destination, "UPLOAD", signing.key, listOf(signing.certificate), 18).use {
+        it.writeZip(unsigned, 9)
+    }
+}
+fun temporaryDirForRelease(): File = layout.buildDirectory.dir("tmp/releaseArtifacts").get().asFile.apply { mkdirs() }
+
+tasks.register("releaseArtifacts") {
+    group = "distribution"
+    description = "Builds, signs and checks the universal APK and Play bundle in one invocation."
+    dependsOn("assembleRelease", "bundleRelease")
+    doLast {
+        val version = android.defaultConfig.versionName!!
+        val versionCode = android.defaultConfig.versionCode!!
+        require(version.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-z0-9.-]+)?")))
+        val directory = rootProject.layout.buildDirectory.dir("release").get().asFile.apply { mkdirs() }
+        val stem = "adequate-metronome-v$version"
+        val apk = File(directory, "$stem-universal.apk")
+        val bundle = File(directory, "$stem.aab")
+        layout.buildDirectory.file("outputs/apk/release/app-release.apk").get().asFile.copyTo(apk, overwrite = true)
+        val originalBundle = layout.buildDirectory.file("outputs/bundle/release/app-release.aab").get().asFile
+        val appKey = readReleaseKey()
+        val uploadKey = if (signingComplete("upload")) readReleaseKey("upload") else appKey
+        signUploadBundle(originalBundle, bundle, uploadKey)
+        ValidateBundleCommand.builder().setBundlePath(bundle.toPath()).setPrintOutput(false).build().execute()
+        val manifest = File(temporaryDirForRelease(), "bundle-manifest.xml")
+        manifest.outputStream().use { stream ->
+            PrintStream(stream, false, "UTF-8").use { output ->
+                DumpCommand.builder().setBundlePath(bundle.toPath()).setModuleName("base")
+                    .setDumpTarget(DumpCommand.DumpTarget.MANIFEST).setOutputStream(output).build().execute()
+            }
+        }
+        fun digest(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes)
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        File(directory, "SHA256SUMS").writeText(listOf(apk, bundle).joinToString("") { "${digest(it.readBytes())}  ${it.name}\n" })
+        providers.exec {
+            workingDir(rootProject.projectDir)
+            commandLine("python3", "tools/verify-release.py", directory.path, version, versionCode.toString(),
+                digest(appKey.certificate.encoded), digest(uploadKey.certificate.encoded), manifest.path)
+        }.result.get().assertNormalExitValue()
+    }
+}

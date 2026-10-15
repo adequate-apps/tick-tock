@@ -57,3 +57,22 @@ turns red.
 `test-release.sh` creates temporary two-day signing fixtures, rejects incomplete or invalid
 credentials, and exercises the signed APK/AAB artifact pipeline with separate app and upload keys.
 It leaves its private fixtures and logs under the ignored `build/release-tests/` directory.
+
+Release tooling (JDK 21 and the pinned Android SDK must already be staged):
+
+- `stage-signing.py NEW_DIRECTORY` validates the `RELEASE_*` environment values and writes private
+  PKCS12 files and UTF-8 Java properties. It refuses an existing destination and never prints secrets.
+- `test-stage-signing.py` checks refusal cases, file permissions and special-character round trips.
+- `:app:releaseArtifacts` builds and validates the universal APK and AAB in one offline invocation.
+  `verify-release.py` checks exactly those two files and their checksums, application identity,
+  manifest permissions, signatures, ABI completeness, ELF alignment and APK ZIP alignment.
+  `VerifyBundle.java` verifies every signed bundle payload against the expected upload certificate.
+- `test-release-validation.py FIXTURE_DIRECTORY` uses the fixture from `test-release.sh` to prove
+  altered artifacts, wrong certificates, wrong checksums and an altered manifest are refused. It also
+  compares every bundle payload entry before and after upload signing.
+- `reproduce-release.sh COMMIT SIGNING_PROPERTIES` builds from two fresh clones with different paths,
+  disables the task-output cache and compares the complete signed APK and AAB byte for byte.
+  Evidence and clones remain in the ignored `build/reproduction/` directory.
+- `release-source.py TAG REVISION` requires a clean source tree at the expected revision, matches
+  the tag to the application version and extracts that version's curated changelog section.
+  `test-release-source.py` checks version mismatch and section boundaries.
