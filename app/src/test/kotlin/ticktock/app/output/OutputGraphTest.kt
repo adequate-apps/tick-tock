@@ -148,6 +148,16 @@ class OutputGraphTest {
             assertEquals(0L, saved())
             repeat(35) { push(followsDuck = false) }
             assertTrue("a player survives the duck and reaches persisted history", saved() > 0)
+            val beforeGainChange = saved()
+            graph.output.droneVolume(0.5f)
+            repeat(35) {
+                val before = graph.tune.trace.value
+                input.push(sine.next(Hop.frames(48_000)).map { it * 4 * link.duckGain.get() }.toFloatArray())
+                val deadline = System.nanoTime() + 5_000_000_000L
+                while (graph.tune.trace.value === before && System.nanoTime() < deadline) Thread.sleep(1)
+                assertTrue(graph.tune.trace.value !== before)
+            }
+            assertEquals("a changed drone needs fresh full-gain evidence", beforeGainChange, saved())
             graph.onBackground()
             assertEquals(1f, link.duckGain.get())
         } finally {
