@@ -196,6 +196,56 @@ TEST(OutputController, aSlowDrainLosesNoBeats) {
     EXPECT_TRUE(drainAll(c).empty());
 }
 
+// GAP-01: the UI needs the actual bar and must distinguish a muted onset
+// from a whole silent bar after the generator crosses the JNI boundary.
+TEST(OutputController, beatMetadataKeepsSilentBarsSeparateFromMutedOnsets) {
+    FakeDevice device;
+    OutputController c(device);
+    c.registerTool(OutputTool::Metronome);
+    drainAll(c);
+    auto setup = params(120, 2);
+    setup.accents[0] = render::Accent::Mute;
+    setup.barsOn = 1;
+    setup.barsOff = 1;
+    ASSERT_TRUE(c.metroStart(setup));
+    pull(device, 24000 * 6);
+    const auto events = drainAll(c);
+    ASSERT_EQ(6u, events.size());
+    const int flags[] = {0, 1, 2, 2, 0, 1};
+    for (std::size_t i = 0; i < events.size(); ++i) {
+        const auto& event = events[i];
+        ASSERT_EQ(EventKind::Beat, event.kind);
+        ASSERT_EQ(4, event.intCount) << "beat " << i;
+        EXPECT_EQ(static_cast<int>(i / 2), event.ints[0]);
+        EXPECT_EQ(0, event.ints[1]);
+        EXPECT_EQ(flags[i], event.ints[2]);
+        EXPECT_EQ(0, event.ints[3]);
+    }
+}
+
+TEST(OutputController, beatMetadataKeepsTheGapBarWhenAMetreEditCutsABarShort) {
+    FakeDevice device;
+    OutputController c(device);
+    c.registerTool(OutputTool::Metronome);
+    drainAll(c);
+    auto setup = params(120, 4);
+    setup.barsOn = 1;
+    setup.barsOff = 1;
+    ASSERT_TRUE(c.metroStart(setup));
+    pull(device, 30000);
+    drainAll(c);
+    setup.beatsPerBar = 3;
+    ASSERT_TRUE(c.metroUpdate(setup));
+    pull(device, 24000);
+    const auto events = drainAll(c);
+    ASSERT_EQ(1u, events.size());
+    EXPECT_EQ(2, events[0].a);
+    EXPECT_EQ(0, events[0].b);
+    ASSERT_EQ(4, events[0].intCount);
+    EXPECT_EQ(1, events[0].ints[0]);
+    EXPECT_EQ(2, events[0].ints[2]);
+}
+
 TEST(OutputController, aDisconnectParksOnTheControlThreadAndResumeReopensAtTheNewRate) {
     FakeDevice device;
     OutputController c(device);
