@@ -17,6 +17,7 @@ class DelayMeasurement(val generation: Int) {
     val clicksReceived: Int get() = clicks.count { it != null }
     val tapsReceived: Int get() = taps.count { it != null }
     val lastClickNanos: Long? get() = clicks.last()
+    val lastTapNanos: Long? get() = taps.last()
 
     fun beat(event: OutputEvent.Beat): Boolean {
         if (event.generation != generation || event.index !in 0L until CLICKS || !event.audible) return false

@@ -261,7 +261,8 @@ class OutputSession(
         val median = measurement.medianMs() ?: return
         if (calibrationTail != null) return
         calibrationTail = scope.launch {
-            val remaining = measurement.lastClickNanos!! + DelayMeasurement.CLICK_TAIL_NANOS - nanoTime()
+            val tailStart = maxOf(measurement.lastClickNanos!!, measurement.lastTapNanos!!)
+            val remaining = tailStart + DelayMeasurement.CLICK_TAIL_NANOS - nanoTime()
             if (remaining > 0) delay((remaining + DelayMeasurement.NANOS_PER_MILLI - 1) / DelayMeasurement.NANOS_PER_MILLI)
             synchronized(this@OutputSession) {
                 if (measuring === run) {
