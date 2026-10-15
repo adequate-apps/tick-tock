@@ -33,8 +33,10 @@ class GridlinePalette(
     val ruleLight: Color,
     val cyan: Color,
     val green: Color,
+    val greenBg: Color,
     val yellow: Color,
     val yellowBg: Color,
+    val yellowInk: Color,
     val red: Color,
     val redBg: Color,
     // relief
@@ -57,6 +59,8 @@ class GridlinePalette(
     val positive: Color,
     val attention: Color,
     val danger: Color,
+    val positiveBg: Color,
+    val attentionInk: Color,
     val borderStrong: Color,
     val border: Color,
     val borderLight: Color,
@@ -89,8 +93,10 @@ object GridlineThemes {
         ruleLight = Color(0xFF9A9A9A),
         cyan = Color(0xFF008EA1),
         green = Color(0xFF18743A),
+        greenBg = Color(0xFFDCEFE2),
         yellow = Color(0xFFB87900),
         yellowBg = Color(0xFFFFF4DC),
+        yellowInk = Color(0xFF6E4800),
         red = Color(0xFFB3261E),
         redBg = Color(0xFFFBEAE9),
         bevelLight = Color(0xFFFFFFFF),
@@ -111,6 +117,8 @@ object GridlineThemes {
         positive = Color(0xFF18743A),
         attention = Color(0xFFB87900),
         danger = Color(0xFFB3261E),
+        positiveBg = Color(0xFFDCEFE2),
+        attentionInk = Color(0xFF6E4800),
         borderStrong = Color(0xFF101010),
         border = Color(0xFF666666),
         borderLight = Color(0xFF9A9A9A),
@@ -137,8 +145,10 @@ object GridlineThemes {
         ruleLight = Color(0xFF8C8C8C),
         cyan = Color(0xFF008EA1),
         green = Color(0xFF18743A),
+        greenBg = Color(0xFFDCEFE2),
         yellow = Color(0xFFB87900),
         yellowBg = Color(0xFFFFF4DC),
+        yellowInk = Color(0xFF6E4800),
         red = Color(0xFFB3261E),
         redBg = Color(0xFFFBEAE9),
         bevelLight = Color(0xFFFFFFFF),
@@ -159,6 +169,8 @@ object GridlineThemes {
         positive = Color(0xFF18743A),
         attention = Color(0xFFB87900),
         danger = Color(0xFFB3261E),
+        positiveBg = Color(0xFFDCEFE2),
+        attentionInk = Color(0xFF6E4800),
         borderStrong = Color(0xFF000000),
         border = Color(0xFF3A3A3A),
         borderLight = Color(0xFF8C8C8C),
@@ -185,8 +197,10 @@ object GridlineThemes {
         ruleLight = Color(0xFF454545),
         cyan = Color(0xFF3CC4D6),
         green = Color(0xFF4CC27A),
+        greenBg = Color(0xFF15301F),
         yellow = Color(0xFFE8A93A),
         yellowBg = Color(0xFF33260E),
+        yellowInk = Color(0xFFF0BC5E),
         red = Color(0xFFFF6F61),
         redBg = Color(0xFF3B1916),
         bevelLight = Color(0xFF3C3C3C),
@@ -207,6 +221,8 @@ object GridlineThemes {
         positive = Color(0xFF4CC27A),
         attention = Color(0xFFE8A93A),
         danger = Color(0xFFFF6F61),
+        positiveBg = Color(0xFF15301F),
+        attentionInk = Color(0xFFF0BC5E),
         borderStrong = Color(0xFFE6E6E6),
         border = Color(0xFF6A6A6A),
         borderLight = Color(0xFF454545),
@@ -233,8 +249,10 @@ object GridlineThemes {
         ruleLight = Color(0xFF3A3A3A),
         cyan = Color(0xFF2C8C99),
         green = Color(0xFF3F9A5F),
+        greenBg = Color(0xFF06170C),
         yellow = Color(0xFFA87C24),
         yellowBg = Color(0xFF140E03),
+        yellowInk = Color(0xFFA87C24),
         red = Color(0xFFC8504A),
         redBg = Color(0xFF170705),
         bevelLight = Color(0xFF000000),
@@ -255,6 +273,8 @@ object GridlineThemes {
         positive = Color(0xFF3F9A5F),
         attention = Color(0xFFA87C24),
         danger = Color(0xFFC8504A),
+        positiveBg = Color(0xFF06170C),
+        attentionInk = Color(0xFFA87C24),
         borderStrong = Color(0xFF8E8E8E),
         border = Color(0xFF5C5C5C),
         borderLight = Color(0xFF3A3A3A),
@@ -314,12 +334,16 @@ object GridlineFontStack {
 
 /** The type scale. Sizes are sp so the system font scale applies; line heights are multiples of the size. */
 object GridlineTypeScale {
+    val fontSizeSmall = 11.sp
     val fontSizeDense = 12.sp
     val fontSizeUi = 13.sp
     val fontSizeCaption = 13.sp
+    val fontSizeStepper = 16.sp
     val fontSizeHeading = 18.sp
     val fontSizeTitle = 24.sp
     val fontSizeMeasure = 28.sp
+    val fontSizeCents = 40.sp
+    val fontSizeNote = 64.sp
     val lineHeightDense = 1.35.em
     val lineHeightUi = 1.4.em
     const val captionUppercase = true

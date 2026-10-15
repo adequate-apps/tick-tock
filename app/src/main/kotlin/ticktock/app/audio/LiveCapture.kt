@@ -33,6 +33,8 @@ import kotlin.math.roundToLong
 data class Readout(
     /** Spelling-neutral note label, or null for a blank readout. */
     val note: String? = null,
+    /** The sounding MIDI note behind [note]; the screen spells it written or concert. */
+    val midi: Int? = null,
     /** Whole cents as the UI prints them, null when the readout is blank. */
     val cents: Int? = null,
     /** Frequency to the tenth of a hertz, null when the readout is blank. */
@@ -53,6 +55,18 @@ data class Level(val hop: Long = -1, val db: Double = LEVEL_FLOOR_DB) {
 
         fun db(level: Double): Double =
             if (level <= 0.0) LEVEL_FLOOR_DB else max(LEVEL_FLOOR_DB, DB_PER_DECADE * log10(level))
+    }
+}
+
+/**
+ * The last [TRACE_HOPS] hops of the readout's cents, oldest first, NaN where
+ * the readout was blank, and the attacks that began inside that window.
+ */
+class TraceSnapshot(val cents: FloatArray, val attacks: Int) {
+    companion object {
+        /** About four seconds of hops. */
+        val TRACE_HOPS: Int = ticktock.core.detect.Hop.count(4.0)
+        val EMPTY = TraceSnapshot(FloatArray(TRACE_HOPS) { Float.NaN }, 0)
     }
 }
 
@@ -102,6 +116,34 @@ class LiveCapture(
     val level: StateFlow<Level> = levelFlow
     private val diagnosticsFlow = MutableStateFlow(CaptureDiagnostics())
     val diagnostics: StateFlow<CaptureDiagnostics> = diagnosticsFlow
+    private val traceFlow = MutableStateFlow(TraceSnapshot.EMPTY)
+
+    /** The trace, moving every hop; only the trace plot reads it (POL-31). */
+    val trace: StateFlow<TraceSnapshot> = traceFlow
+
+    // The analysis thread's alone: the trace's ring and the hops at which attacks began.
+    private val traceRing = FloatArray(TraceSnapshot.TRACE_HOPS) { Float.NaN }
+    private var traceHead = 0
+    private var lastShownCents = Float.NaN
+    private val attackHops = ArrayDeque<Long>()
+
+    // Settings changed on the UI thread wait here for the analysis thread, which
+    // alone touches the detector, and take effect from the next batch of hops.
+    @Volatile
+    private var requestedA4: Double? = null
+
+    @Volatile
+    private var requestedMode: ResponseMode? = null
+
+    /** Measures against [hz] from the next hop on; a change starts a new A4 generation (POL-19). */
+    fun requestA4(hz: Double) {
+        requestedA4 = hz
+    }
+
+    /** Switches the response mode from the next hop on (POL-05). */
+    fun requestMode(mode: ResponseMode) {
+        requestedMode = mode
+    }
 
     /** Hops since the diagnostics were last sampled; the analysis thread's alone. */
     private var hopsSinceDiagnostics = 0
@@ -126,6 +168,12 @@ class LiveCapture(
         stateFlow.value = CaptureState()
         levelFlow.value = Level()
         diagnosticsFlow.value = CaptureDiagnostics()
+        // The analysis thread has stopped, so its trace state is safe to clear here.
+        traceRing.fill(Float.NaN)
+        traceHead = 0
+        lastShownCents = Float.NaN
+        attackHops.clear()
+        traceFlow.value = TraceSnapshot.EMPTY
     }
 
     /** The platform's recording report, from the source's flow; the screen forwards it here. */
@@ -146,6 +194,14 @@ class LiveCapture(
     }
 
     private fun onDecisions(decisions: List<Decision>) {
+        requestedA4?.let { hz ->
+            requestedA4 = null
+            if (hz != detector.a4.hz) detector.setA4(hz)
+        }
+        requestedMode?.let { mode ->
+            requestedMode = null
+            detector.setMode(mode)
+        }
         if (history != null) {
             for (decision in decisions) decision.saved?.let { history.accept(it, decision.firstSettled) }
         }
@@ -156,6 +212,7 @@ class LiveCapture(
         // Equal values would conflate in the flow anyway; the comparison
         // saves the copy on the hops, most of them, that change nothing.
         if (readout != previous.readout) stateFlow.value = previous.copy(readout = readout)
+        recordTrace(decisions)
         hopsSinceDiagnostics += decisions.size
         if (hopsSinceDiagnostics >= DIAGNOSTICS_HOPS) {
             hopsSinceDiagnostics = 0
@@ -163,14 +220,32 @@ class LiveCapture(
         }
     }
 
+    private fun recordTrace(decisions: List<Decision>) {
+        for (decision in decisions) {
+            if (decision.attack != null) attackHops.addLast(decision.hop)
+            lastShownCents = when {
+                decision.incumbent == null -> Float.NaN
+                decision.display != null -> decision.display!!.cents.toFloat()
+                // A held note with no fresh reading this hop keeps its line.
+                else -> lastShownCents
+            }
+            traceRing[traceHead] = lastShownCents
+            traceHead = (traceHead + 1) % traceRing.size
+        }
+        val newest = decisions.last().hop
+        while (attackHops.isNotEmpty() && attackHops.first() <= newest - traceRing.size) attackHops.removeFirst()
+        val ordered = FloatArray(traceRing.size) { traceRing[(traceHead + it) % traceRing.size] }
+        traceFlow.value = TraceSnapshot(ordered, attackHops.size)
+    }
+
     private fun Readout.after(decision: Decision): Readout {
         val note = decision.incumbent?.let(Pitch::label)
         val reading = decision.display
         return when {
             note == null -> Readout()
-            reading != null -> Readout(note, Cents.shown(reading.cents, reading.hz), Readout.shownHz(reading.hz))
+            reading != null -> Readout(note, decision.incumbent, Cents.shown(reading.cents, reading.hz), Readout.shownHz(reading.hz))
             // The readout holds its last value while the note is held and this hop added nothing.
-            else -> copy(note = note)
+            else -> copy(note = note, midi = decision.incumbent)
         }
     }
 

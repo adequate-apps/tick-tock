@@ -6,6 +6,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.text.style.LineHeightStyle
 
 /**
@@ -57,6 +58,21 @@ object GridlineType {
 
     /** Small numeric facts beside a label: a value in a settings row, a count. */
     val value = mono.copy(fontSize = GridlineTypeScale.fontSizeUi, lineHeight = GridlineTypeScale.lineHeightUi)
+
+    /** The readout's note name (SPEC 1: Sans 600 64 sp, tight tracking); line height equals the size. */
+    val note = base.copy(fontSize = GridlineTypeScale.fontSizeNote, lineHeight = GridlineTypeScale.fontSizeNote, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.02).em)
+
+    /** The octave beside the note name: Sans 500 at 28 sp. */
+    val octave = base.copy(fontSize = GridlineTypeScale.fontSizeMeasure, lineHeight = GridlineTypeScale.fontSizeMeasure, fontWeight = FontWeight.Medium)
+
+    /** The readout's cents: Mono 500 at 40 sp. */
+    val cents = mono.copy(fontSize = GridlineTypeScale.fontSizeCents, lineHeight = GridlineTypeScale.fontSizeCents, fontWeight = FontWeight.Medium)
+
+    /** A stepper's value: Mono 500 at 16 sp. */
+    val stepper = mono.copy(fontSize = GridlineTypeScale.fontSizeStepper, lineHeight = GridlineTypeScale.lineHeightUi, fontWeight = FontWeight.Medium)
+
+    /** Plot labels and legends: Mono 400 at 11 sp, the smallest size anywhere. */
+    val small = mono.copy(fontSize = GridlineTypeScale.fontSizeSmall, lineHeight = GridlineTypeScale.lineHeightUi)
 
     val titleBar = base.copy(fontSize = GridlineTypeScale.fontSizeUi, lineHeight = GridlineTypeScale.lineHeightUi, fontWeight = FontWeight.SemiBold)
     val statusBar = mono.copy(fontSize = GridlineTypeScale.fontSizeDense, lineHeight = GridlineTypeScale.lineHeightUi)

@@ -34,7 +34,8 @@ enum class NoticeKind {
 }
 
 /**
- * A full-width strip with a thick rule on its left edge, one short line and,
+ * A full-width strip with a thick rule on its left edge, an optional cause
+ * icon, one short line (or none, when the icon and key say it all) and,
  * usually, the key that does something about it ("Try again"). It appears only
  * when the player must act, inside the pane it concerns.
  */
@@ -44,6 +45,7 @@ fun Notice(
     modifier: Modifier = Modifier,
     kind: NoticeKind = NoticeKind.Plain,
     tag: String = "notice",
+    icon: GlIcon? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
     val (bar, background) = when (kind) {
@@ -53,6 +55,9 @@ fun Notice(
     }
     Row(modifier = modifier.fillMaxWidth().height(IntrinsicSize.Min).background(background).testTag(tag)) {
         Box(Modifier.width(GridlineSpacing.sp1).fillMaxHeight().background(bar))
+        if (icon != null) {
+            Icon(icon, knockout = background, modifier = Modifier.align(Alignment.CenterVertically).padding(start = GridlineSpacing.sp3))
+        }
         GlText(
             text = text,
             style = GridlineType.ui,

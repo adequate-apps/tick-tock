@@ -15,14 +15,26 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ticktock.app.R
+import ticktock.app.TickTockApp
+import ticktock.app.tune.MicWord
+import ticktock.app.tune.TuneScreen
+import ticktock.app.tune.micWord
+import ticktock.app.tune.rememberMicAccess
+import ticktock.app.tune.statusWords
 import ticktock.design.GridlineColors
 import ticktock.design.GridlineSpacing
 import ticktock.design.components.Segment
@@ -43,6 +55,17 @@ import ticktock.design.components.TitleBarAction
  */
 @Composable
 fun AppFrame() {
+    val graph = TickTockApp.graph(LocalContext.current)
+    val mic = rememberMicAccess(graph)
+    val capture = graph.tune.state.collectAsStateWithLifecycle()
+    val prefs = graph.prefs.prefs.collectAsStateWithLifecycle()
+    // The frame reads the capture only through these, so a held note's readout,
+    // which changes several times a second, recomposes nothing here (POL-31).
+    val micWord by remember(mic.state) { derivedStateOf { micWord(mic.state, capture.value, prefs.value) } }
+    val a4Hz by remember { derivedStateOf { prefs.value.a4Hz } }
+    val keepAwake by remember { derivedStateOf { capture.value.isListening && prefs.value.keepAwake } }
+    KeepScreenOn(keepAwake)
+
     // Both survive rotation and process death: the enum saves as a Serializable.
     var tab by rememberSaveable { mutableStateOf(Tab.Tune) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
@@ -66,7 +89,7 @@ fun AppFrame() {
 
         if (!settingsOpen) {
             Segmented(
-                segments = Tab.entries.map { Segment(label = stringResource(it.label)) },
+                segments = Tab.entries.map { Segment(label = stringResource(it.label), running = it == Tab.Tune && micWord == MicWord.LISTENING) },
                 selectedIndex = tab.ordinal,
                 onSelect = { tab = Tab.entries[it] },
                 tag = "tabs",
@@ -83,7 +106,7 @@ fun AppFrame() {
         ) {
             when {
                 settingsOpen -> SettingsScreen()
-                tab == Tab.Tune -> TuneScreen()
+                tab == Tab.Tune -> TuneScreen(graph, mic)
                 tab == Tab.Drone -> DroneScreen()
                 tab == Tab.Metronome -> MetronomeScreen()
                 tab == Tab.Table -> TableScreen()
@@ -93,8 +116,18 @@ fun AppFrame() {
         // An idle microphone and a closed output show nothing: the bar carries a
         // fact only while it is true and worth a glance (Listening, Mic busy, Bluetooth).
         StatusBar(
-            segments = emptyList(),
+            segments = statusWords(micWord, a4Hz),
             modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
         )
+    }
+}
+
+/** Keeps the screen on while [active]: the player's hands are on the instrument (keep-awake, PLAN 3.3). */
+@Composable
+private fun KeepScreenOn(active: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(view, active) {
+        view.keepScreenOn = active
+        onDispose { view.keepScreenOn = false }
     }
 }

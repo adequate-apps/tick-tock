@@ -64,6 +64,12 @@ data class Prefs(
     val metroBarsOff: Int = 0,
     /** The screen theme. Device-bound: a theme suits a room and a screen, so it never travels in a personal config. */
     val theme: Theme = Theme.GRIDLINE,
+    /**
+     * True once the app has asked for the microphone. Android tells a refusal
+     * that can be asked again from one that cannot only after a first ask, so
+     * the Tune pane needs this to offer the right key.
+     */
+    val micAsked: Boolean = false,
     /** Fields this version does not know, written back unchanged (SES-12). */
     val unknownFields: Map<String, JsonValue> = emptyMap(),
 ) {
