@@ -11,6 +11,8 @@ import org.junit.Assert.*
 import org.junit.Test
 import ticktock.core.contracts.*
 import ticktock.core.prefs.Prefs
+import ticktock.engine.control.ControlDiagnostics
+import ticktock.engine.output.MuteSource
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class OutputSessionTest {
@@ -136,6 +138,24 @@ class OutputSessionTest {
     }
 
     @Test
+    fun `CAL-01 ringing updates sounding facts without closing the stream and clearing it resumes both`() = runTest {
+        val r = Rig(backgroundScope)
+        r.session.startDrone()
+        r.session.startMetro()
+        testScheduler.runCurrent()
+        assertTrue(r.session.state.value.droneSounding && r.session.state.value.metroSounding)
+        val info = r.link.info.value
+        r.link.controlDiagnostics.value = ControlDiagnostics(muteSources = setOf(MuteSource.CALL_RINGING))
+        testScheduler.runCurrent()
+        assertEquals(info, r.link.info.value)
+        assertFalse(r.session.state.value.droneSounding || r.session.state.value.metroSounding)
+        assertTrue(r.session.state.value.droneWanted && r.session.state.value.metroWanted)
+        r.link.controlDiagnostics.value = ControlDiagnostics()
+        testScheduler.runCurrent()
+        assertTrue(r.session.state.value.droneSounding && r.session.state.value.metroSounding)
+    }
+
+    @Test
     fun `BTC-01 notice dismissal resets for an equal-name different device`() = runTest {
         val r = Rig(backgroundScope)
         r.link.openInfo = TestOutputConnection.INFO.copy(deviceId = 1, deviceName = "Headset", wireless = true)
@@ -159,6 +179,7 @@ internal class TestOutputConnection : OutputConnection, OutputPort, SoundingNote
     override val soundingNotes: SoundingNotes get() = this
     override val events = MutableSharedFlow<OutputEvent>(extraBufferCapacity = 128)
     override val info = MutableStateFlow<OutputInfo?>(null)
+    val controlDiagnostics = MutableStateFlow(ControlDiagnostics())
     val sent = mutableListOf<OutputCommand>()
     val registered = mutableSetOf<OutputTool>()
     var openInfo = INFO
@@ -202,7 +223,7 @@ internal class TestOutputConnection : OutputConnection, OutputPort, SoundingNote
         info.value = openInfo
         events.tryEmit(OutputEvent.Resumed(registered.toSet(), openInfo))
     }
-    override fun current(): IntArray = voice?.takeIf { info.value != null }?.let {
+    override fun current(): IntArray = voice?.takeIf { info.value != null && controlDiagnostics.value.muteSources.isEmpty() }?.let {
         if (it.voice == Voice.ROOT_FIFTH) intArrayOf(it.midi, it.midi + 7) else intArrayOf(it.midi)
     } ?: intArrayOf()
     override fun background() = park(ParkReason.BACKGROUND)

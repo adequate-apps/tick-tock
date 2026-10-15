@@ -11,6 +11,8 @@ import ticktock.core.contracts.OutputEvent
 import ticktock.core.contracts.OutputTool
 import ticktock.core.contracts.ParkReason
 import ticktock.core.prefs.Prefs
+import ticktock.engine.control.ControlDiagnostics
+import ticktock.engine.output.MuteSource
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CalibrationSessionTest {
@@ -116,6 +118,21 @@ class CalibrationSessionTest {
             testScheduler.runCurrent()
             assertFalse(r.output.state.value.toolRunning)
         }
+    }
+
+    @Test
+    fun `CAL-01 ringing cancels measurement and restores the prior tools when the mute clears`() = runTest {
+        val r = Rig(this)
+        r.start()
+        r.link.controlDiagnostics.value = ControlDiagnostics(muteSources = setOf(MuteSource.CALL_RINGING))
+        testScheduler.runCurrent()
+        assertNull(r.output.calibration.value)
+        assertFalse(r.output.state.value.droneSounding || r.output.state.value.metroSounding)
+        assertTrue(r.output.state.value.droneWanted && r.output.state.value.metroWanted)
+        assertEquals(r.initial, r.prefs)
+        r.link.controlDiagnostics.value = ControlDiagnostics()
+        testScheduler.runCurrent()
+        assertTrue(r.output.state.value.droneSounding && r.output.state.value.metroSounding)
     }
 
     @Test
