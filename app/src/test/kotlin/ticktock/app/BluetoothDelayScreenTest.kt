@@ -59,13 +59,14 @@ class BluetoothDelayScreenTest {
         assertTrue(graph.output.current().isEmpty())
         repeat(8) { index ->
             compose.runOnIdle { link.events.tryEmit(OutputEvent.Beat(index = index.toLong(), frame = index * 28_800L, nanos = System.nanoTime(), beatInBar = index % 4, bar = (index / 4).toLong(), generation = generation)) }
-            tap("delay-tap")
+            compose.onNodeWithTag("delay-tap").performScrollTo()
+                .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
             assertEquals("accepted tap $index", index + 1, graph.output.calibration.value?.taps)
         }
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(50))
         compose.waitUntil(5_000) { graph.output.calibration.value?.complete == true }
         val offset = graph.output.calibration.value!!.offsetMs!!
-        assertTrue(offset in 0..500)
+        assertTrue("offset $offset", offset in 0..500)
         compose.onNodeWithTag("delay-use").assertTextEquals("Use $offset ms")
         tap("delay-use")
         assertEquals(offset, graph.prefs.prefs.value.bluetoothVisualOffsetMs)

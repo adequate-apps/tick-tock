@@ -69,10 +69,10 @@ class DroneScreenTest {
     @Test
     fun `CHK-01 spoken pads include naming context secondary pitch and tuning marks`() {
         launch()
-        compose.onNodeWithTag("drone-ensemble-0").assertContentDescriptionEquals("Concert B♭, written G4")
-        compose.onNodeWithTag("drone-ensemble-1").assertContentDescriptionEquals("Concert A, written F♯4")
-        compose.onNodeWithTag("drone-pads-6").assertContentDescriptionEquals("Written F♯4, concert A4, ensemble, check")
-        compose.onNodeWithTag("drone-pads-0").assertContentDescriptionEquals("Written C4, concert D♯4")
+        compose.onNodeWithTag("drone-ensemble-0").assertContentDescriptionEquals("Concert B♭, written G5")
+        compose.onNodeWithTag("drone-ensemble-1").assertContentDescriptionEquals("Concert A, written F♯5")
+        compose.onNodeWithTag("drone-pads-6").assertContentDescriptionEquals("Written F♯5, concert A4, ensemble, check")
+        compose.onNodeWithTag("drone-pads-0").assertContentDescriptionEquals("Written C5, concert D♯4")
         tap("drone-names-1")
         compose.onNodeWithTag("drone-pads-9").assertContentDescriptionEquals("Concert A4, ensemble")
         compose.onNodeWithTag("drone-ensemble-1").assertContentDescriptionEquals("Concert A")

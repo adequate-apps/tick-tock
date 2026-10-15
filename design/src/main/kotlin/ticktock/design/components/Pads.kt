@@ -47,6 +47,8 @@ data class Pad(
     val marks: List<String> = emptyList(),
     val description: String = label,
     val selected: Boolean = false,
+    /** Editable selection stays steady when timed visuals change the face. */
+    val semanticSelected: Boolean? = null,
     val outlined: Boolean = false,
     val dimmed: Boolean = false,
     val enabled: Boolean = true,
@@ -105,7 +107,7 @@ private fun PadKey(pad: Pad, onClick: () -> Unit, showSecondary: Boolean, markRo
             .background(face).frame(Line(edge, if (pad.outlined) GridlineColors.textBody else if (pad.selected) GridlineColors.blueDeep else GridlineColors.border))
             .then(if (pad.selected) Modifier.selectionOutline() else Modifier)
             .clickable(interactionSource = interaction, indication = null, enabled = pad.enabled, role = Role.Button, onClick = onClick)
-            .semantics { selected = pad.selected; contentDescription = pad.description }
+            .semantics { selected = pad.semanticSelected ?: pad.selected; contentDescription = pad.description }
             .padding(edge).bevel(relief).padding(GridlineSpacing.sp2).testTag(tag),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,

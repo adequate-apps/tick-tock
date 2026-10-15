@@ -51,9 +51,7 @@ fun MetronomeScreen() {
                 }
             }
             val toggle: @Composable () -> Unit = {
-                val fact = stringResource(if (state.metroWanted) R.string.tool_running else R.string.pane_state_stopped)
-                Button(stringResource(if (state.metroWanted) R.string.tool_stop else R.string.tool_start), output::toggleMetro,
-                    Modifier.semantics { stateDescription = fact }, ButtonTone.Primary, tag = "metro-toggle")
+                OutputAction(state, state.metroWanted, state.metroSounding, output::toggleMetro, tag = "metro-toggle")
             }
             if (LocalDensity.current.fontScale >= 1.3f) {
                 number(); facts(); toggle()
@@ -112,7 +110,7 @@ private fun BeatRow(output: OutputSession, prefs: Prefs) {
     PadGrid(prefs.metroAccents.mapIndexed { index, accent ->
         Pad((index + 1).toString(), secondary = stringResource(names[accent.ordinal]),
             description = stringResource(R.string.metro_beat, index + 1, stringResource(names[accent.ordinal])),
-            selected = accent == Accent.ACCENT && beat?.silentBar != true, outlined = beat?.beat == index,
+            selected = accent == Accent.ACCENT && beat?.silentBar != true, semanticSelected = accent == Accent.ACCENT, outlined = beat?.beat == index,
             dimmed = accent == Accent.MUTE || beat?.silentBar == true)
     }, output::accent, tag = "metro-beats")
 }

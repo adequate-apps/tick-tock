@@ -211,10 +211,14 @@ class OutputSession(
         armCalibrationTimeout(run)
     }
 
+    fun calibrationTap() = calibrationTap(0)
+
+    /** Contact age bridges pointer uptime to the native monotonic clock without dispatch or hold bias. */
     @Synchronized
-    fun calibrationTap() {
+    fun calibrationTap(eventAgeMillis: Long) {
         val run = measuring ?: return
-        if (calibrationState.value?.complete == true || !run.measurement.tap(nanoTime())) return
+        val contactNanos = nanoTime() - eventAgeMillis.coerceAtLeast(0) * 1_000_000L
+        if (calibrationState.value?.complete == true || !run.measurement.tap(contactNanos)) return
         updateCalibration(run)
     }
 

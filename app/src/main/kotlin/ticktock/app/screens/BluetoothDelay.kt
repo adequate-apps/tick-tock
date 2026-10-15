@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.app.screens
 
+import android.os.SystemClock
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,7 +41,8 @@ internal fun DelayDialog(output: OutputSession) {
             if (!measurement.complete) {
                 ProgressSquares(8, measurement.clicks, measurement.clicks - 1, stringResource(R.string.bluetooth_measure), tag = "delay-progress", cellSize = GridlineSpacing.sp6)
                 GlText(stringResource(R.string.delay_progress, measurement.taps), style = GridlineType.value)
-                Button(stringResource(R.string.delay_tap), output::calibrationTap, Modifier.fillMaxWidth().heightIn(min = GridlineMetrics.touchTarget * 2), ButtonTone.Primary, tag = "delay-tap")
+                Button(stringResource(R.string.delay_tap), output::calibrationTap, Modifier.fillMaxWidth().heightIn(min = GridlineMetrics.touchTarget * 2), ButtonTone.Primary, tag = "delay-tap",
+                    onContact = { uptime -> output.calibrationTap(SystemClock.uptimeMillis() - uptime) })
                 GlText(stringResource(R.string.delay_instruction))
             } else {
                 val offset = measurement.offsetMs

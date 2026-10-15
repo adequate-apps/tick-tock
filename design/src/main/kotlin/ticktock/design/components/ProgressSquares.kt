@@ -17,6 +17,7 @@ import ticktock.design.GridlineMetrics
 import ticktock.design.GridlineSpacing
 import ticktock.design.Line
 import ticktock.design.frame
+import ticktock.design.selectionOutline
 
 /** A quiet visual sequence: moving progress never announces each beat to a screen reader. */
 @Composable
@@ -25,8 +26,10 @@ fun ProgressSquares(count: Int, filled: Int, current: Int?, description: String,
         horizontalArrangement = Arrangement.spacedBy(GridlineSpacing.sp1), verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp1)) {
         repeat(count) { index ->
             Box(Modifier.size(cellSize)
-                .background(if (index < filled) GridlineColors.active else GridlineColors.field)
-                .frame(Line(GridlineMetrics.line * if (index == current) 2 else 1, GridlineColors.textBody)))
+                .background(if (index < filled) GridlineColors.selectionBg else GridlineColors.field)
+                .then(if (index < filled) Modifier.selectionOutline() else Modifier)
+                .frame(Line(GridlineMetrics.line * if (index == current) 2 else 1,
+                    if (index < filled && index != current && GridlineColors.selectionOutline != GridlineColors.selectionBg) GridlineColors.selectionOutline else GridlineColors.textBody)))
         }
     }
 }

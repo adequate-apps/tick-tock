@@ -92,11 +92,11 @@ fun DroneScreen() {
         Caption(stringResource(R.string.drone_ensemble))
         PadGrid(EnsembleNote.entries.map { ensemble ->
             val target = tuning.ensemble.getValue(ensemble)
-            Pad(
-                label = stringResource(if (ensemble == EnsembleNote.CONCERT_BB) R.string.drone_concert_bb else R.string.drone_concert_a),
-                secondary = if (written && instrument.transposition != 0) stringResource(R.string.tune_written, name(target.writtenMidi)) else "",
-                description = name(target.soundingMidi), outlined = target.soundingMidi == sounding,
-            )
+            val label = stringResource(if (ensemble == EnsembleNote.CONCERT_BB) R.string.drone_concert_bb else R.string.drone_concert_a)
+            val secondary = if (written && instrument.transposition != 0) stringResource(R.string.tune_written, name(target.writtenMidi)) else ""
+            Pad(label = label, secondary = secondary,
+                description = listOf(label, secondary).filter { it.isNotEmpty() }.joinToString(", "),
+                outlined = target.soundingMidi == sounding)
         }, { play(tuning.ensemble.getValue(EnsembleNote.entries[it]).soundingMidi) }, maxColumns = 2, labelStyle = GridlineType.uiStrong, tag = "drone-ensemble")
         Column {
             Caption(stringResource(if (written) R.string.tune_names_written else R.string.tune_names_concert))
@@ -110,15 +110,19 @@ fun DroneScreen() {
         PadGrid(notes.map { midi ->
             val display = if (written) Transposition.writtenFromSounding(midi, instrument.transposition) else midi
             val marks = tuning.marks(midi)
-            Pad(
-                label = musicalName(NoteSpelling.letter(display, accidentals)),
-                secondary = if (written && instrument.transposition != 0) name(midi) else "",
-                marks = buildList {
-                    if (PadMark.ENSEMBLE in marks) add(stringResource(R.string.drone_ensemble_mark))
-                    if (written && PadMark.CHECK in marks) add(stringResource(R.string.drone_check))
-                },
-                description = name(display), selected = midi == sounding, enabled = midi in Pitch.DETECTOR_WINDOW,
-            )
+            val markLabels = buildList {
+                if (PadMark.ENSEMBLE in marks) add(stringResource(R.string.drone_ensemble_mark))
+                if (written && PadMark.CHECK in marks) add(stringResource(R.string.drone_check))
+            }
+            val context = stringResource(if (written) R.string.tune_names_written else R.string.tune_names_concert)
+            val secondary = if (written && instrument.transposition != 0) name(midi) else ""
+            val spoken = buildList {
+                add("$context ${name(display)}")
+                if (secondary.isNotEmpty()) add(stringResource(R.string.tune_concert, secondary))
+                addAll(markLabels)
+            }.joinToString(", ")
+            Pad(label = musicalName(NoteSpelling.letter(display, accidentals)), secondary = secondary,
+                marks = markLabels, description = spoken, selected = midi == sounding, enabled = midi in Pitch.DETECTOR_WINDOW)
         }, { play(notes[it]) }, tag = "drone-pads")
         Caption(stringResource(R.string.drone_octave))
         Stepper(Pitch.octave(shown).toString(), { graph.output.octave(-1) }, { graph.output.octave(1) },
@@ -133,13 +137,33 @@ fun DroneScreen() {
         Segmented(listOf(R.string.drone_sine, R.string.drone_warm, R.string.drone_fifth).map { Segment(stringResource(it)) },
             voices.indexOf(prefs.droneVoice), { graph.output.voice(voices[it]) }, tag = "drone-voice")
         Button(stringResource(R.string.drone_next_check), { graph.output.nextCheck(); graph.output.startDrone() }, Modifier.fillMaxWidth(), tag = "drone-next")
-        val action = stringResource(if (state.droneWanted) R.string.tool_stop else R.string.tool_start)
-        val fact = stringResource(if (state.droneWanted) R.string.tool_running else R.string.pane_state_stopped)
-        Button(action, graph.output::toggleDrone, Modifier.fillMaxWidth().semantics { stateDescription = fact }, ButtonTone.Primary, tag = "drone-toggle")
+        OutputAction(state, state.droneWanted, state.droneSounding, graph.output::toggleDrone, Modifier.fillMaxWidth(), tag = "drone-toggle")
     }
 }
 
 internal fun musicalName(text: String): String = text.replace("#", "♯").replace("b", "♭")
+
+/** Pending route intent has its own cancellation action while output is quiet. */
+@Composable
+internal fun OutputAction(state: OutputState, wanted: Boolean, sounding: Boolean, toggle: () -> Unit, modifier: Modifier = Modifier, tag: String) {
+    val action = when {
+        !wanted -> R.string.tool_start
+        sounding -> R.string.tool_stop
+        state.muted || state.parked != null -> R.string.tool_cancel_resume
+        state.info == null -> R.string.tool_cancel_start
+        else -> R.string.tool_turn_off
+    }
+    val fact = when {
+        !wanted -> R.string.pane_state_stopped
+        sounding -> R.string.tool_running
+        state.muted -> R.string.tool_muted
+        state.parked != null -> R.string.tool_paused
+        state.info == null -> R.string.tool_starting
+        else -> R.string.tool_muted
+    }
+    val description = stringResource(fact)
+    Button(stringResource(action), toggle, modifier.semantics { stateDescription = description }, ButtonTone.Primary, tag = tag)
+}
 
 @Composable
 internal fun OutputNotice(state: OutputState) {

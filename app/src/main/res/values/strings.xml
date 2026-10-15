@@ -110,6 +110,11 @@
     <string name="tool_start">Start</string>
     <string name="tool_stop">Stop</string>
     <string name="tool_muted">Muted</string>
+    <string name="tool_paused">Paused</string>
+    <string name="tool_starting">Starting</string>
+    <string name="tool_cancel_resume">Cancel resume</string>
+    <string name="tool_cancel_start">Cancel start</string>
+    <string name="tool_turn_off">Turn off</string>
     <string name="drone_ensemble">Ensemble</string>
     <string name="drone_concert_bb">Concert B♭</string>
     <string name="drone_concert_a">Concert A</string>

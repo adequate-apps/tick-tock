@@ -248,6 +248,7 @@ internal class TestOutputConnection : OutputConnection, OutputPort, SoundingNote
             }
             is OutputCommand.Duck -> duckGain.set(cmd.gain)
             is OutputCommand.VoiceOn -> voice = cmd
+            is OutputCommand.VoiceGain -> voice = voice?.copy(gain = cmd.gain)
             is OutputCommand.VoiceOff -> voice = null
             else -> Unit
         }
@@ -262,7 +263,7 @@ internal class TestOutputConnection : OutputConnection, OutputPort, SoundingNote
         info.value = openInfo
         events.tryEmit(OutputEvent.Resumed(registered.toSet(), openInfo))
     }
-    override fun current(): IntArray = voice?.takeIf { info.value != null && controlDiagnostics.value.muteSources.isEmpty() }?.let {
+    override fun current(): IntArray = voice?.takeIf { it.gain > 0f && info.value != null && controlDiagnostics.value.muteSources.isEmpty() }?.let {
         if (it.voice == Voice.ROOT_FIFTH) intArrayOf(it.midi, it.midi + 7) else intArrayOf(it.midi)
     } ?: intArrayOf()
     override fun background() = park(ParkReason.BACKGROUND)

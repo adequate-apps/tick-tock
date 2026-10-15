@@ -22,12 +22,13 @@ import ticktock.core.contracts.OutputCommand
 import ticktock.core.contracts.OutputEvent
 import ticktock.core.prefs.Prefs
 import ticktock.design.GridlineTheme
+import ticktock.design.GridlineThemes
 import java.time.Duration
 
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w360dp-h640dp-xhdpi")
-class DelayScreenshotTest(private val scale: Float) {
+class DelayScreenshotTest(private val scale: Float, private val pit: Boolean) {
     @get:Rule val compose = createComposeRule()
     private var now = 1_000_000_000L
     private var prefs = Prefs()
@@ -36,7 +37,8 @@ class DelayScreenshotTest(private val scale: Float) {
     @After fun close() { output.close(); RuntimeEnvironment.setFontScale(1f) }
     @Test fun `Bluetooth progress result and retry remain readable at large text`() {
         RuntimeEnvironment.setFontScale(scale)
-        compose.setContent { GridlineTheme { DelayDialog(output) } }
+        val suffix = if (pit) "-pit" else ""
+        compose.setContent { GridlineTheme(if (pit) GridlineThemes.pit else GridlineThemes.gridline) { DelayDialog(output) } }
         compose.runOnIdle { output.startMetro(); output.beginCalibration() }
         val generation = link.sent.filterIsInstance<OutputCommand.MetroStart>().last().setup.generation
         repeat(8) { index ->
@@ -45,15 +47,15 @@ class DelayScreenshotTest(private val scale: Float) {
                 link.events.tryEmit(OutputEvent.Beat(index = index.toLong(), beatInBar = index % 4, frame = index * 28_800L, nanos = now, generation = generation))
             }
             compose.runOnIdle { now += 200_000_000L }
-            compose.onNodeWithTag("delay-tap").performScrollTo().performClick()
+            compose.onNodeWithTag("delay-tap").performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
             if (index == 4) {
                 compose.waitForIdle()
-                compose.onNodeWithTag("delay-dialog").captureRoboImage("src/test/screenshots/delay-progress-fs$scale.png")
+                compose.onNodeWithTag("delay-dialog").captureRoboImage("src/test/screenshots/delay-progress-fs$scale$suffix.png")
             }
         }
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(50))
         compose.onNodeWithTag("delay-use").performScrollTo().assertTextEquals("Use 200 ms")
-        compose.onNodeWithTag("delay-dialog").captureRoboImage("src/test/screenshots/delay-result-fs$scale.png")
+        compose.onNodeWithTag("delay-dialog").captureRoboImage("src/test/screenshots/delay-result-fs$scale$suffix.png")
         compose.onNodeWithTag("delay-again").performScrollTo().performClick()
         assertEquals(0, output.calibration.value?.taps)
         compose.onNodeWithTag("delay-tap").performScrollTo().assertIsDisplayed()
@@ -62,7 +64,7 @@ class DelayScreenshotTest(private val scale: Float) {
         assertNull(prefs.bluetoothVisualOffsetMs)
     }
     companion object {
-        @JvmStatic @ParameterizedRobolectricTestRunner.Parameters(name = "fs{0}")
-        fun cases(): List<Array<Any>> = listOf(1f, 2f).map { arrayOf<Any>(it) }
+        @JvmStatic @ParameterizedRobolectricTestRunner.Parameters(name = "fs{0}-pit{1}")
+        fun cases(): List<Array<Any>> = listOf(1f, 2f).flatMap { scale -> listOf(false, true).map { pit -> arrayOf<Any>(scale, pit) } }
     }
 }

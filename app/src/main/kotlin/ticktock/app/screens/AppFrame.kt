@@ -150,6 +150,11 @@ fun AppFrame() {
             }
         }
 
+        if (!firstRun && !settingsOpen && tab == Tab.Drone && output.droneWanted) {
+            OutputAction(output, output.droneWanted, output.droneSounding, graph.output::toggleDrone,
+                Modifier.fillMaxWidth().padding(GridlineSpacing.sp2), tag = "drone-quick-toggle")
+        }
+
         // An idle microphone and a closed output show nothing: the bar carries a
         // fact only while it is true and worth a glance (Listening, Mic busy, Bluetooth).
         StatusBar(

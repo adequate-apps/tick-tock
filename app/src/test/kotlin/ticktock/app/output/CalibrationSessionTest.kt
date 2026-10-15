@@ -51,6 +51,24 @@ class CalibrationSessionTest {
     }
 
     @Test
+    fun `BTC-01 pointer dispatch delay leaves the measured contact offset unchanged`() = runTest {
+        val r = Rig(this)
+        r.start()
+        repeat(8) { index ->
+            r.beat(index)
+            val dispatchDelay = (index * 17).toLong()
+            testScheduler.advanceTimeBy(200 + dispatchDelay)
+            r.output.calibrationTap(dispatchDelay)
+            testScheduler.runCurrent()
+            if (index < 7) testScheduler.advanceTimeBy(400 - dispatchDelay)
+        }
+        testScheduler.advanceTimeBy(30)
+        testScheduler.runCurrent()
+        assertEquals(200, r.output.calibration.value?.offsetMs)
+        assertEquals(true, r.output.calibration.value?.complete)
+    }
+
+    @Test
     fun `BTC-01 Use saves only Bluetooth offset after eight taps then restores both tools`() = runTest {
         val r = Rig(this)
         r.start()
