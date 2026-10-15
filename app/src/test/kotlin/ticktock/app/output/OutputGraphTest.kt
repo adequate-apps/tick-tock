@@ -1,0 +1,136 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+package ticktock.app.output
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import ticktock.app.AppGraph
+import ticktock.core.contracts.OutputCommand
+import ticktock.core.contracts.ParkReason
+import ticktock.core.detect.Reading
+import ticktock.core.detect.Hop
+import ticktock.core.detect.fakes.Sine
+import ticktock.core.contracts.fakes.FakeAudioInput
+import ticktock.core.prefs.Prefs
+import ticktock.core.prefs.PrefsSchema
+import ticktock.data.Storage
+import java.io.File
+
+@RunWith(RobolectricTestRunner::class)
+class OutputGraphTest {
+    @Test
+    fun `CTX-02 actual sounding roots label history across preferences retune park and stop`() {
+        val context = RuntimeEnvironment.getApplication()
+        val dir = File(context.filesDir, "output-graph").apply { mkdirs() }
+        File(dir, Storage.PREFS_FILE).writeText(PrefsSchema.write(Prefs(droneMidi = 69, a4Hz = 442.0)))
+        val link = TestOutputConnection()
+        val graph = AppGraph(context, dir, "output-graph.db") { link }
+        try {
+            var hop = 0L
+            fun save() {
+                graph.captureHistory.accept(Reading(hop++, 69, 442.0, 0.0, 442.0, 0))
+                graph.history.flushAndWait()
+            }
+            save()
+            graph.output.startDrone()
+            save()
+            graph.prefs.update { it.copy(earsFirst = true) }
+            save()
+            graph.output.selectMidi(72)
+            save()
+            // The event need not have reached the UI for the capture boundary to see silence.
+            link.park(ParkReason.HEADPHONES_DISCONNECTED)
+            save()
+            link.replug()
+            save()
+            graph.output.stopDrone()
+            save()
+            context.openOrCreateDatabase("output-graph.db", 0, null).use { db ->
+                val rows = mutableListOf<Pair<String, Int?>>()
+                db.rawQuery("SELECT context, drone_midi FROM runs ORDER BY id", null).use { cursor ->
+                    while (cursor.moveToNext()) rows += cursor.getString(0) to if (cursor.isNull(1)) null else cursor.getInt(1)
+                }
+                assertEquals(listOf("free" to null, "drone" to 69, "drone" to 72, "free" to null,
+                    "drone" to 72, "free" to null), rows)
+            }
+            assertEquals(OutputCommand.SetA4(442.0), link.sent.first())
+        } finally {
+            graph.close()
+            context.deleteDatabase("output-graph.db")
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `POL-24 and POL-27 the app owner excludes its own audio and saves a player through the duck`() {
+        val context = RuntimeEnvironment.getApplication()
+        val dir = File(context.filesDir, "output-capture").apply { mkdirs() }
+        File(dir, Storage.PREFS_FILE).writeText(PrefsSchema.write(Prefs(droneMidi = 69)))
+        val link = TestOutputConnection()
+        val graph = AppGraph(context, dir, "output-capture.db") { link }
+        val input = FakeAudioInput(sampleRate = 48_000)
+        graph.tune.micAllowed = { true }
+        graph.tune.makeInput = { input }
+        try {
+            graph.output.startDrone()
+            graph.tune.resume()
+            val sine = Sine(440.0, 0.2, 48_000)
+            fun push(followsDuck: Boolean) {
+                val before = graph.tune.trace.value
+                val samples = sine.next(Hop.frames(48_000))
+                input.push(if (followsDuck) samples.map { it * link.duckGain.get() }.toFloatArray() else samples)
+                val deadline = System.nanoTime() + 5_000_000_000L
+                while (graph.tune.trace.value === before && System.nanoTime() < deadline) Thread.sleep(1)
+                assertTrue("audio reached the app capture", graph.tune.trace.value !== before)
+            }
+            fun saved(): Long {
+                assertTrue(graph.history.flushAndWait())
+                return context.openOrCreateDatabase("output-capture.db", 0, null).use { db ->
+                    db.rawQuery("SELECT COUNT(*) FROM readings", null).use { rows -> rows.moveToFirst(); rows.getLong(0) }
+                }
+            }
+            repeat(35) { push(followsDuck = true) }
+            assertEquals(0.3f, link.duckGain.get())
+            assertEquals(0L, saved())
+            repeat(35) { push(followsDuck = false) }
+            assertTrue("a player survives the duck and reaches persisted history", saved() > 0)
+            graph.onBackground()
+            assertEquals(1f, link.duckGain.get())
+        } finally {
+            graph.close()
+            context.deleteDatabase("output-capture.db")
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `OUT-11 graph lifecycle stops output and cold restart retains controls without starting sound`() {
+        val context = RuntimeEnvironment.getApplication()
+        val dir = File(context.filesDir, "output-restart").apply { mkdirs() }
+        val link = TestOutputConnection()
+        val graph = AppGraph(context, dir, null) { link }
+        graph.tune.micAllowed = { false }
+        try {
+            graph.output.selectMidi(57)
+            graph.output.bpm(137)
+            graph.output.startDrone()
+            graph.output.startMetro()
+            graph.onBackground()
+            graph.onForeground()
+            graph.prefs.flushAndWait()
+            assertTrue(link.registered.isEmpty())
+        } finally { graph.close() }
+        var created = false
+        val restored = AppGraph(context, dir, null) { created = true; TestOutputConnection() }
+        try {
+            assertEquals(57, restored.output.selectedMidi())
+            assertEquals(137, restored.prefs.prefs.value.metroBpm)
+            assertFalse(created)
+            assertFalse(restored.output.state.value.toolRunning)
+        } finally { restored.close(); dir.deleteRecursively() }
+    }
+}

@@ -10,10 +10,12 @@ import ticktock.core.contracts.HistorySink
 import ticktock.core.contracts.InputException
 import ticktock.core.contracts.InputFailure
 import ticktock.core.contracts.InputInfo
+import ticktock.core.contracts.SoundingNotes
 import ticktock.core.detect.AnalysisCounters
 import ticktock.core.detect.Decision
 import ticktock.core.detect.Detector
 import ticktock.core.detect.HopAnalyser
+import ticktock.core.detect.NoSoundingNotes
 import ticktock.core.detect.Release
 import ticktock.core.detect.ResponseMode
 import ticktock.core.detect.YinEstimator
@@ -23,6 +25,7 @@ import ticktock.engine.input.AnalysisThread
 import ticktock.engine.input.InputListener
 import ticktock.engine.input.RecordingState
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.roundToLong
@@ -124,8 +127,12 @@ class LiveCapture(
     private val promote: () -> Unit = { Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO) },
     /** Where saved readings go; it queues and returns, so the analysis thread never waits on disk (SES-06). */
     private val history: HistorySink? = null,
+    sounding: SoundingNotes = NoSoundingNotes,
+    private val onDuck: (Float) -> Unit = {},
 ) : InputListener {
-    private val detector = Detector(mode).also { it.setA4(a4Hz) }
+    private val detector = Detector(mode, sounding = sounding).also { it.setA4(a4Hz) }
+    private val duckLock = Any()
+    private var duckEnabled = false
     val a4Hz: Double get() = detector.a4.hz
     private val thread = AnalysisThread(
         HopAnalyser(detector, YinEstimator(detector)), promote,
@@ -170,6 +177,7 @@ class LiveCapture(
     private val requestedA4 = AtomicReference<Double?>(null)
 
     private val requestedMode = AtomicReference<ResponseMode?>(null)
+    private val resetAfterInterruption = AtomicBoolean(false)
 
     /** Measures against [hz] from the next hop on; a change starts a new A4 generation (POL-19). */
     fun requestA4(hz: Double) {
@@ -186,6 +194,7 @@ class LiveCapture(
 
     fun start(input: AudioInput) {
         thread.stop()
+        synchronized(duckLock) { duckEnabled = true }
         hopsSinceDiagnostics = 0
         levelFlow.value = Level()
         diagnosticsFlow.value = CaptureDiagnostics()
@@ -204,10 +213,12 @@ class LiveCapture(
                 },
             )
         }
+        if (!stateFlow.value.isListening) stopDuck()
     }
 
     fun stop() {
         thread.stop()
+        stopDuck()
         stateFlow.update { CaptureState() }
         levelFlow.value = Level()
         diagnosticsFlow.value = CaptureDiagnostics()
@@ -228,9 +239,13 @@ class LiveCapture(
 
     override fun onStopped(failure: InputFailure) {
         stateFlow.update { it.copy(info = null, failure = failure, recording = null) }
+        resetAfterInterruption.set(true)
+        stopDuck()
     }
 
     override fun onResumed(info: InputInfo) {
+        resetAfterInterruption.set(true)
+        synchronized(duckLock) { duckEnabled = true }
         stateFlow.update { it.copy(info = info, failure = null) }
     }
 
@@ -239,6 +254,7 @@ class LiveCapture(
     }
 
     private fun applyRequests() {
+        if (resetAfterInterruption.getAndSet(false)) detector.reset()?.let(::endNote)
         requestedA4.getAndSet(null)?.let { hz ->
             if (hz != detector.a4.hz) detector.setA4(hz)?.let(::endNote)
         }
@@ -248,6 +264,9 @@ class LiveCapture(
     }
 
     private fun onDecisions(decisions: List<Decision>) {
+        synchronized(duckLock) {
+            if (duckEnabled) decisions.forEach { it.duck?.let(onDuck) }
+        }
         if (history != null) {
             for (decision in decisions) decision.saved?.let { history.accept(it, decision.firstSettled) }
         }
@@ -264,6 +283,14 @@ class LiveCapture(
         if (hopsSinceDiagnostics >= DIAGNOSTICS_HOPS) {
             hopsSinceDiagnostics = 0
             diagnosticsFlow.value = CaptureDiagnostics(thread.counters, thread.lastHopNanos)
+        }
+    }
+
+    /** A disconnect waits for an in-flight command before restoring gain. Later batches cannot duck a stopped input. */
+    private fun stopDuck() {
+        synchronized(duckLock) {
+            duckEnabled = false
+            onDuck(1f)
         }
     }
 
