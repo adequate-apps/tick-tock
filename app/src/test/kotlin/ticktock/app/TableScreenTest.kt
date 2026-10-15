@@ -2,6 +2,7 @@
 package ticktock.app
 
 import androidx.compose.ui.test.*
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.test.core.app.ActivityScenario
 import kotlinx.coroutines.runBlocking
@@ -148,6 +149,50 @@ class TableScreenTest {
         click("session-save")
         awaitState { graph.table.state.value.snapshot?.sessions?.any { it.name == "Retained draft" } == true }
         compose.onNodeWithTag("save-session-dialog").assertDoesNotExist()
+    }
+
+    @Test fun `histograms label scope units density and both comparison statistics`() {
+        launch()
+        runBlocking { add(69, -10.0, 8) }
+        awaitRows(69)
+        compose.onNodeWithText("Mean · cents").assertExists()
+        compose.onNodeWithText("Plots −25 to +25 cents").assertExists()
+        compose.onNodeWithText("Dimmed <5 readings").assertExists()
+        click("table-note-69")
+        compose.onNodeWithText("Session", substring = false).assertExists()
+        compose.onNodeWithText("Share of readings · −50 to +50 cents").assertExists()
+        compose.onNode(hasTestTag("table-stats-selected") and hasAnyDescendant(hasText("Mean -10 cents · Spread 0 cents"))).assertExists()
+        compose.onNode(hasTestTag("table-stats-history") and hasAnyDescendant(hasText("Readings 46", substring = true))).assertExists()
+        compose.onNode(hasTestTag("table-stats-history") and hasAnyDescendant(hasText("Mean +2 cents", substring = true))).assertExists()
+        compose.onNodeWithText("Scope since", substring = true).assertExists()
+    }
+
+    @Test fun `note clearing identifies current saved and all history scopes and Cancel is primary`() {
+        launch()
+        fun confirm(scope: String) {
+            click("table-clear-note")
+            compose.onNode(hasText(scope) and hasAnyAncestor(hasTestTag("table-confirmation"))).assertExists()
+            compose.onNode(hasText("A4 442 Hz", substring = true) and hasAnyAncestor(hasTestTag("table-confirmation"))).assertExists()
+            val pixels = compose.onNodeWithTag("clear-cancel").performScrollTo().captureToImage().toPixelMap()
+            assertEquals(ticktock.design.GridlineThemes.gridline.selectionBg, pixels[pixels.width / 2, 8])
+            click("clear-cancel")
+            click("table-back")
+        }
+        click("table-note-71")
+        confirm("Current session")
+        click("table-sessions")
+        click("session-open-$saved")
+        awaitRows(69)
+        click("table-note-69")
+        confirm("Earlier")
+        click("table-scope-1")
+        awaitRows(69, 71)
+        click("table-note-69")
+        click("table-clear-note")
+        compose.onNode(hasText("All matching history") and hasAnyAncestor(hasTestTag("table-confirmation"))).assertExists()
+        compose.onNode(hasText("Drone runs excluded") and hasAnyAncestor(hasTestTag("table-confirmation"))).assertExists()
+        click("clear-cancel")
+        assertEquals(38L, runBlocking { graph.history.summaries(Scope.Session(saved)).sumOf { it.n } })
     }
 
 }

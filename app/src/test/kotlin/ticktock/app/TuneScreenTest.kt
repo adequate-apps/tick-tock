@@ -124,6 +124,22 @@ class TuneScreenTest {
     }
 
     @Test
+    fun `TLK-01 needle semantics stay stable while its visual cents change`() {
+        val input = FakeAudioInput(sampleRate = rate)
+        launch(input)
+        play(input, 440.0, 18)
+        compose.waitUntil(TIMEOUT) { text("readout-cents") == "+0" }
+        val before = compose.onNodeWithTag("cents-scale", true).fetchSemanticsNode().config
+        val description = before.getOrNull(SemanticsProperties.ContentDescription)
+        val state = before.getOrNull(SemanticsProperties.StateDescription)
+        play(input, Pitch.hzFromMidi(69.07, 440.0), 18)
+        compose.waitUntil(TIMEOUT) { text("readout-cents") != "+0" }
+        val after = compose.onNodeWithTag("cents-scale", true).fetchSemanticsNode().config
+        assertEquals(description, after.getOrNull(SemanticsProperties.ContentDescription))
+        assertEquals(state, after.getOrNull(SemanticsProperties.StateDescription))
+    }
+
+    @Test
     fun `a plain launch with no microphone permission is the ghost readout with one key and Mic off`() {
         launch(null)
         compose.onNodeWithTag("gate-mic_not_asked").assertIsDisplayed()

@@ -56,4 +56,18 @@ class DiagnosticsScreenTest {
         assertEquals("7", fact!!.value)
     }
 
+    @Test fun `Diagnostics separates rejected readings and storage buffer drops from audio overflow`() {
+        val graph = TickTockApp.graph(RuntimeEnvironment.getApplication())
+        graph.history.stop()
+        repeat(3) { graph.history.accept(ticktock.core.detect.Reading(it.toLong(), 69, Double.NaN, 0.0, 440.0, 0), false) }
+        repeat(ticktock.data.history.HistoryStore.MAX_PENDING + 7) {
+            graph.history.accept(ticktock.core.detect.Reading(it.toLong(), 69, 440.0, 0.0, 440.0, 0), false)
+        }
+        kotlinx.coroutines.runBlocking { graph.history.flushAndWait() }
+        val facts = ticktock.app.screens.diagnosticFacts(graph)
+        assertEquals("3", facts.singleOrNull { it.tag == "diag-rejected" }?.value)
+        assertEquals("7", facts.singleOrNull { it.tag == "diag-store-dropped" }?.value)
+        assertEquals("0", facts.single { it.tag == "diag-dropped" }.value)
+    }
+
 }
