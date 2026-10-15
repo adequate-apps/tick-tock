@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import java.util.Properties
+import java.io.File
+import java.security.KeyStore
+import java.security.MessageDigest
+import java.security.PrivateKey
+import java.security.cert.X509Certificate
 
 plugins {
     alias(libs.plugins.android.application)
@@ -7,10 +12,43 @@ plugins {
     alias(libs.plugins.roborazzi)
 }
 
-// Release signing reads a gitignored file; the keystore never enters the tree.
+// Private keys stay outside version control and are loaded by release tasks.
+val signingPropertiesFile = providers.gradleProperty("ticktock.signingProperties")
+    .map { rootProject.file(it) }.getOrElse(rootProject.file("private/signing.properties"))
 val releaseSigning = Properties().apply {
-    val file = rootProject.file("private/signing.properties")
-    if (file.isFile) file.inputStream().use { load(it) }
+    if (signingPropertiesFile.isFile) signingPropertiesFile.reader(Charsets.UTF_8).use { load(it) }
+}
+val signingFields = listOf("storeFile", "storePassword", "keyAlias", "keyPassword", "certificateSha256")
+fun signingField(name: String, prefix: String = ""): String =
+    if (prefix.isEmpty()) name else prefix + name.replaceFirstChar { it.uppercase() }
+fun signingComplete(prefix: String = "") = signingFields.all {
+    !releaseSigning.getProperty(signingField(it, prefix)).isNullOrBlank()
+}
+fun signingStore(prefix: String = ""): File {
+    val path = File(releaseSigning.getProperty(signingField("storeFile", prefix)))
+    return if (path.isAbsolute) path else File(signingPropertiesFile.parentFile, path.path)
+}
+class ReleaseKey(val key: PrivateKey, val certificate: X509Certificate)
+fun readReleaseKey(prefix: String = ""): ReleaseKey {
+    if (!signingComplete(prefix)) throw GradleException("Release signing is required: provide all signing properties.")
+    try {
+        fun field(name: String) = releaseSigning.getProperty(signingField(name, prefix))
+        val store = KeyStore.getInstance("PKCS12")
+        signingStore(prefix).inputStream().use { store.load(it, field("storePassword").toCharArray()) }
+        val key = store.getKey(field("keyAlias"), field("keyPassword").toCharArray()) as PrivateKey
+        val certificate = store.getCertificate(field("keyAlias")) as X509Certificate
+        certificate.checkValidity()
+        require(key.algorithm == "RSA") { "release signing requires an RSA key" }
+        val fingerprint = MessageDigest.getInstance("SHA-256").digest(certificate.encoded)
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        val expected = field("certificateSha256").filterNot { it == ':' || it.isWhitespace() }.lowercase()
+        if (fingerprint != expected) throw GradleException("Release signing certificate differs from the expected fingerprint.")
+        return ReleaseKey(key, certificate)
+    } catch (failure: GradleException) {
+        throw failure
+    } catch (failure: Exception) {
+        throw GradleException("Release signing material is invalid or unavailable.")
+    }
 }
 
 /**
@@ -30,6 +68,7 @@ android {
     defaultConfig {
         applicationId = releaseApplicationId
         minSdk = libs.versions.minSdk.get().toInt()
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
         versionName = "2.0.0-m0"
@@ -49,9 +88,9 @@ android {
         }
         release {
             isMinifyEnabled = false
-            if (releaseSigning.isNotEmpty()) {
+            if (signingComplete()) {
                 signingConfigs.create("upload") {
-                    storeFile = rootProject.file(releaseSigning.getProperty("storeFile"))
+                    storeFile = signingStore()
                     storePassword = releaseSigning.getProperty("storePassword")
                     keyAlias = releaseSigning.getProperty("keyAlias")
                     keyPassword = releaseSigning.getProperty("keyPassword")
@@ -112,10 +151,19 @@ val checkReleaseApplicationId = tasks.register("checkReleaseApplicationId") {
     }
 }
 
-// preReleaseBuild is the first task of every release variant, so the guard
-// fires before any compile work and before the signing config is consulted.
-tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+val checkReleaseSigning = tasks.register("checkReleaseSigning") {
+    group = "verification"
+    description = "Requires valid signing material and its expected public certificate."
     dependsOn(checkReleaseApplicationId)
+    doLast {
+        readReleaseKey()
+        if (signingFields.any { releaseSigning.containsKey(signingField(it, "upload")) }) readReleaseKey("upload")
+    }
+}
+
+// Both release entry points require the identity and signing checks.
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(checkReleaseSigning)
 }
 
 dependencies {
@@ -171,7 +219,13 @@ tasks.withType<Test>().configureEach {
 // Bundle the repository's notices so they remain readable without a browser.
 val prepareNotices by tasks.registering(Copy::class) {
     from(rootProject.file("LICENSE"), rootProject.file("THIRD_PARTY.md"))
+    val fontLicence = rootProject.file("tools/fonts/IBM-Plex-OFL-1.1.txt")
+    inputs.file(fontLicence)
     into(layout.buildDirectory.dir("generated/notices"))
+    doLast {
+        layout.buildDirectory.file("generated/notices/THIRD_PARTY.md").get().asFile.writeText(
+            rootProject.file("THIRD_PARTY.md").readText() + "\n\n## Bundled font licence\n\n" + fontLicence.readText() + "\n")
+    }
 }
 android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/notices").get().asFile)
 tasks.named("preBuild") { dependsOn(prepareNotices) }

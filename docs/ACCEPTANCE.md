@@ -384,7 +384,7 @@ revision document; the IDs are claimed here like any other.
 | DST-01 | AAB, universal APK and SHA256SUMS from one build | CI | 2.0 |  | open |
 | DST-02 | merged manifest equals `tools/manifest-allowlist-2.0.txt` | CI | 2.0 | `tools/check-manifest.sh` in `tools/verify.sh` (every push); `verify-selftest.sh` case `stray-permission` proves it goes red | green |
 | DST-03 | every `.so` passes the 16 KB alignment check | CI | 2.0 | `tools/check-alignment.sh` in `tools/verify.sh` on the debug APK (every push); `verify-selftest.sh` case `misaligned-library` was seen failing before the stage existed; the release job runs the same script on the release artifacts once `release.yml` lands (M7) | open |
-| DST-04 | About shows version, licence, THIRD_PARTY and the privacy policy link | H | 2.0 | SettingsExtrasTest `DST-04 About has version bundled licences and the privacy link`; SettingsExtrasScreenshotTest covers all text sizes and themes. | green |
+| DST-04 | About shows version, licence, THIRD_PARTY and the privacy policy link | H | 2.0 | SettingsExtrasTest `DST-04 About has version bundled licences and the privacy link`; SettingsExtrasScreenshotTest covers all text sizes and themes; ReleaseNoticesTest verifies the full bundled font licence. | green |
 
 ### Entitlement seam
 
