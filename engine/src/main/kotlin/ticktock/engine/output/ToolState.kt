@@ -107,9 +107,10 @@ class ToolState {
 
     /**
      * The MIDI numbers sounding now, for the bleed policy. A root-and-fifth
-     * voice sounds two notes and the policy has to know both.
+     * voice sounds two notes and the policy has to know both. A zero target
+     * gain keeps the voice available for a later edit but has no sustained leak.
      */
-    fun soundingMidi(): IntArray = voices.values.flatMap { v ->
+    fun soundingMidi(): IntArray = voices.values.filter { it.gain > 0f }.flatMap { v ->
         if (v.voice == Voice.ROOT_FIFTH) listOf(v.midi, v.midi + FIFTH_SEMITONES) else listOf(v.midi)
     }.distinct().sorted().toIntArray()
 

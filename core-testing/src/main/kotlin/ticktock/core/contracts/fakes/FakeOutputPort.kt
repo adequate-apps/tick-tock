@@ -112,6 +112,11 @@ class FakeOutputPort(private val foregroundOwner: ForegroundOwner = NoForeground
         emit(OutputEvent.Beat(index, beatInBar, frame, nanos, bar, silentBar, generation, audible))
     }
 
+    /** A test advances the render clock explicitly; queueing alone never acknowledges a duck. */
+    fun duckSettled(generation: Int, frame: Long, nanos: Long) {
+        emit(OutputEvent.DuckSettled(generation, frame, nanos))
+    }
+
     companion object {
         const val REPLAY = 1024
         val DEFAULT_INFO = OutputInfo(

@@ -76,8 +76,14 @@ class NativeEventTest {
         assertEquals(NativeEvent.Counters(OutputEvent.Counters(lateBeatsDropped = 3, underruns = 12)), decode(6, 3, 12))
     }
 
+    @Test
+    fun `DuckSettled carries command generation and presentation time`() {
+        assertEquals(NativeEvent.DuckSettled(OutputEvent.DuckSettled(71, 3_360, 5_123_000_000)),
+            decode(7, a = 71, c = 3_360, d = 5_123_000_000))
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun `an unknown kind is refused rather than guessed`() {
-        decode(7)
+        decode(8)
     }
 }

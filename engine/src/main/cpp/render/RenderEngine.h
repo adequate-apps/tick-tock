@@ -28,9 +28,11 @@ class RenderEngine {
 public:
     using CommandQueue = SpscQueue<Command, kCommandCapacity>;
     using BeatQueue = SpscQueue<BeatEvent, kBeatCapacity>;
+    using DuckQueue = SpscQueue<DuckEvent, kCommandCapacity>;
 
     CommandQueue& commands() { return commands_; }
     BeatQueue& beats() { return beats_; }
+    DuckQueue& ducks() { return ducks_; }
 
     // Called before the first callback of every stream, old or reopened:
     // the frame clock restarts, voices recompute their increments and the
@@ -68,6 +70,7 @@ private:
 
     CommandQueue commands_;
     BeatQueue beats_;
+    DuckQueue ducks_;
     VoiceBank voices_;
     ClickPlayer clicks_;
     BeatGenerator generator_;
@@ -84,6 +87,7 @@ private:
     std::uint32_t muteMask_ = 0;
     float duck_ = 1.0f;
     float duckTarget_ = 1.0f;
+    std::int32_t duckGeneration_ = 0;
     float gate_ = 1.0f;
     float gateTarget_ = 1.0f;
     float rampStep_ = 0.004f;

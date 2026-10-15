@@ -11,6 +11,16 @@ void RenderEngine::onStreamStart(double sampleRate) {
     clicks_.prepare(sampleRate_);
     generator_.onStreamStart(sampleRate_, 0);
     gate_ = 0.0f;
+    duck_ = duckTarget_ = 1.0f;
+    duckGeneration_ = 0;
+    // The stream is quiescent here. Preserve queued tool edits, and discard
+    // probes and acknowledgements belonging to the preceding stream.
+    Command pending;
+    while (commands_.tryPop(pending)) {
+        if (pending.kind != CommandKind::Duck) apply(pending);
+    }
+    DuckEvent obsolete;
+    while (ducks_.tryPop(obsolete)) {}
 }
 
 void RenderEngine::apply(const Command& cmd) {
@@ -23,6 +33,7 @@ void RenderEngine::apply(const Command& cmd) {
             // POL-26: 0.3 is the floor; the detector never asks for silence.
             const float g = cmd.gain < 0.3f ? 0.3f : (cmd.gain > 1.0f ? 1.0f : cmd.gain);
             duckTarget_ = g;
+            duckGeneration_ = cmd.generation;
             break;
         }
         case CommandKind::MetroStart: generator_.start(cmd.metro, position_.load(std::memory_order_relaxed)); break;
@@ -62,6 +73,11 @@ void RenderEngine::renderSlice(float* interleaved, std::int32_t frames) {
     gateTarget_ = muteMask_ == 0 ? 1.0f : 0.0f;
     for (std::int32_t i = 0; i < frames; ++i) {
         rampMaster();
+        if (duckGeneration_ != 0 && duck_ == duckTarget_) {
+            // A lost acknowledgement leaves the detector excluding unproven leakage.
+            ducks_.tryPush(DuckEvent{duckGeneration_, blockStart + i});
+            duckGeneration_ = 0;
+        }
         float s = mono_[i] * duck_ * gate_;
         if (s > 1.0f) s = 1.0f; else if (s < -1.0f) s = -1.0f;
         interleaved[i * kChannels] = s;

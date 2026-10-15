@@ -18,7 +18,7 @@ interface NativeCalls {
     fun nativeVoiceOff(handle: Long, slot: Int): Boolean
     fun nativeVoiceGain(handle: Long, slot: Int, gain: Float): Boolean
     fun nativeSetA4(handle: Long, hz: Double): Boolean
-    fun nativeDuck(handle: Long, gain: Float): Boolean
+    fun nativeDuck(handle: Long, gain: Float, generation: Int): Boolean
     fun nativeMetroStart(
         handle: Long, bpm: Int, beatsPerBar: Int, beatUnit: Int, compoundPulse: Boolean, accents: IntArray,
         subdivision: Int, click: Int, gain: Float, barsOn: Int, barsOff: Int, beatLimit: Int, generation: Int,

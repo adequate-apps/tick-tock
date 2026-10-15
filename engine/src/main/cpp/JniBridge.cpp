@@ -48,7 +48,7 @@ struct Bridge {
         auto* self = static_cast<Bridge*>(context);
         // Only when there is something to drain; the post is a futex wake,
         // never a wait, so the audio thread cannot block here.
-        if (self->controller.engine().beats().size() > 0 || self->controller.hasPendingError()) sem_post(&self->wake);
+        if (self->controller.engine().beats().size() > 0 || self->controller.engine().ducks().size() > 0 || self->controller.hasPendingError()) sem_post(&self->wake);
     }
 
     void signal() { sem_post(&wake); }
@@ -130,8 +130,8 @@ JNIEXPORT jboolean JNICALL Java_ticktock_engine_NativeBridge_nativeSetA4(JNIEnv*
     return bridge(handle)->controller.setA4(hz) ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT jboolean JNICALL Java_ticktock_engine_NativeBridge_nativeDuck(JNIEnv*, jobject, jlong handle, jfloat gain) {
-    return bridge(handle)->controller.duck(gain) ? JNI_TRUE : JNI_FALSE;
+JNIEXPORT jboolean JNICALL Java_ticktock_engine_NativeBridge_nativeDuck(JNIEnv*, jobject, jlong handle, jfloat gain, jint generation) {
+    return bridge(handle)->controller.duck(gain, generation) ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL Java_ticktock_engine_NativeBridge_nativeMetroStart(

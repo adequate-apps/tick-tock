@@ -34,7 +34,7 @@ class OutputPortContractTest {
         OutputCommand.VoiceOn(slot = 0, midi = 62, voice = Voice.WARM, gain = 0.5f),
         OutputCommand.VoiceGain(slot = 0, gain = 0.25f),
         OutputCommand.SetA4(442.0),
-        OutputCommand.Duck(0.3f),
+        OutputCommand.Duck(0.3f, generation = 71),
         OutputCommand.MetroStart(setup),
         OutputCommand.MetroUpdate(setup.copy(bpm = 132)),
         OutputCommand.MetroStop,
@@ -85,6 +85,7 @@ class OutputPortContractTest {
             OutputEvent.Parked(ParkReason.INCOMING_CALL, setOf(OutputTool.METRONOME)),
             OutputEvent.Failed("USB DAC", listOf(48_000, 44_100)),
             OutputEvent.Closed,
+            OutputEvent.DuckSettled(71, 3_360, 5_123_000_000),
         )
         everyEvent.forEach(port::emit)
 

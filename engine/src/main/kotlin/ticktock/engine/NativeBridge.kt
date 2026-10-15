@@ -16,7 +16,7 @@ class NativeBridge : NativeCalls {
     /**
      * How an event arrives. `kind` is the OutputEvent variant in declaration
      * order: 0 Opened, 1 Closed, 2 Beat, 3 Parked, 4 Resumed, 5 Failed,
-     * 6 Counters. The fields per kind:
+     * 6 Counters, 7 DuckSettled. The fields per kind:
      * - Opened, Resumed: a sampleRate, b framesPerBlock, c deviceId, d latencyMillis,
      *   tools the resumed set as a bit mask of OutputTool ordinals (0 for Opened);
      * - Beat: a index, b beatInBar, c frame, d nanos (CLOCK_MONOTONIC);
@@ -25,6 +25,7 @@ class NativeBridge : NativeCalls {
      * - Parked: a ParkReason ordinal, tools the parked set;
      * - Failed: a deviceId, ints the refused sample rates;
      * - Counters: a lateBeatsDropped, b underruns.
+     * - DuckSettled: a generation, c frame, d monotonic presentation nanos.
      * The route class and device name come from the device id through the
      * audio manager on the control thread.
      */
@@ -42,7 +43,7 @@ class NativeBridge : NativeCalls {
     override external fun nativeVoiceOff(handle: Long, slot: Int): Boolean
     override external fun nativeVoiceGain(handle: Long, slot: Int, gain: Float): Boolean
     override external fun nativeSetA4(handle: Long, hz: Double): Boolean
-    override external fun nativeDuck(handle: Long, gain: Float): Boolean
+    override external fun nativeDuck(handle: Long, gain: Float, generation: Int): Boolean
     override external fun nativeMetroStart(
         handle: Long, bpm: Int, beatsPerBar: Int, beatUnit: Int, compoundPulse: Boolean, accents: IntArray,
         subdivision: Int, click: Int, gain: Float, barsOn: Int, barsOff: Int, beatLimit: Int, generation: Int,

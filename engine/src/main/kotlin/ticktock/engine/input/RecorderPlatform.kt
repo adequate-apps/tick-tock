@@ -34,6 +34,8 @@ data class RecordingState(
  */
 interface Recorder {
     val sampleRate: Int
+    /** Capture frames buffered by the platform before [read]. */
+    val bufferFrames: Int get() = 0
     val source: InputSource
     val device: InputDevice
 

@@ -16,6 +16,7 @@ import ticktock.core.contracts.InputSource
 class FakeAudioInput(
     var sampleRate: Int = 48_000,
     var deviceName: String = "Fake microphone",
+    var bufferFrames: Int = 0,
 ) : AudioInput {
     private var sink: AudioSink? = null
     var failNextStart: InputFailure? = null
@@ -40,7 +41,7 @@ class FakeAudioInput(
         if (this.sink != null) stop()
         this.sink = sink
         openCount++
-        return Result.success(InputInfo(sampleRate, deviceName, InputSource.FAKE))
+        return Result.success(InputInfo(sampleRate, deviceName, InputSource.FAKE, bufferFrames))
     }
 
     override fun stop() {

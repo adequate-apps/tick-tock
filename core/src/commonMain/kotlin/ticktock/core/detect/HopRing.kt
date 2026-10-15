@@ -19,6 +19,11 @@ class HopRing(val capacityFrames: Int) {
     private var readPos = 0
     private var count = 0
     private var overflowFrames = 0L
+    private var writtenFrames = 0L
+
+    /** Position after all audio delivered so far, including frames that overflowed. */
+    @Synchronized
+    fun writePosition(): Long = writtenFrames
 
     @Synchronized
     fun available(): Int = count
@@ -26,6 +31,7 @@ class HopRing(val capacityFrames: Int) {
     @Synchronized
     fun write(samples: FloatArray, frames: Int) {
         require(frames in 0..samples.size) { "frames $frames outside the block of ${samples.size}" }
+        writtenFrames += frames
         var offset = 0
         var length = frames
         if (length > capacityFrames) {

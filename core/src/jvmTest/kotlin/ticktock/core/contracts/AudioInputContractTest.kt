@@ -11,7 +11,7 @@ import ticktock.core.contracts.fakes.FakeAudioInput
 class AudioInputContractTest {
     @Test
     fun `audio pushed into the input reaches the sink unchanged`() {
-        val input = FakeAudioInput(sampleRate = 44_100, deviceName = "USB interface")
+        val input = FakeAudioInput(sampleRate = 44_100, deviceName = "USB interface", bufferFrames = 4_096)
         var received: FloatArray? = null
         var receivedFrames = -1
 
@@ -20,7 +20,7 @@ class AudioInputContractTest {
             receivedFrames = frames
         }.getOrThrow()
 
-        assertEquals(InputInfo(44_100, "USB interface", InputSource.FAKE), info)
+        assertEquals(InputInfo(44_100, "USB interface", InputSource.FAKE, 4_096), info)
         val block = floatArrayOf(0.1f, -0.2f, 0.3f, 0f)
         assertTrue(input.push(block, frames = 3))
         assertArrayEquals(floatArrayOf(0.1f, -0.2f, 0.3f), received, 0f)
