@@ -58,6 +58,8 @@ class BluetoothDelayScreenTest {
         val generation = link.sent.filterIsInstance<OutputCommand.MetroStart>().last().setup.generation
         assertTrue(graph.output.current().isEmpty())
         repeat(8) { index ->
+            // The shared clock follows real time; preserve the native 100 bpm cadence.
+            if (index > 0) Thread.sleep(600)
             compose.runOnIdle { link.events.tryEmit(OutputEvent.Beat(index = index.toLong(), frame = index * 28_800L, nanos = System.nanoTime(), beatInBar = index % 4, bar = (index / 4).toLong(), generation = generation)) }
             compose.onNodeWithTag("delay-tap").performScrollTo()
                 .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
