@@ -209,3 +209,17 @@ questions below.
 - iOS ships under the same brand and price. Any contributor signs a licence agreement first, because
   App Store terms conflict with the GPL for code the owner does not hold.
 
+## 19. Harmonic refinement after YIN; simulated playing is the accuracy bench
+
+- YIN names the period and the note; `HarmonicRefiner` then settles the fundamental within 7 c of
+  YIN's estimate by maximising the energy at its first twelve harmonics (up to 4 kHz) over the
+  window, the maximum-likelihood pitch of a harmonic tone in noise.
+- Measured by the simulated play tests (`core/src/jvmTest/.../play`): a breathy flute's worst reading
+  went from 2.3 c to 0.13 c, a noisy hall's from 1.4 c to 0.3 c, pianissimo from 0.4 c to 0.06 c;
+  clean playing stays under 0.15 c. Without the refiner five of the nine play tests fail.
+- Cost on the desktop JVM: about 0.23 ms per window against YIN's 0.6 ms. The owner's device check
+  for the per-hop median (decision 3) covers the phone.
+- Under vibrato a reading lands where the pitch dwells in its window, up to about 3 c from the
+  window's plain mean; the note's centre stays within 0.1 c. Below about 100 Hz the 93 ms window
+  holds under ten cycles and the floor is about 0.1 c.
+

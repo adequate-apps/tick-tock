@@ -25,7 +25,21 @@ Tiers: **U** pure JVM (`:core:jvmTest`), **N** host C++ (gtest, offline render),
 | DET-14 | window long enough for the floor | U | 2.0 | YinTest `DET-14` (`Yin.WINDOW_SECONDS` reads `Hop.SECONDS`, the one definition the analyser cuts by) | green |
 | DET-15 | non-finite input | U | 2.0 | YinTest `DET-15`, YinEstimatorTest `DET-15` (no candidate at level 0, counted) and DetectorEndToEndTest `DET-15` (a NaN hop mid-note is skipped and counted, the held note goes on) | green |
 | DET-16 | off the UI thread | H, D | 2.0 | AnalysisThreadTest `DET-16` (decisions arrive on the thread named `analysis`, promoted to audio priority, on audio pushed from another thread); D: `tools/device/readout.sh --tone 442 --a4 442 --expect A4` on the API 36 emulator reads A4 +0 c 442.0 Hz off the UI thread (screenshot kept outside the tree) | green |
-| DET-17 | per-hop budget | H, D | 2.0 | YinTest `DET-17` prints the JVM per-hop cost (informational; after the half-length real transforms and the silence skip: sax-like A4 median about 0.4 ms, white noise about 0.7 ms at 48 kHz, from about 1.7 and 1.9 before); FftTest `DET-17` (two tests: the real transform matches the complex one bin for bin, and the YIN length is even 5-smooth) and HopAnalyserTest `DET-17` (a window under the gate's floor never reaches the estimator and is the same silence reject with its level); D: the API 36 x86_64 emulator under swiftshader shows 0.8 to 4.1 ms per hop in the debug readout, median about 2.5 ms over eleven samples (from 10.5 to 14.6 before; the samples are taken by uiautomator dumps that perturb the figure); the reference-phone figure is the M2 gate | open |
+| DET-17 | per-hop budget | H, D | 2.0 | YinTest `DET-17` prints the JVM per-hop cost (informational; the harmonic refinement of decision 19 adds about 0.23 ms per window on the desktop JVM; after the half-length real transforms and the silence skip: sax-like A4 median about 0.4 ms, white noise about 0.7 ms at 48 kHz, from about 1.7 and 1.9 before); FftTest `DET-17` (two tests: the real transform matches the complex one bin for bin, and the YIN length is even 5-smooth) and HopAnalyserTest `DET-17` (a window under the gate's floor never reaches the estimator and is the same silence reject with its level); D: the API 36 x86_64 emulator under swiftshader shows 0.8 to 4.1 ms per hop in the debug readout, median about 2.5 ms over eleven samples (from 10.5 to 14.6 before; the samples are taken by uiautomator dumps that perturb the figure); the reference-phone figure is the M2 gate | open |
+
+## Simulated playing
+
+Scored passages on modelled wind instruments (alto and bari sax, clarinet, flute, trumpet) in a room, rendered with their exact pitch track and played through the real capture path, YIN, the harmonic refinement and the detector at 44.1 and 48 kHz; every saved reading is graded against the played pitch over its own window. PlayTest writes `core/build/play-report/report.md` and the takes as WAV files.
+
+| ID | Criterion | Tier | Ships | Test | Status |
+|---|---|---|---|---|---|
+| PLAY-01 | no reading names a note that was not sounding, in any take (attacks, slurs, sixteenths, reverb tails) | U | 2.0 | PlayTest, all nine tests | green |
+| PLAY-02 | a held note in a practice room reads within 0.25 c of the played pitch and prints the played pitch rounded (measured worst 0.15 c) | U | 2.0 | PlayTest `long tones`, `chromatic`, `slurred arpeggio`, `sags flat`, `quiet and loud`, `every A4`, `sixteenths` | green |
+| PLAY-03 | a note's mean, what the table keeps, is within 0.1 c (measured worst 0.06 c) | U | 2.0 | PlayTest, same tests | green |
+| PLAY-04 | under ±15 c vibrato the note's centre is within 0.3 c and each reading within 4 c of its window's mean | U | 2.0 | PlayTest `vibrato long tones keep their centre` | green |
+| PLAY-05 | in a live hall with hiss and mains hum 38 dB down, each held reading is within 1 c | U | 2.0 | PlayTest `a noisy room with hum, hiss and a live hall` | green |
+| PLAY-06 | every note of 0.45 s or longer is read, within 450 ms of its onset (measured worst 370 ms, slurred) | U | 2.0 | PlayTest, all nine tests | green |
+| PLAY-07 | the refinement holds a breathy tone 20 dB over noise within 0.2 c where YIN alone is worse, and stays within its search span | U | 2.0 | HarmonicRefinerTest (four tests) | green |
 
 ## Detector policy
 
