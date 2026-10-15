@@ -21,6 +21,8 @@ import ticktock.core.contracts.InputSource
 import ticktock.core.detect.Hop
 import ticktock.core.detect.fakes.Sine
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * The platform class against Robolectric's AudioRecord and AudioManager: the
@@ -79,6 +81,15 @@ class AndroidRecorderPlatformTest {
 
     @Test
     fun `without the UNPROCESSED property the source asks for VOICE_RECOGNITION first`() {
+        assertPresetSelection(stopBeforeFirstRead = false)
+    }
+
+    @Test
+    fun `the preset and recorder release can be checked before the first capture read`() {
+        assertPresetSelection(stopBeforeFirstRead = true)
+    }
+
+    private fun assertPresetSelection(stopBeforeFirstRead: Boolean) {
         ShadowAudioRecord.setSourceProvider { record ->
             opened += record
             object : ShadowAudioRecord.AudioRecordSource {}
@@ -90,13 +101,40 @@ class AndroidRecorderPlatformTest {
         // The production deadline (2 s) is for a phone's driver; a cold Robolectric
         // AudioRecord on a loaded CI runner has been seen to take longer to open,
         // which reads as a hung driver. This case is about the preset order.
-        val source = AudioRecordSource(platform, openTimeoutMillis = 30_000)
-        val info = source.start { _, _ -> }.getOrThrow()
-        source.stop()
+        val beginReads = CountDownLatch(if (stopBeforeFirstRead) 1 else 0)
+        val controlled = object : RecorderPlatform by platform {
+            override fun open(source: InputSource, sampleRate: Int, device: InputDevice?): OpenResult {
+                val result = platform.open(source, sampleRate, device)
+                if (result !is OpenResult.Opened) return result
+                return OpenResult.Opened(object : Recorder by result.recorder {
+                    override fun stop() {
+                        try {
+                            result.recorder.stop()
+                        } finally {
+                            beginReads.countDown()
+                        }
+                    }
+                })
+            }
 
-        assertEquals(InputSource.VOICE_RECOGNITION, info.source)
-        assertEquals(MediaRecorder.AudioSource.VOICE_RECOGNITION, opened.first().audioSource)
-        assertTrue(opened.all { it.state == AudioRecord.STATE_UNINITIALIZED })
+            override fun promoteCaptureThread() {
+                // Hold the read callback until stop to reproduce a late capture-thread start.
+                check(beginReads.await(30, TimeUnit.SECONDS)) { "capture did not stop" }
+                platform.promoteCaptureThread()
+            }
+        }
+        val source = AudioRecordSource(controlled, openTimeoutMillis = 30_000)
+        try {
+            val info = source.start { _, _ -> }.getOrThrow()
+            source.stop()
+
+            assertEquals(InputSource.VOICE_RECOGNITION, info.source)
+            assertEquals(MediaRecorder.AudioSource.VOICE_RECOGNITION, opened.first().audioSource)
+            assertTrue(opened.all { it.state == AudioRecord.STATE_UNINITIALIZED })
+        } finally {
+            beginReads.countDown()
+            source.stop()
+        }
     }
 
     @Test
