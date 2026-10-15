@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <cmath>
 #include <vector>
 
 #include "support/FakeDevice.h"
@@ -629,4 +630,71 @@ TEST(OutputController, aReopenedStreamStartsAtFullGainAndCannotAcknowledgeAnOldR
     const auto events = drainAll(c);
     ASSERT_EQ(1u, events.size());
     EXPECT_EQ(82, events[0].a);
+}
+
+TEST(OutputController, aQueuedDuckCannotChangeTheGainOfAResumedStream) {
+    FakeDevice device, referenceDevice;
+    device.timestampValid = referenceDevice.timestampValid = true;
+    device.tsNanos = referenceDevice.tsNanos = 5000000000LL;
+    OutputController c(device), reference(referenceDevice);
+    for (auto* controller : {&c, &reference}) {
+        controller->registerTool(OutputTool::Drone);
+        drainAll(*controller);
+        ASSERT_TRUE(controller->voiceOn(0, 69, render::Voice::Sine, 0.5f));
+    }
+    pull(device, 480);
+    pull(referenceDevice, 480);
+    ASSERT_TRUE(c.duck(0.3f, 81));
+    for (auto* controller : {&c, &reference}) {
+        controller->park(ParkReason::HeadphonesDisconnected);
+        drainAll(*controller);
+        controller->resume();
+        drainAll(*controller);
+    }
+    std::vector<float> actual, expected;
+    pull(device, 480, &actual);
+    pull(referenceDevice, 480, &expected);
+    EXPECT_TRUE(drainAll(c).empty());
+    double error = 0;
+    for (std::size_t i = 0; i < actual.size(); ++i) error += std::abs(actual[i] - expected[i]);
+    EXPECT_LT(error, 1e-5) << "a resumed voice starts at the unducked reference gain";
+    ASSERT_TRUE(c.duck(0.3f, 82));
+    actual.clear(); expected.clear();
+    pull(device, 960, &actual);
+    pull(referenceDevice, 960, &expected);
+    const auto events = drainAll(c);
+    ASSERT_EQ(1u, events.size());
+    EXPECT_EQ(82, events[0].a);
+    double reduced = 0, full = 0;
+    for (std::size_t i = 480; i < actual.size(); ++i) {
+        reduced += actual[i] * actual[i];
+        full += expected[i] * expected[i];
+    }
+    EXPECT_NEAR(0.09, reduced / full, 1e-4) << "the fresh probe must cause a real reduction";
+}
+
+TEST(OutputController, unknownPresentationTimeKeepsProofBlockedForRefusedAndLargerBuffers) {
+    for (const bool refused : {false, true}) {
+        FakeDevice device;
+        device.nativeRate = 44100;
+        device.minimumBursts = 10;
+        device.refuseBufferChanges = refused;
+        OutputController c(device);
+        c.registerTool(OutputTool::Drone);
+        drainAll(c);
+        ASSERT_TRUE(c.duck(0.3f, 91));
+        pull(device, 480);
+        EXPECT_TRUE(drainAll(c).empty());
+        EXPECT_FALSE(c.hasEvents()) << "an unknown deadline must also allow the event thread to wait";
+        device.timestampValid = true;
+        device.tsNanos = 5000000000LL;
+        EXPECT_TRUE(c.hasEvents());
+        const auto events = drainAll(c);
+        ASSERT_EQ(1u, events.size());
+        EXPECT_EQ(EventKind::DuckSettled, events[0].kind);
+        EXPECT_EQ(91, events[0].a);
+        const double instant = events[0].c * 1e9 / device.nativeRate;
+        EXPECT_EQ(device.tsNanos + static_cast<std::int64_t>(std::ceil(instant)), events[0].d);
+        EXPECT_TRUE(drainAll(c).empty());
+    }
 }
