@@ -127,7 +127,8 @@ class AudioRecordSource(
             recorder.release()
             return Result.failure(InputException(InputFailure.Busy(recorder.device.name)))
         }
-        val opened = InputInfo(recorder.sampleRate, recorder.device.name, recorder.source)
+        val opened = InputInfo(recorder.sampleRate, recorder.device.name, recorder.source,
+            recorder.bufferFrames + Hop.frames(recorder.sampleRate) / BLOCKS_PER_HOP)
         val stream = Stream(recorder, sink)
         current = stream
         info = opened

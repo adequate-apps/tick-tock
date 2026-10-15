@@ -17,6 +17,8 @@ data class InputInfo(
     val deviceName: String,
     /** The capture preset that succeeded, for the Diagnostics page. */
     val source: InputSource,
+    /** Maximum captured frames still upstream of the sink, including an in-flight delivery. */
+    val bufferFrames: Int = 0,
 )
 
 /** Capture presets, tried in this order until one opens. */

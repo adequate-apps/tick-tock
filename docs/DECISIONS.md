@@ -243,3 +243,25 @@ questions below.
   this layout together.
 - Output information carries routed-device identity and wireless classification together.
   Same-name devices remain distinguishable for notice dismissal and calibration cancellation.
+
+
+## 21. Unison proof follows presented duck audio
+
+- Each requested duck can carry a generation. The render callback acknowledges that
+  generation only when the master duck reaches its target. The control side maps that
+  frame to monotonic presentation time using a device timestamp. Unknown presentation
+  timing leaves the acknowledgement queued; queueing a command supplies no acknowledgement.
+  Stream restart discards pending duck requests and acknowledgements while preserving
+  queued voice, mute and metronome edits.
+- JNI ABI 4 adds the duck generation and the DuckSettled event. Generation zero keeps
+  fire-and-forget callers compatible. Superseded ramps need no acknowledgement; missing
+  or stale acknowledgements leave matching drone notes excluded from unison proof.
+- A restarted or changed output first restores full gain and fences capture through its
+  presented acknowledgement. A still-ducked old stream cannot establish the next probe's
+  reference level. The same fence then protects the reduced-gain unison evidence.
+- Analysis dispatches duck transitions before evaluating the next buffered hop. Its
+  evidence fence resumes only after presentation and after all audio already delivered
+  or still buffered upstream has passed. Both halves of an analysis window must clear
+  that fence. InputInfo reports the platform buffer plus one in-flight capture block.
+- Zero-gain voices retain their phase and requested settings while contributing no
+  sounding notes to bleed exclusion or recording context.

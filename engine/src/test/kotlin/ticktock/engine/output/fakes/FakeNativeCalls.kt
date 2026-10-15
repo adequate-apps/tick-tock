@@ -45,6 +45,10 @@ class FakeNativeCalls : NativeCalls {
                 ints = intArrayOf(bar.toInt(), (bar ushr 32).toInt(), flags, generation))
         }
 
+        fun duckSettled(generation: Int, frame: Long, nanos: Long) {
+            events += Event(7, a = generation.toLong(), c = frame, d = nanos)
+        }
+
         fun counters(late: Long, underruns: Long) {
             lateBeatsDropped = late
             this.underruns = underruns
@@ -144,7 +148,7 @@ class FakeNativeCalls : NativeCalls {
 
     override fun nativeSetA4(handle: Long, hz: Double): Boolean = record(handle, "setA4", hz)
 
-    override fun nativeDuck(handle: Long, gain: Float): Boolean = record(handle, "duck", gain)
+    override fun nativeDuck(handle: Long, gain: Float, generation: Int): Boolean = record(handle, "duck", gain, generation)
 
     override fun nativeMetroStart(
         handle: Long, bpm: Int, beatsPerBar: Int, beatUnit: Int, compoundPulse: Boolean, accents: IntArray,

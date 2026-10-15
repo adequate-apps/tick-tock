@@ -18,7 +18,7 @@
 namespace ticktock::control {
 
 // ticktock.core.contracts.OutputEvent, in declaration order.
-enum class EventKind : std::int32_t { Opened = 0, Closed = 1, Beat = 2, Parked = 3, Resumed = 4, Failed = 5, Counters = 6 };
+enum class EventKind : std::int32_t { Opened = 0, Closed = 1, Beat = 2, Parked = 3, Resumed = 4, Failed = 5, Counters = 6, DuckSettled = 7 };
 
 // ticktock.core.contracts.ParkReason, in declaration order.
 enum class ParkReason : std::int32_t { HeadphonesDisconnected = 0, IncomingCall = 1, OutputFailed = 2, Background = 3 };
@@ -32,6 +32,7 @@ enum class ParkReason : std::int32_t { HeadphonesDisconnected = 0, IncomingCall 
 //   Parked           a = reason, tools = tool mask
 //   Failed           a = deviceId, ints = the refused rates
 //   Counters         a = lateBeatsDropped, b = underruns
+//   DuckSettled      a = generation, c = frame, d = nanos
 struct ControlEvent {
     EventKind kind = EventKind::Closed;
     std::int64_t a = 0;
@@ -74,7 +75,7 @@ public:
     bool voiceOff(std::int32_t slot);
     bool voiceGain(std::int32_t slot, float gain);
     bool setA4(double hz);
-    bool duck(float gain);
+    bool duck(float gain, std::int32_t generation = 0);
     bool metroStart(const render::MetroParams& params);
     bool metroUpdate(const render::MetroParams& params);
     bool metroStop();

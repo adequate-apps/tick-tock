@@ -49,6 +49,7 @@ private fun OutputEvent.line(): String = when (this) {
     is OutputEvent.Beat -> "Beat index=$index beatInBar=$beatInBar frame=$frame nanos=$nanos"
     is OutputEvent.Parked -> "Parked reason=$reason tools=$tools"
     is OutputEvent.Failed -> "Failed device=\"$deviceName\" rates=${refusedRates.joinToString(",")}"
+    is OutputEvent.DuckSettled -> "DuckSettled generation=$generation frame=$frame nanos=$nanos"
     is OutputEvent.Counters -> "Counters late=$lateBeatsDropped underruns=$underruns"
 }
 

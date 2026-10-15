@@ -52,4 +52,7 @@ sealed interface OutputEvent {
 
     /** Diagnostics counters since the stream opened (MET-04, POL-18). */
     data class Counters(val lateBeatsDropped: Int, val underruns: Int) : OutputEvent
+
+    /** The requested duck reached its target at [frame], with monotonic presentation time [nanos]. */
+    data class DuckSettled(val generation: Int, val frame: Long, val nanos: Long) : OutputEvent
 }
