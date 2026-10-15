@@ -91,6 +91,28 @@ class ToolStateTest {
     }
 
     @Test
+    fun `BTC-01 a queued explicit restart keeps its latest setup and replays only once`() {
+        val state = ToolState()
+        val completed = setup.copy(bpm = 100, beatLimit = 8, generation = 20)
+        state.sent(OutputCommand.MetroStart(completed))
+        val requested = completed.copy(generation = 21)
+        val edited = requested.copy(gain = 0.6f)
+        state.kept(OutputCommand.MetroStart(requested), OutputCommand.MetroUpdate(edited))
+        assertEquals(listOf(OutputCommand.MetroStart(edited)), state.replay(continuing = true))
+        assertEquals(listOf(OutputCommand.MetroUpdate(edited)), state.replay(continuing = true))
+
+        state.kept(OutputCommand.MetroStart(requested))
+        state.sent(OutputCommand.MetroStart(edited))
+        assertEquals(listOf(OutputCommand.MetroUpdate(edited)), state.replay(continuing = true))
+
+        state.kept(OutputCommand.MetroStart(requested), OutputCommand.MetroStop)
+        assertEquals(listOf<OutputCommand>(OutputCommand.MetroStop), state.replay(continuing = true))
+        state.kept(OutputCommand.MetroStart(requested))
+        state.clear()
+        assertEquals(emptyList<OutputCommand>(), state.replay(continuing = true))
+    }
+
+    @Test
     fun `POL-24 the sounding notes are every voice's note, both notes of a root and fifth, once each, in order`() {
         val state = ToolState()
         state.sent(warm)

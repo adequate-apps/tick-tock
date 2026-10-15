@@ -298,6 +298,26 @@ class AudioControlThreadTest {
     }
 
     @Test
+    fun `BTC-01 an explicit finite restart queued while parked reaches the resumed stream as a start`() {
+        startOnHeadset()
+        register(OutputTool.METRONOME)
+        val previous = setup.copy(bpm = 100, beatLimit = 8, generation = 20)
+        send(OutputCommand.MetroStart(previous))
+        devices.becomingNoisy()
+        idle()
+        assertEquals(true, backend.opened.single().engineKept)
+        val requested = previous.copy(generation = 21)
+        val edited = requested.copy(gain = 0.6f)
+        send(OutputCommand.MetroStart(requested), OutputCommand.MetroUpdate(edited))
+        backend.nextRouted = USB_DAC
+        devices.add(USB_DAC)
+        idle()
+        val resumed = checkNotNull(backend.current)
+        assertTrue(resumed.continuesEngine)
+        assertEquals(listOf(OutputCommand.MetroStart(edited)), resumed.sent)
+    }
+
+    @Test
     fun `OUT-06 what the player switches off while unplugged is switched off in the continued engine too`() {
         startOnHeadset()
         register(OutputTool.DRONE, OutputTool.METRONOME)
