@@ -41,6 +41,14 @@ import diff and the merged result. Both are pure functions with JVM tests.
 `format` and `version` are required. Every other field is optional: a file that carries only one
 range override is a complete, valid file, and an import of it changes only that override.
 
+Documents use strict UTF-8 and fit within 1 MiB. The parser bounds nesting and rejects numbers outside
+its finite numeric range, including in unknown fields. Before applying, the app serializes the merged
+configuration in the same format used by export and checks that it also fits within 1 MiB. A file whose
+expanded or merged representation exceeds the limit leaves the current settings unchanged.
+
+An imported instrument change clears the active horn nickname. Imports that keep the current instrument
+preserve its nickname; saved horn profiles remain available in the instrument picker.
+
 ### `rangeOverrides`
 
 An object keyed by catalogue key (`eb_alto`, `bb_tenor`, `flute_c`, ...; the full list is

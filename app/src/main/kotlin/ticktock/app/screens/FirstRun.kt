@@ -91,8 +91,8 @@ private fun InstrumentStep(graph: AppGraph, onAll: () -> Unit) {
                     ListRow(
                         title = instrument.displayName,
                         detail = "${letter(60 + instrument.transposition, NoteSpelling.auto(instrument))} · ${Transposition.describe(instrument.transposition)}",
-                        selected = instrument.key == prefs.instrumentKey,
-                        onClick = { graph.prefs.update { it.copy(instrumentKey = instrument.key) } },
+                        selected = instrument.key == prefs.instrumentKey && prefs.hornNickname.isEmpty(),
+                        onClick = { graph.prefs.update { it.copy(instrumentKey = instrument.key, hornNickname = "") } },
                         tag = "first-run-$key",
                     )
                 }

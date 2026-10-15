@@ -106,6 +106,7 @@ fun SettingsScreen(graph: AppGraph, onInstrument: () -> Unit) {
             }
         }
     }
+    SettingsExtras(graph)
 }
 
 /**
@@ -123,6 +124,18 @@ fun InstrumentPicker(graph: AppGraph, onPicked: () -> Unit) {
         tag = "instruments-pane",
     ) {
         Column(Modifier.fillMaxWidth().frame()) {
+            if (prefs.personalConfig.hornProfiles.isNotEmpty()) {
+                ListHeader(stringResource(R.string.config_horn_profiles))
+                prefs.personalConfig.hornProfiles.forEach { profile ->
+                    val named = Catalogue.find(profile.instrumentKey)
+                    if (named != null) ListRow(title = profile.nickname, detail = named.displayName,
+                        selected = profile.instrumentKey == prefs.instrumentKey && profile.nickname == prefs.hornNickname,
+                        onClick = {
+                            graph.prefs.update { it.copy(instrumentKey = profile.instrumentKey, hornNickname = profile.nickname.take(PrefsSchema.TEXT_MAX)) }
+                            onPicked()
+                        }, tag = "horn-profile-${profile.id}")
+                }
+            }
             for (family in Family.entries) {
                 val members = Catalogue.all.filter { it.family == family }
                 if (members.isEmpty()) continue
@@ -131,9 +144,9 @@ fun InstrumentPicker(graph: AppGraph, onPicked: () -> Unit) {
                     ListRow(
                         title = instrument.displayName,
                         detail = "${keyOf(instrument)} · ${Transposition.describe(instrument.transposition)}",
-                        selected = instrument.key == prefs.instrumentKey,
+                        selected = instrument.key == prefs.instrumentKey && prefs.hornNickname.isEmpty(),
                         onClick = {
-                            graph.prefs.update { it.copy(instrumentKey = instrument.key) }
+                            graph.prefs.update { it.copy(instrumentKey = instrument.key, hornNickname = "") }
                             onPicked()
                         },
                         tag = "instrument-${instrument.key}",

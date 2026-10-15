@@ -40,6 +40,24 @@ class SchemaTest {
     }
 
     @Test
+    fun `SES-14 upgrading version one retains saved sessions and reaches the fresh schema`() {
+        context.openOrCreateDatabase("schema-test.db", 0, null).use { db ->
+            HistoryDatabase.migrate(db, 0, 1)
+            db.execSQL("INSERT INTO sessions(id, started_at, name, equipment) VALUES (7, 123, 'Study', 'Reed')")
+            db.version = 1
+        }
+        val db = helper.readableDatabase
+        assertEquals(2, db.version)
+        db.rawQuery("SELECT id, started_at, name, equipment, purpose, notes FROM sessions", null).use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals(7L, c.getLong(0))
+            assertEquals(123L, c.getLong(1))
+            assertEquals(listOf("Study", "Reed", "practice", ""), (2..5).map(c::getString))
+        }
+        assertEquals(File("src/test/resources/db/schema-v2.sql").readText(), schemaDump(helper))
+    }
+
+    @Test
     fun `SES-01 the schema carries the 2_0 columns`() {
         val db = helper.readableDatabase
         fun columns(table: String) = db.rawQuery("PRAGMA table_info($table)", null).use { c ->

@@ -82,6 +82,15 @@ class TuneScreenTest {
         compose.onAllNodes(hasTestTag(tag), useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
             ?.config?.getOrNull(SemanticsProperties.Text)?.joinToString { it.text }
 
+    private fun needleState(): CharSequence? {
+        var state: CharSequence? = null
+        scenario!!.onActivity { activity ->
+            val view = requireNotNull(activity.window.decorView.findViewWithTag<android.view.View>("needle-accessibility"))
+            state = androidx.core.view.accessibility.AccessibilityNodeInfoCompat.wrap(view.createAccessibilityNodeInfo()).stateDescription
+        }
+        return state
+    }
+
     private fun statusWords(): List<String> = (0..3).mapNotNull { text("statusbar-$it") }
 
     private fun awaitStatus(vararg words: String) {
@@ -90,6 +99,53 @@ class TuneScreenTest {
         } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
             throw AssertionError("status ${statusWords()}, wanted ${words.toList()}; readout ${text("readout-letter")}${text("readout-octave")} ${text("readout-cents")}", timeout)
         }
+    }
+
+    @Test
+    fun `TLK-01 and TLK-02 settled announcements are opt in and never follow cents at hop rate`() {
+        val input = FakeAudioInput(sampleRate = rate)
+        launch(input)
+        val graph = TickTockApp.graph(ApplicationProvider.getApplicationContext())
+        play(input, 440.0, 18)
+        compose.waitUntil(TIMEOUT) { text("readout-cents") == "+0" }
+        assertEquals(null, text("settled-announcement"))
+        assertEquals("B 5, 0 cents", needleState())
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { graph.prefs.update { it.copy(announceSettledNotes = true) } }
+        compose.mainClock.advanceTimeByFrame()
+        compose.mainClock.advanceTimeBy(900)
+        assertEquals(null, text("settled-announcement"))
+        compose.mainClock.advanceTimeBy(150)
+        awaitFrames { text("settled-announcement") != null }
+        val announcement = text("settled-announcement")
+        assertEquals("B 5, 0 cents", announcement)
+        assertEquals(androidx.compose.ui.semantics.LiveRegionMode.Polite,
+            compose.onNodeWithTag("settled-announcement").fetchSemanticsNode().config.getOrNull(SemanticsProperties.LiveRegion))
+        play(input, Pitch.hzFromMidi(69.07, 440.0), 18)
+        awaitFrames { text("readout-cents") != "+0" }
+        compose.mainClock.advanceTimeBy(1_500)
+        assertEquals(announcement, text("settled-announcement"))
+        play(input, Pitch.hzFromMidi(70, 440.0), 18)
+        awaitFrames { text("settled-announcement")?.startsWith("C 6,") == true }
+        compose.runOnIdle { graph.prefs.update { it.copy(earsFirst = true) } }
+        compose.mainClock.advanceTimeByFrame()
+        assertEquals(null, text("settled-announcement"))
+    }
+
+    @Test
+    fun `TLK-01 needle semantics stay stable while its visual cents change`() {
+        val input = FakeAudioInput(sampleRate = rate)
+        launch(input)
+        play(input, 440.0, 18)
+        compose.waitUntil(TIMEOUT) { text("readout-cents") == "+0" }
+        val before = compose.onNodeWithTag("cents-scale", true).fetchSemanticsNode().config
+        val description = before.getOrNull(SemanticsProperties.ContentDescription)
+        val state = before.getOrNull(SemanticsProperties.StateDescription)
+        play(input, Pitch.hzFromMidi(69.07, 440.0), 18)
+        compose.waitUntil(TIMEOUT) { text("readout-cents") != "+0" }
+        val after = compose.onNodeWithTag("cents-scale", true).fetchSemanticsNode().config
+        assertEquals(description, after.getOrNull(SemanticsProperties.ContentDescription))
+        assertEquals(state, after.getOrNull(SemanticsProperties.StateDescription))
     }
 
     @Test
@@ -181,7 +237,7 @@ class TuneScreenTest {
         val oldHop = graph.tune.level.value.hop
         play(input, 444.0)
         compose.waitUntil(TIMEOUT) { text("readout-cents") == "+16" }
-        assertEquals(listOf("+16"), compose.onNodeWithTag("cents-scale").fetchSemanticsNode().config[SemanticsProperties.ContentDescription])
+        assertEquals("B 5, 16 cents sharp", needleState())
         assertTrue(graph.tune.trace.value !== oldTrace)
         assertTrue(graph.tune.trace.value.cents.last() > 0f)
         assertTrue(graph.tune.level.value.hop > oldHop)
@@ -227,7 +283,7 @@ class TuneScreenTest {
         assertEquals("sounding", text("readout-sounding"))
         assertEquals("— Hz", text("readout-hz"))
         compose.onNodeWithTag("readout-cents", useUnmergedTree = true).assertDoesNotExist()
-        assertEquals(listOf("—"), compose.onNodeWithTag("cents-scale").fetchSemanticsNode().config[SemanticsProperties.ContentDescription])
+        assertEquals("—", needleState())
         compose.onNodeWithTag("cents-scale").performScrollTo().captureRoboImage("src/test/screenshots/tune-ears-first-hidden-needle.png")
         compose.onNodeWithTag("last-note-trace").assertExists()
         assertTrue(graph.tune.level.value.db > ticktock.app.audio.Level.LEVEL_FLOOR_DB)

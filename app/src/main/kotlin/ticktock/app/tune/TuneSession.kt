@@ -52,14 +52,16 @@ class TuneSession(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val capture = LiveCapture(mode = prefs.responseMode, a4Hz = prefs.a4Hz, history = history,
-        sounding = sounding, onDuck = onDuck)
+        sounding = sounding, onDuck = onDuck, noiseFloorDb = prefs.noiseFloorDb)
     private var requestedA4 = prefs.a4Hz
     private var requestedMode = prefs.responseMode
+    private var requestedNoiseFloor = prefs.noiseFloorDb
     private var input: AudioInput? = null
     private var reporting: Job? = null
 
     val state: StateFlow<CaptureState> = capture.state
     val level: StateFlow<Level> = capture.level
+    val diagnostics: StateFlow<ticktock.app.audio.CaptureDiagnostics> = capture.diagnostics
     val trace: StateFlow<TraceSnapshot> = capture.trace
     val lastNote: StateFlow<ticktock.app.audio.LastNote?> = capture.lastNote
 
@@ -96,6 +98,10 @@ class TuneSession(
     }
 
     fun settingsChanged(prefs: Prefs) {
+        if (prefs.noiseFloorDb != requestedNoiseFloor) {
+            requestedNoiseFloor = prefs.noiseFloorDb
+            capture.requestNoiseFloor(prefs.noiseFloorDb)
+        }
         if (prefs.a4Hz != requestedA4) {
             requestedA4 = prefs.a4Hz
             capture.requestA4(prefs.a4Hz)

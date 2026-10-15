@@ -36,7 +36,8 @@ sealed class ParseResult {
 object PersonalConfigCodec {
     fun parse(text: String): ParseResult {
         val root = try {
-            Json.parse(text)
+            // Leave room for the preferences envelope around retained unknown fields.
+            Json.parse(text, maxDepth = 48)
         } catch (e: JsonParseException) {
             return ParseResult.Failed(listOf(Problem("file", "the file is not valid JSON (${e.message})")))
         }

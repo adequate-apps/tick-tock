@@ -75,7 +75,15 @@ object Migrations {
         ),
     )
 
-    val ALL: List<Migration> = listOf(v1)
+    private val v2 = Migration(
+        from = 1,
+        statements = listOf(
+            "ALTER TABLE sessions ADD COLUMN purpose TEXT NOT NULL DEFAULT 'practice' CHECK (purpose IN ('practice', 'shop', 'equipment'))",
+            "ALTER TABLE sessions ADD COLUMN notes TEXT NOT NULL DEFAULT ''",
+        ),
+    )
+
+    val ALL: List<Migration> = listOf(v1, v2)
 
     /** The version a database has after every step has run. */
     val LATEST: Int = ALL.last().to

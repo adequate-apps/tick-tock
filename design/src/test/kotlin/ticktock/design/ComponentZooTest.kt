@@ -146,6 +146,50 @@ class ComponentZooTest(private val theme: GridlinePalette, private val fontScale
         compose.onNodeWithTag(ZOO).captureRoboImage("src/test/screenshots/zoo-${theme.name.lowercase()}-w$widthDp-fs$fontScale.png")
     }
 
+    @Test fun `history controls fit every theme text size and width`() {
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
+                GridlineTheme(theme) {
+                    Column(Modifier.width(widthDp.dp).padding(GridlineSpacing.sp2).testTag("history-zoo"),
+                        verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
+                        ticktock.design.components.HistoryRow("B♭4", "3 attacks\n38 readings", "B flat 4, mean plus 4, 3 attacks, 38 readings", false, {},
+                            mean = { GlText("+4", style = GridlineType.value) }, chart = {
+                                ticktock.design.plots.Histogram(IntArray(101).apply { this[54] = 38 }, inTuneMax = 5f, closeMax = 12f,
+                                    description = "Session", compact = true)
+                            })
+                        ticktock.design.components.HistoryRow("D5", "1 attack\n3 readings", "D5, 3 readings", true, {},
+                            mean = { GlText("−8", style = GridlineType.value, color = GridlineColors.textDisabled) }, chart = {
+                                ticktock.design.plots.Histogram(IntArray(101).apply { this[42] = 3 }, inTuneMax = 5f, closeMax = 12f,
+                                    description = "Three readings", compact = true, dimmed = true)
+                            })
+                        ticktock.design.components.TextField("Name", "Practice", {})
+                        ticktock.design.components.TextField("Notes", "Warm horn\nSoft reed", {}, multiline = true)
+                        ticktock.design.components.ButtonRow(listOf("Save session", "Share CSV", "Clear session").map {
+                            ticktock.design.components.ButtonAction(it, {}, primary = it == "Save session")
+                        })
+                    }
+                }
+            }
+        }
+        val root = compose.onNodeWithTag("history-zoo").fetchSemanticsNode()
+        val density = root.layoutInfo.density.density
+        root.descendants().filter { it.config.getOrNull(SemanticsActions.OnClick) != null }.forEach {
+            org.junit.Assert.assertTrue(it.label().isNotBlank())
+            org.junit.Assert.assertTrue(it.boundsInRoot.width / density >= TARGET_DP)
+            org.junit.Assert.assertTrue(it.boundsInRoot.height / density >= TARGET_DP)
+        }
+        val unmerged = compose.onNodeWithTag("history-zoo", useUnmergedTree = true).fetchSemanticsNode()
+        unmerged.descendants().forEach { node -> node.layout()?.let { layout ->
+            org.junit.Assert.assertFalse(layout.didOverflowHeight)
+            for (line in 0 until layout.lineCount) {
+                org.junit.Assert.assertFalse(layout.isLineEllipsized(line))
+                org.junit.Assert.assertTrue(layout.getLineRight(line) - layout.getLineLeft(line) <= layout.size.width + 1f)
+            }
+        } }
+        compose.onNodeWithTag("history-zoo").captureRoboImage("src/test/screenshots/zoo-history-${theme.name.lowercase()}-w$widthDp-fs$fontScale.png")
+    }
+
     private fun SemanticsNode.descendants(): List<SemanticsNode> = children.flatMap { listOf(it) + it.descendants() }
 
     private fun SemanticsNode.label(): String =

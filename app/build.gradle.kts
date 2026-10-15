@@ -167,3 +167,11 @@ tasks.withType<Test>().configureEach {
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
 }
+
+// Bundle the repository's notices so they remain readable without a browser.
+val prepareNotices by tasks.registering(Copy::class) {
+    from(rootProject.file("LICENSE"), rootProject.file("THIRD_PARTY.md"))
+    into(layout.buildDirectory.dir("generated/notices"))
+}
+android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/notices").get().asFile)
+tasks.named("preBuild") { dependsOn(prepareNotices) }

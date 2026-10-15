@@ -164,6 +164,7 @@ object PrefsSchema {
             get = { it.theme },
             set = { p, v -> p.copy(theme = v) },
         ),
+        PersonalConfigField(),
         BoolField("micAsked", false, get = { it.micAsked }, set = { p, v -> p.copy(micAsked = v) }),
     )
 

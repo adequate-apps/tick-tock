@@ -184,4 +184,7 @@
     <string name="delay_visual">Visual offset</string>
     <string name="status_headphones">Headphones</string>
     <string name="status_speaker">Speaker</string>
+    <string name="tune_spoken_sharp">%1$s, %2$d cents sharp</string>
+    <string name="tune_spoken_flat">%1$s, %2$d cents flat</string>
+    <string name="tune_spoken_even">%1$s, %2$d cents</string>
 </resources>

@@ -62,12 +62,12 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 | POL-15 | one window per hop | U | 2.0 | HopAnalyserTest `POL-15`; after a ring gap the first hop is context only, so no window that never existed is analysed (HopAnalyserTest `POL-16 after an overflow`) | green |
 | POL-16 | oversized block | U | 2.0 | HopAnalyserTest `POL-16` (three tests: analyser, ring, and after an overflow every window is contiguous audio and hop numbering follows sounding time) | green |
 | POL-17 | restart replaces the stream | U | 2.0 | HopAnalyserTest `POL-17` (two tests) with FakeAudioInput | green |
-| POL-18 | counters visible | U | 2.0 | HopAnalyserTest `POL-18` (`AnalysisCounters`; the Diagnostics page reads them in M6) | green |
+| POL-18 | counters visible | U | 2.0 | DiagnosticsScreenTest `Diagnostics shows actual dropped hops from the oversized debug input seam`; HopAnalyserTest `POL-18`. The Diagnostics page reads live capture counters while visible. | green |
 | POL-19 | readings carry their A4 | U | 2.0 | DetectorA4Test `POL-19` | green |
 | POL-20 | A4 change discards stale readings | U | 2.0 | DetectorA4Test `POL-20` (two tests: the discard; the change returns the release of the note it forgot) | green |
 | POL-21 | same-value change | U | 2.0 | DetectorA4Test `POL-21` | green |
 | POL-22 | new run on A4 change | U | 2.0 | DetectorA4Test `POL-22` (the reading stream is partitioned by generation; the run row itself opens under SES-02 in M3) | green |
-| POL-23 | table after an A4 change | U | 2.0 | DetectorA4Test `POL-23` (`Pitch.centsFrom` re-derives from stored Hz, and every reading carries its A4) | green |
+| POL-23 | table after an A4 change | U | 2.0 | DetectorA4Test `POL-23`; TableScreenTest `SES-03 table scope and note clear retain saved history and historical A4` proves stored grading labels and the historical drone target. | green |
 | POL-24 | bleed is excluded | N + U | 2.0 | H: ToolStateTest `POL-24 zero gain voices`, AudioControlThreadTest `POL-24 the sounding snapshot follows gain through zero`. U: BleedPolicyTest `POL-24` on scripted estimates, and `POL-28 leakage after the player stops` (leakage after a unison is never saved); N fixtures land with the engine; H: CaptureBleedTest and OutputGraphTest exercise real PCM through the app owner, delayed duck evidence and persisted history | open |
 | POL-25 | an excluded hop keeps the player's note | N + U | 2.0 | U: BleedPolicyTest `POL-25`; N fixtures land with the engine | open |
 | POL-26 | duck on suspicion | N + U | 2.0 | U: BleedPolicyTest `POL-26`, including `POL-26 a capture restarted during a duck requests a fresh duck`; N fixtures land with the engine | open |
@@ -102,7 +102,7 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 | RNG-08 | corrected families | U | 2.0 | RangeGoldenTest `RNG-08` | green |
 | RNG-09 | mappings | U | 2.0 | CatalogueTest `RNG-09` | green |
 | RNG-10 | catch-all keys | U | 2.0 | RangeResolverTest `RNG-10` | green |
-| RNG-11 | always show cents | U | 2.0 |  | open |
+| RNG-11 | always show cents | U | 2.0 | RangeScreenTest `RNG-11 out of range note keeps its cents and Hz dimmed and an imported widening restores ink` drives real analysis and checks retained values and foreground pixels. | green |
 | RNG-12 | played out-of-range notes in the table | U | 2.0 |  | open |
 | RNG-13 | narrowing a range | U | v1.1 |  | deferred |
 | RNG-14 | instrument switch | U | 2.0 |  | open |
@@ -142,18 +142,18 @@ ledgered under their own prefixes below.
 |---|---|---|---|---|---|
 | SES-01 | the first run starts with saved prefs | H | 2.0 | HistoryStoreTest `SES-01`; AppGraphTest `SES-01` (cold start from a saved prefs file labels the first run, a prefs change relabels the next); PrefsStoreTest `SES-01`; AVD: a 442 Hz tone stored 206 readings in one run at A4 = 442, and a relaunch kept the session and opened a second | green |
 | SES-02 | new-run triggers | H | 2.0 | HistoryStoreTest `SES-02` (nickname, A4 generation, instrument, transposition, cleared nickname) | green |
-| SES-03 | SESSION means this session | H | 2.0 | HistoryStoreTest `SES-03` (the summaries query; the table screen lands in M6) | green |
-| SES-04 | per-nickname separation | H | 2.0 | HistoryStoreTest `SES-04` | green |
-| SES-05 | validate before storing | H | 2.0 | HistoryStoreTest `SES-05`; the rule is `HistorySink.storable` in :core, SmallContractsTest | green |
+| SES-03 | SESSION means this session | H | 2.0 | HistoryStoreTest `SES-03`; TableSessionTest `SES-03`; TableScreenTest `SES-03 table scope and note clear retain saved history and historical A4`; `note clearing identifies current saved and all history scopes and Cancel is primary` proves scope-labelled confirmation and cancellation. | green |
+| SES-04 | per-nickname separation | H | 2.0 | HistoryStoreTest `SES-04`; SettingsExtrasTest `ordinary instrument choices clear a named identity before capture` checks named-to-generic selection and replay labels. | green |
+| SES-05 | validate before storing | H | 2.0 | HistoryStoreTest `SES-05`; the rule is `HistorySink.storable` in :core, SmallContractsTest; DiagnosticsScreenTest `Diagnostics separates rejected readings and storage buffer drops from audio overflow` checks both storage counters independently. | green |
 | SES-06 | batched writes | H | 2.0 | HistoryStoreTest `SES-06` (a burst is one transaction; 3.2 s of continuous readings at about 200 a second is at most one transaction a second) | green |
-| SES-07 | write errors surface | H | 2.0 | HistoryStoreTest `SES-07 a failing flush keeps the buffer, counts, raises the banner after three, and recovers` and `SES-07 a session change whose flush fails is refused and files nothing under the next session`; AppNotices renders `notice-history`, but no UI failure-injection test proves that persistent failures reach the player | open |
-| SES-08 | summaries and indexes | H | 2.0 | HistoryStoreTest `SES-08`; SchemaTest `SES-08` (indexes); `StoreStatus.flushes` is the refresh signal | green |
+| SES-07 | write errors surface | H | 2.0 | HistoryStoreTest `SES-07`; TableSessionTest `SES-07 failed save keeps its draft facts and error through a later successful read`; TableScreenTest `SES-07 a refused session save keeps its draft and shows the storage error in the sheet`, including recreation with the error and draft retained. | green |
+| SES-08 | summaries and indexes | H | 2.0 | HistoryStoreTest `SES-08`; SchemaTest `SES-08`; TableSessionTest `SES-08 visible table refreshes at a successful flush and retains its snapshot between readings`. | green |
 | SES-09 | retention | H | 2.0 | HistoryStoreTest `SES-09` (two tests: raw readings of unsaved sessions age out with summaries kept; a saved session keeps its readings, decision 5) | green |
 | SES-10 | storage budget | H | 2.0 | HistoryStoreTest `SES-10` (a simulated year: 53 MB against 100 MB) | green |
 | SES-11 | one writer | H | 2.0 | the field table and the normaliser derived from it: PrefsSchemaTest `SES-11`; the noise-floor range tops out where the gate stays reachable under every preset (ResponseModeTableTest `the top of the noise-floor range`); the one writer lands with `PrefsStore` in M3; PrefsStoreTest `SES-11` (two threads updating different fields lose nothing) | green |
 | SES-12 | unknown and newer fields | H | 2.0 | the normaliser's round trip of unknown and newer-version fields: PrefsSchemaTest `SES-12`; PrefsStoreTest `SES-12` (the store keeps unknown and newer-version fields through a save) | green |
 | SES-13 | zero stays zero | H | 2.0 | the normaliser keeps a gain of 0: PrefsSchemaTest `SES-13`; PrefsStoreTest `SES-13` (restart path) | green |
-| SES-14 | golden stored data | H | 2.0 | SchemaTest `SES-14` (the created schema matches `data/src/test/resources/db/schema-v1.sql`); 2.0 is the first shipped schema and prefs version, so upgrade goldens start with the next version | green |
+| SES-14 | golden stored data | H | 2.0 | SchemaTest `SES-14` and versioned schema goldens; version 2 adds saved-session purpose and notes, with migration preserving version 1 data. | green |
 | SES-15 | CSV and TXT export | H | v1.1 |  | deferred |
 
 ## Output lifecycle and the microphone
@@ -239,9 +239,9 @@ ledgered under their own prefixes below.
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | A11Y-01 | tuner readout | H | 2.0 | FrameScreenshotTest `tune at font scale 1_0`, `1_3`, `1_5`, `2_0` cover the ghost readout; sounding note, cents and Hz clipping at every scale still need assertions | open |
-| A11Y-02 | every screen | H | 2.0 (supplemented by CLR-01..03) | AdaptiveRowsTest `denied notices keep the message and action on readable lines` and `setting rows keep labels whole and long values inside the row` assert text fit at four font scales and two widths; FrameScreenshotTest covers Tune, Drone, Metronome and Settings at four scales; ComponentZooTest `labels fit, targets are 48 dp and every control is labelled` covers components in four themes and two widths; unfinished screens and all dialogs remain unproved; DroneScreenTest and MetronomeScreenTest `A11Y-02` reach every output control at double text; OutputScreenshotTest adds 600x800 at all four font scales and the other three themes; DelayScreenshotTest covers large-text dialogs. Table remains pending | open |
+| A11Y-02 | every screen | H | 2.0 (supplemented by CLR-01..03) | AdaptiveRowsTest `denied notices keep the message and action on readable lines` and `setting rows keep labels whole and long values inside the row` assert text fit at four font scales and two widths; FrameScreenshotTest covers Tune, Drone, Metronome and Settings at four scales; ComponentZooTest `labels fit, targets are 48 dp and every control is labelled` covers components in four themes and two widths; unfinished screens and all dialogs remain unproved; DroneScreenTest and MetronomeScreenTest `A11Y-02` reach every output control at double text; OutputScreenshotTest adds 600x800 at all four font scales and the other three themes; DelayScreenshotTest covers large-text dialogs. TableScreenshotTest covers rows, distinct historical comparison, metadata and destructive dialogs at all four text sizes and both widths; the complete cross-screen inventory remains pending | open |
 | A11Y-03 | colour is never alone | H | 2.0 | TuneScreenTest `a played A4 on the default tenor sax reads written B5, in tune, concert A4, and the pane is listening` and `a sharp note shows the sharp cue, the close band and its cents` prove signed digits for in-tune and close; off-band and every other band-bearing surface remain unproved | open |
-| A11Y-04 | touch targets | H | 2.0 | ComponentZooTest `labels fit, targets are 48 dp and every control is labelled`; ControlsTest `a button fires once per tap and meets the touch target` prove component targets; an inventory of every screen and dialog control remains unproved; DroneScreenTest and MetronomeScreenTest assert 48 dp output targets at double text; PadsTest covers two widths and four scales. Table remains pending | open |
+| A11Y-04 | touch targets | H | 2.0 | ComponentZooTest `labels fit, targets are 48 dp and every control is labelled`; ControlsTest `a button fires once per tap and meets the touch target` prove component targets; an inventory of every screen and dialog control remains unproved; DroneScreenTest and MetronomeScreenTest assert 48 dp output targets at double text; PadsTest covers two widths and four scales. TableScreenshotTest covers rows, distinct historical comparison, metadata and destructive dialogs at all four text sizes and both widths; the complete cross-screen inventory remains pending | open |
 
 ## Scope revision, 2026-10-14
 
@@ -254,7 +254,7 @@ revision document; the IDs are claimed here like any other.
 |---|---|---|---|---|---|
 | CAP-01 | paused capture drives the needle and reaches no store | H | 2.0 | TuneScreenTest `CAP-01 paused capture keeps listening and live plots while history waits until On` proves Listening plus Capture paused and the Tune tab running indicator, live needle/trace/level, unchanged stored count while paused and resumed writes on On; HistoryStoreTest `CAP-01 and CAP-03 paused readings are counted and only the empty run is recorded` | green |
 | CAP-02 | paused state survives process death | H | 2.0 | prefs field `capturePaused`, device-bound | open |
-| CAP-03 | a run opened while paused counts skipped readings | H | 2.0 | HistoryStoreTest `CAP-01 and CAP-03` | green |
+| CAP-03 | a run opened while paused counts skipped readings | H | 2.0 | HistoryStoreTest `CAP-01 and CAP-03`; DiagnosticsScreenTest `CAP-03 Diagnostics includes readings skipped while capture is paused`. | green |
 
 ### Attacks as the unit
 
@@ -263,7 +263,7 @@ revision document; the IDs are claimed here like any other.
 | ATK-01 | attack columns in note_hist | H | 2.0 | SchemaTest `SES-01` and the golden schema | green |
 | ATK-02 | one attack per attack edge, landing cents from the first settled reading | U, H | 2.0 | U: DetectorPolicyTest `ATK-02` (two tests: one `Attack` per attack edge carrying the landing cents of the confirming hops, and the first settled reading flagged `firstSettled`); H: the store counts them in M3; H: HistoryStoreTest `ATK-02`, LiveCaptureTest (the first settled reading reaches history marked) | green |
 | ATK-03 | held note versus sweep | H | 2.0 |  | open |
-| ATK-04 | attacks shown beside readings | H | 2.0 |  | open |
+| ATK-04 | attacks shown beside readings | H | 2.0 | HistoryControlsTest and HistoryContrastTest; TableScreenshotTest `table distributions note detail and save remain reachable across text sizes and themes` covers counts and the three-reading dimmed row; TableScreenTest checks the spoken count. | green |
 
 ### Run context and target
 
@@ -271,7 +271,7 @@ revision document; the IDs are claimed here like any other.
 |---|---|---|---|---|---|
 | CTX-01 | context and target columns | H | 2.0 | SchemaTest `CTX-01` and the golden schema; the drone note is a `runs.drone_midi` column rather than a `meta` row | green |
 | CTX-02 | drone start and stop open runs | H | 2.0 | HistoryStoreTest `CTX-02 to CTX-04`; OutputGraphTest `CTX-02 actual sounding roots label history across preferences retune park and stop` exercises real SQLite through AppGraph; its PCM `POL-24 and POL-27` test stores the player through a duck | green |
-| CTX-03 | drone runs enter All-history by toggle only | H | 2.0 | prefs field `includeDroneRuns`, default off; HistoryStoreTest `CTX-02 to CTX-04` | green |
+| CTX-03 | drone runs enter All-history by toggle only | H | 2.0 | HistoryStoreTest `CTX-02 to CTX-04`; TableSessionTest `SES-03` covers default exclusion and explicit inclusion; Table scope header names the selected context. | green |
 | CTX-04 | no 2.0 path writes `just` | H | 2.0 | HistoryStoreTest `CTX-02 to CTX-04` (no code path writes `just`) | green |
 
 ### Equipment
@@ -279,7 +279,7 @@ revision document; the IDs are claimed here like any other.
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | EQP-01 | equipment column | H | 2.0 | SchemaTest `SES-01` and the golden schema | green |
-| EQP-02 | equipment field on the session sheet | H | 2.0 | prefs field `lastEquipment` for the prefill | open |
+| EQP-02 | equipment field on the session sheet | H | 2.0 | HistoryStoreTest `EQP-02 saved metadata and captured time survive raw retention and session resumption`; TableScreenTest `EQP-02 saved session metadata round trips through the sheet and named actions`; TableSessionTest `EQP-02` proves exported equipment. | green |
 
 ### Tuning presets
 
@@ -357,9 +357,9 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| TLK-01 | needle state description, read on focus only | H | 2.0 |  | open |
-| TLK-02 | opt-in settled-note live region | H | 2.0 | prefs field `announceSettledNotes`, default off, portable | open |
-| TLK-03 | table rows read as sentences | H | 2.0 |  | open |
+| TLK-01 | needle state description, read on focus only | H | 2.0 | NeedleAccessibilityTest `focus reads the latest note while held-focus changes emit no accessibility events` checks actual focus events and on-demand node state; TuneScreenTest `TLK-01 needle semantics stay stable while its visual cents change` proves the visual updates leave Compose descriptions unchanged. Physical TalkBack speech remains a device check. | green |
+| TLK-02 | opt-in settled-note live region | H | 2.0 | TuneScreenTest `TLK-01 and TLK-02 settled announcements are opt in and never follow cents at hop rate` proves default silence, one-second settling, frozen held-note speech, note changes and ears-first suppression. | green |
+| TLK-03 | table rows read as sentences | H | 2.0 | HistoryControlsTest `history rows expose one full spoken action and fields retain multiline drafts`; TableScreenTest `SES-03` checks the complete note, mean and spread with cents units, attacks and readings sentence. TableScreenTest `histograms label scope units density and both comparison statistics` also exposes separately labelled historical facts. | green |
 | TLK-04 | beats never announced; stepper actions | H | 2.0 |  | open |
 
 ### Colour and shape
@@ -374,8 +374,8 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| EXP-01 | CSV through the share sheet | H | 2.0 |  | open |
-| EXP-02 | CSV rows round-trip to 0.1 c | U | 2.0 |  | open |
+| EXP-01 | CSV through the share sheet | H | 2.0 | ShareFilesTest `EXP-01 CSV shares exact bytes with one temporary read grant from cache only`; TableSessionTest `EQP-02` and HistoryStoreTest `EXP-01` preserve the selected scope and original labels. | green |
+| EXP-02 | CSV rows round-trip to 0.1 c | U | 2.0 | StatisticsCsvTest `EXP-02` checks UTF-8, CRLF, quoting, numeric precision and locale independence; HistoryStoreTest `EXP-01` preserves note_hist values. Formula-like text is neutralized before CSV quoting. | green |
 
 ### Distribution
 
@@ -384,19 +384,37 @@ revision document; the IDs are claimed here like any other.
 | DST-01 | AAB, universal APK and SHA256SUMS from one build | CI | 2.0 |  | open |
 | DST-02 | merged manifest equals `tools/manifest-allowlist-2.0.txt` | CI | 2.0 | `tools/check-manifest.sh` in `tools/verify.sh` (every push); `verify-selftest.sh` case `stray-permission` proves it goes red | green |
 | DST-03 | every `.so` passes the 16 KB alignment check | CI | 2.0 | `tools/check-alignment.sh` in `tools/verify.sh` on the debug APK (every push); `verify-selftest.sh` case `misaligned-library` was seen failing before the stage existed; the release job runs the same script on the release artifacts once `release.yml` lands (M7) | open |
-| DST-04 | About shows version, licence, THIRD_PARTY and the privacy policy link | H | 2.0 |  | open |
+| DST-04 | About shows version, licence, THIRD_PARTY and the privacy policy link | H | 2.0 | SettingsExtrasTest `DST-04 About has version bundled licences and the privacy link`; SettingsExtrasScreenshotTest covers all text sizes and themes. | green |
 
 ### Entitlement seam
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| ENT-01 | `Entitlement` with one implementation and no call sites outside the three gated features | U | 2.0 | EntitlementContractTest (four tests; the call-site grep covers every module) | green |
+| ENT-01 | `Entitlement` with one implementation and no call sites outside the three gated features | U | 2.0 | EntitlementContractTest (four tests; the call-site grep covers every module); TableSessionTest `ENT-01` also checks that denied historical comparison data is absent. | green |
 
 ### Background hook
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | BGH-01 | `ForegroundOwner.onToolsStarted()` on empty-to-one, `onToolsStopped()` on one-to-empty, both no-ops in 2.0 | H | 2.0 | contract shape and the fake registry's call order: OutputPortContractTest (M0); the real registry: OutputRegistryTest `BGH-01` (two tests: started before the open and stopped after the close; a tool that never registered is not a transition) and AudioControlThreadTest `BGH-01` (the owner's hooks bracket the real stream: no stream open at either) | green |
+
+## M6 supporting evidence
+
+SettingsExtrasTest covers persisted controls, confirmed history clearing, import preview/cancel/apply,
+document export and pending imports across activity recreation, slow document reads, recovery after loss
+of a pending payload, generic selection after a saved horn and repeated first-run setup.
+ConfigurationFilesTest rejects oversized, deeply nested and malformed UTF-8 documents; the UI rejects
+deep input without changing preferences and remains usable. PersonalConfigurationTest
+round-trips portable settings, user ranges, horn profiles and unknown fields in one prefs payload.
+PersonalConfigurationTest rejects numeric overflow in unknown fields and clears an incompatible nickname
+when the imported instrument changes. SettingsExtrasTest proves rejected overflow leaves ordinary saves
+usable, imported identity reaches capture and CSV, and both pretty-print expansion and cumulative merges
+are refused before changing preferences when their export exceeds 1 MiB. Each successful merged result
+exports and re-imports with its retained fields. TableHistogramTest announces a history overlay only for
+a matching stored label and note.
+SettingsExtrasScreenshotTest and TableScreenshotTest cover four text scales at phone and tablet widths,
+plus every other theme. ComponentZooTest covers history controls in all four themes at every scale.
+The standalone range editor remains a v1.1 item. Existing open device and recovery criteria remain open.
 
 ## Totals
 

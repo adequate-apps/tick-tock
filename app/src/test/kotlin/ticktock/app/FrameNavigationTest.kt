@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
@@ -37,7 +38,7 @@ class FrameNavigationTest {
         compose.onNodeWithTag("metro-toggle").assertTextEquals("Start")
 
         compose.onNodeWithTag("tabs-3").performClick()
-        compose.onNodeWithTag("table-empty", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("table-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -49,7 +50,7 @@ class FrameNavigationTest {
         compose.onNodeWithTag("back").performClick()
         // The tab that was open is still open underneath.
         compose.onNodeWithTag("tabs-3").assertIsSelected()
-        compose.onNodeWithTag("table-empty", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("table-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
     }
 
     @Test

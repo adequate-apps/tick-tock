@@ -78,7 +78,7 @@ fun AppFrame() {
     val settingsOpen = settings != null
 
     val firstRun by remember { derivedStateOf { !prefs.value.firstRunComplete } }
-    var firstStep by rememberSaveable { mutableStateOf(if (mic.state == MicState.ALLOWED) FirstRunStep.INSTRUMENT else FirstRunStep.MICROPHONE) }
+    var firstStep by rememberSaveable(firstRun) { mutableStateOf(if (mic.state == MicState.ALLOWED) FirstRunStep.INSTRUMENT else FirstRunStep.MICROPHONE) }
     BackHandler(enabled = firstRun && firstStep != FirstRunStep.MICROPHONE) {
         firstStep = if (firstStep == FirstRunStep.ALL_INSTRUMENTS) FirstRunStep.INSTRUMENT else FirstRunStep.MICROPHONE
     }

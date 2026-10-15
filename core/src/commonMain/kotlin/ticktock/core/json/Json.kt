@@ -42,8 +42,9 @@ sealed class JsonValue {
 class JsonParseException(message: String) : RuntimeException(message)
 
 object Json {
-    fun parse(text: String): JsonValue {
-        val parser = Parser(text)
+    fun parse(text: String, maxDepth: Int = 64): JsonValue {
+        require(maxDepth in 1..64)
+        val parser = Parser(text, maxDepth)
         val value = parser.readValue()
         parser.skipWhitespace()
         if (!parser.atEnd()) throw parser.error("unexpected text after the document")
@@ -130,7 +131,7 @@ object Json {
         out.append('"')
     }
 
-    private class Parser(private val text: String) {
+    private class Parser(private val text: String, private val maxDepth: Int) {
         private var pos = 0
 
         fun atEnd() = pos >= text.length
@@ -141,12 +142,13 @@ object Json {
             while (pos < text.length && text[pos].let { it == ' ' || it == '\n' || it == '\r' || it == '\t' }) pos++
         }
 
-        fun readValue(): JsonValue {
+        fun readValue(depth: Int = 0): JsonValue {
+            if (depth > maxDepth) throw error("nesting exceeds the document limit")
             skipWhitespace()
             if (atEnd()) throw error("unexpected end of document")
             return when (val ch = text[pos]) {
-                '{' -> readObject()
-                '[' -> readArray()
+                '{' -> readObject(depth + 1)
+                '[' -> readArray(depth + 1)
                 '"' -> JsonValue.JsonString(readString())
                 't' -> literal("true", JsonValue.JsonBool(true))
                 'f' -> literal("false", JsonValue.JsonBool(false))
@@ -161,7 +163,7 @@ object Json {
             return value
         }
 
-        private fun readObject(): JsonValue.JsonObject {
+        private fun readObject(depth: Int): JsonValue.JsonObject {
             pos++ // {
             val fields = LinkedHashMap<String, JsonValue>()
             skipWhitespace()
@@ -176,7 +178,7 @@ object Json {
                 skipWhitespace()
                 if (peek() != ':') throw error("expected ':' after key \"$key\"")
                 pos++
-                val value = readValue()
+                val value = readValue(depth)
                 if (fields.containsKey(key)) throw error("duplicate key \"$key\"")
                 fields[key] = value
                 skipWhitespace()
@@ -191,7 +193,7 @@ object Json {
             }
         }
 
-        private fun readArray(): JsonValue.JsonArray {
+        private fun readArray(depth: Int): JsonValue.JsonArray {
             pos++ // [
             val items = ArrayList<JsonValue>()
             skipWhitespace()
@@ -200,7 +202,7 @@ object Json {
                 return JsonValue.JsonArray(items)
             }
             while (true) {
-                items.add(readValue())
+                items.add(readValue(depth))
                 skipWhitespace()
                 when (peek()) {
                     ',' -> pos++
@@ -254,6 +256,7 @@ object Json {
             while (!atEnd() && (text[pos] in '0'..'9' || text[pos] == '.' || text[pos] == 'e' || text[pos] == 'E' || text[pos] == '+' || text[pos] == '-')) pos++
             val slice = text.substring(start, pos)
             val value = slice.toDoubleOrNull() ?: throw error("bad number '$slice'")
+            if (!value.isFinite()) throw error("number exceeds the supported range")
             return JsonValue.JsonNumber(value)
         }
 
