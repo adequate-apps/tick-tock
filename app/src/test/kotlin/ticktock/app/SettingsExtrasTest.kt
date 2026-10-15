@@ -224,4 +224,86 @@ class SettingsExtrasTest {
         compose.onNodeWithTag("config-preview").assertDoesNotExist()
     }
 
+    private fun importDocument(document: File) {
+        click("config-import")
+        chooseDocument(Intent.ACTION_OPEN_DOCUMENT, document)
+        awaitState { !graph.configuration.state.value.busy }
+    }
+
+    @Test fun `overflow import refuses preview and ordinary settings still persist`() {
+        launch()
+        val before = graph.prefs.prefs.value
+        val document = File(RuntimeEnvironment.getApplication().cacheDir, "overflow.json")
+        document.writeText("""{"format":"ticktock-personal-config","version":1,"future":{"value":1e309}}""")
+        importDocument(document)
+        compose.onNodeWithTag("config-preview").assertDoesNotExist()
+        assertTrue(graph.configuration.state.value.failed)
+        assertEquals(before, graph.prefs.prefs.value)
+        scenario!!.onActivity { graph.configuration.cancel() }
+        click("settings-noise-floor-lower")
+        assertTrue(graph.prefs.flushAndWait().isSuccess)
+        val restored = (ticktock.core.prefs.PrefsSchema.read(File(RuntimeEnvironment.getApplication().filesDir, "prefs.json").readText()) as ticktock.core.prefs.ReadResult.Ok).result.prefs
+        assertEquals(before.noiseFloorDb - 1, restored.noiseFloorDb)
+    }
+
+    @Test fun `instrument import replaces named identity in capture and CSV`() {
+        launch()
+        graph.prefs.update { it.copy(instrumentKey = "eb_alto", hornNickname = "Silver alto") }
+        val document = File(RuntimeEnvironment.getApplication().cacheDir, "instrument.json")
+        document.writeText("""{"format":"ticktock-personal-config","version":1,"settings":{"instrument":"flute_c"}}""")
+        importDocument(document)
+        click("config-apply")
+        awaitState { !graph.configuration.state.value.busy }
+        assertEquals("flute_c", graph.prefs.prefs.value.instrumentKey)
+        assertEquals("", graph.prefs.prefs.value.hornNickname)
+        graph.captureHistory.accept(Reading(0, 69, 440.0, 0.0, 440.0, 0), true)
+        runBlocking {
+            graph.history.flushAndWait()
+            val rows = graph.history.summaries(ticktock.data.history.Scope.CurrentSession)
+            assertEquals("flute_c", rows.single().label.instrumentKey)
+            assertEquals("", rows.single().label.nickname)
+            val csv = ticktock.app.history.TableExport().encode(graph.history, ticktock.data.history.Scope.CurrentSession, graph.prefs.prefs.value)!!.toString(Charsets.UTF_8)
+            assertTrue(csv.contains("Flute"))
+            assertFalse(csv.contains("Silver alto"))
+        }
+    }
+
+    @Test fun `expanded import preserves the last exportable settings`() { checkImportLimit(expansion = true) }
+
+    @Test fun `cumulatively oversized imports preserve the last exportable settings`() { checkImportLimit(expansion = false) }
+
+    private fun checkImportLimit(expansion: Boolean) {
+        launch()
+        val document = File(RuntimeEnvironment.getApplication().cacheDir, "large.json")
+        val original = graph.prefs.prefs.value
+        val prefix = "\"format\":\"ticktock-personal-config\",\"version\":1"
+        val expanded = "{$prefix,\"expanded\":[" + List(200_000) { "0" }.joinToString(",") + "]}"
+        val first = "{$prefix,\"first\":\"" + "x".repeat(600_000) + "\"}"
+        val second = "{$prefix,\"second\":\"" + "y".repeat(600_000) + "\"}"
+        for (text in if (expansion) listOf(expanded) else listOf(first, second)) {
+            val before = graph.prefs.prefs.value
+            document.writeText(text)
+            assertTrue(document.length() < ticktock.app.config.ConfigurationFiles.MAX_BYTES)
+            importDocument(document)
+            click("config-apply")
+            awaitState { !graph.configuration.state.value.busy }
+            if (text == first) {
+                assertFalse(graph.configuration.state.value.failed)
+                assertNotEquals(original.personalConfig, graph.prefs.prefs.value.personalConfig)
+            } else {
+                assertTrue("oversized merged export refused", graph.configuration.state.value.failed)
+                assertEquals(before, graph.prefs.prefs.value)
+                compose.onNodeWithText("Phone refused settings over 1 MiB; choose a smaller file").assertExists()
+                click("config-cancel")
+            }
+            click("config-export")
+            chooseDocument(Intent.ACTION_CREATE_DOCUMENT, document)
+            awaitState { !graph.configuration.state.value.busy }
+            assertFalse(graph.configuration.state.value.failed)
+            assertTrue(document.length() <= ticktock.app.config.ConfigurationFiles.MAX_BYTES)
+            val exported = ticktock.app.config.ConfigurationFiles.read(RuntimeEnvironment.getApplication(), Uri.fromFile(document)) as ParseResult.Ok
+            assertEquals(ticktock.core.prefs.PersonalConfiguration.snapshot(graph.prefs.prefs.value), exported.config)
+        }
+    }
+
 }

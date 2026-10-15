@@ -72,4 +72,20 @@ class PersonalConfigurationTest {
         assertTrue("ordinary nested fields remain supported", accepted >= 3)
     }
 
+    @Test fun `overflow in unknown configuration fields is rejected before preferences change`() {
+        for (field in listOf("\"future\":1e309", "\"future\":{\"nested\":[-1e309]}", "\"settings\":{\"future\":1e309}")) {
+            val parsed = PersonalConfigCodec.parse("{\"format\":\"ticktock-personal-config\",\"version\":1,$field}")
+            assertTrue("overflow refused in $field", parsed is ParseResult.Failed)
+        }
+    }
+
+    @Test fun `instrument imports clear incompatible nicknames while unrelated imports retain identity`() {
+        val named = Prefs(instrumentKey = "eb_alto", hornNickname = "Silver alto")
+        for (instrument in listOf(null, "eb_alto", "flute_c")) {
+            val imported = PersonalConfiguration.apply(named, PersonalConfig(settings = PortableSettings(instrumentKey = instrument, a4Hz = 442.0)))
+            assertEquals(instrument ?: "eb_alto", imported.instrumentKey)
+            assertEquals(if (instrument == "flute_c") "" else "Silver alto", imported.hornNickname)
+        }
+    }
+
 }
