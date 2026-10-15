@@ -13,6 +13,8 @@ import ticktock.design.GridlineTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Prefs load here, before any screen reads them or any reading is stored (SES-01).
+        TickTockApp.graph(this)
         // The status bar sits on the Active Blue title strip, so its icons are
         // light; the navigation bar sits on System Gray, so its icons are dark.
         enableEdgeToEdge(
@@ -24,5 +26,10 @@ class MainActivity : ComponentActivity() {
                 AppFrame()
             }
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        TickTockApp.graph(this).onBackground()
     }
 }

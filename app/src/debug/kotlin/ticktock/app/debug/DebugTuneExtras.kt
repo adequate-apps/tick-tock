@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ticktock.app.R
 import ticktock.app.audio.CaptureState
 import ticktock.app.audio.Level
+import ticktock.app.TickTockApp
 import ticktock.app.audio.LiveCapture
 import ticktock.core.contracts.InputFailure
 import ticktock.core.music.Cents
@@ -48,7 +49,7 @@ import java.util.Locale
 fun DebugTuneExtras() {
     val activity = LocalActivity.current ?: return
     val choice = remember { InputSeam.choose(activity) } ?: return
-    val capture = remember { LiveCapture(a4Hz = choice.a4Hz) }
+    val capture = remember { LiveCapture(a4Hz = choice.a4Hz, history = TickTockApp.graph(activity).history) }
     val input = remember { choice.make(capture) }
     var granted by remember {
         mutableStateOf(!choice.needsMicrophone || activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)

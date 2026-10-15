@@ -122,6 +122,9 @@ class PrefsStore(
     /** Writes now if anything changed. The error reaches the caller, and the retry path keeps running (ERR-06). */
     suspend fun save(): Result<Unit> = withContext(storage.dispatcher) { writeIfChanged() }
 
+    /** For the lifecycle owner on background: write now without waiting. */
+    fun flushSoon() = storage.post { writeIfChanged() }
+
     /** For the lifecycle owner on background: write now and wait. */
     fun flushAndWait(): Result<Unit> = storage.call { writeIfChanged() }
 

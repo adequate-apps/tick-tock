@@ -31,6 +31,8 @@ class NoteAggregate(
         }
     }
 
+    val hasAttacks: Boolean get() = attacks > 0
+
     fun copy(): NoteAggregate =
         NoteAggregate(n, sumCents, sumSq, bins.copyOf(), attacks, sumAttackCents, sumAttackSq)
 

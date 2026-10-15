@@ -177,6 +177,9 @@ class HistoryStore(
         }
     }
 
+    /** Writes what is queued now without waiting; the lifecycle owner calls it when the app goes to the background. */
+    fun flushSoon() = storage.post { flush() }
+
     /** Writes what is queued now and waits; used when the app goes to the background. Returns false if the write failed. */
     fun flushAndWait(): Boolean = storage.call { flush() }
 
@@ -413,7 +416,7 @@ class HistoryStore(
                 meanCents = mean,
                 spreadCents = sqrt((a.sumSq / a.n - mean * mean).coerceAtLeast(0.0)),
                 attacks = a.attacks,
-                meanAttackCents = if (a.attacks > 0) a.sumAttackCents / a.attacks else Double.NaN,
+                meanAttackCents = if (a.hasAttacks) a.sumAttackCents / a.attacks else Double.NaN,
                 bins = a.bins,
             )
         }
