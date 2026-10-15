@@ -31,6 +31,17 @@ class SourceGuardTest {
         }.toList()
 
     @Test
+    fun `band plots receive their edges without declaring local thresholds`() {
+        val plots = listOf("CentsScale.kt", "Trace.kt").map { File("../design/src/main/kotlin/ticktock/design/plots", it) }
+        val declaration = Regex("""\bval\s+(IN_TUNE|CLOSE)\s*=\s*[0-9]""")
+        val copies = plots.flatMap { file ->
+            assertTrue(file.isFile)
+            file.readLines().filter { declaration.containsMatchIn(it.substringBefore("//")) }.map { "${file.name}: ${it.trim()}" }
+        }
+        assertEquals(emptyList<String>(), copies)
+    }
+
+    @Test
     fun `screen code uses design components and design sizes only`() {
         assertTrue("test must run with the module directory as working directory", sources.first().isDirectory)
         val lines = sources.filter { it.isDirectory }.asSequence()

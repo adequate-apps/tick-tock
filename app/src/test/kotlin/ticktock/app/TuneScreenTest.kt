@@ -2,6 +2,8 @@
 package ticktock.app
 
 import android.content.Intent
+import kotlinx.coroutines.runBlocking
+import ticktock.data.history.Scope
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsDisplayed
@@ -27,6 +29,13 @@ import org.robolectric.annotation.GraphicsMode
 import ticktock.app.debug.InputSeam
 import ticktock.core.contracts.InputFailure
 import ticktock.core.contracts.fakes.FakeAudioInput
+import ticktock.app.audio.LiveCapture
+import ticktock.core.detect.Attack
+import ticktock.core.detect.Decision
+import ticktock.core.detect.HopClass
+import ticktock.core.detect.Reading
+import ticktock.core.detect.Release
+import ticktock.core.detect.ReleaseCause
 import ticktock.core.detect.Hop
 import ticktock.core.detect.fakes.Sine
 import ticktock.core.music.Pitch
@@ -155,18 +164,89 @@ class TuneScreenTest {
     }
 
     @Test
-    fun `Paused capture keeps the readout and says Paused, and leaving the app closes the microphone`() {
+    fun `CAP-01 paused capture keeps listening and live plots while history waits until On`() {
         val input = FakeAudioInput(sampleRate = rate)
         launch(input)
         compose.waitUntil(TIMEOUT) { input.isOpen }
+        val graph = TickTockApp.graph(ApplicationProvider.getApplicationContext())
+        play(input, 440.0)
+        compose.waitUntil(TIMEOUT) { text("readout-cents") == "+0" }
+        val saved = storedReadings()
+        assertTrue(saved > 0)
         compose.onNodeWithTag("capture-1").performScrollTo().performClick()
-        awaitStatus("Paused")
-        play(input, Pitch.hzFromMidi(69, 440.0))
-        compose.waitUntil(TIMEOUT) { text("readout-letter") != null }
-
+        awaitStatus("Listening", "Capture paused")
+        val oldTrace = graph.tune.trace.value
+        val oldHop = graph.tune.level.value.hop
+        play(input, 444.0)
+        compose.waitUntil(TIMEOUT) { text("readout-cents") == "+16" }
+        assertEquals(listOf("+16"), compose.onNodeWithTag("cents-scale").fetchSemanticsNode().config[SemanticsProperties.ContentDescription])
+        assertTrue(graph.tune.trace.value !== oldTrace)
+        assertTrue(graph.tune.trace.value.cents.last() > 0f)
+        assertTrue(graph.tune.level.value.hop > oldHop)
+        compose.onNode(hasAnyAncestor(hasTestTag("level")) and hasText("−23 dB"), useUnmergedTree = true).assertExists()
+        assertEquals(saved, storedReadings())
+        compose.onNodeWithTag("capture-0").performScrollTo().performClick()
+        awaitStatus("Listening")
+        play(input, 444.0)
+        assertTrue(storedReadings() > saved)
         scenario?.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
         compose.waitUntil(TIMEOUT) { !input.isOpen }
         assertTrue(input.stopCalls >= 1)
+    }
+
+    private fun storedReadings(): Long = runBlocking {
+        val history = TickTockApp.graph(ApplicationProvider.getApplicationContext()).history
+        history.flushAndWait()
+        history.summaries(Scope.CurrentSession).sumOf { it.n }
+    }
+
+    @Test
+    fun `EAR-01 ears first hides the needle and preserves every held history reading`() {
+        val input = FakeAudioInput(sampleRate = rate)
+        launch(input)
+        compose.waitUntil(TIMEOUT) { input.isOpen }
+        val graph = TickTockApp.graph(ApplicationProvider.getApplicationContext())
+        val sine = Sine(Pitch.hzFromMidi(69 + 0.03, 440.0), 0.1, rate)
+        fun hops(count: Int) {
+            repeat(count) {
+                val previous = graph.tune.trace.value
+                input.push(sine.next(Hop.frames(rate)))
+                compose.waitUntil(TIMEOUT) { graph.tune.trace.value !== previous }
+            }
+        }
+        hops(12)
+        val warm = storedReadings()
+        hops(10)
+        val shown = storedReadings()
+        assertEquals(10L, shown - warm)
+        compose.onNodeWithTag("needle-1").performScrollTo().performClick()
+        hops(10)
+        assertEquals(10L, storedReadings() - shown)
+        assertEquals("sounding", text("readout-sounding"))
+        assertEquals("— Hz", text("readout-hz"))
+        compose.onNodeWithTag("readout-cents", useUnmergedTree = true).assertDoesNotExist()
+        assertEquals(listOf("—"), compose.onNodeWithTag("cents-scale").fetchSemanticsNode().config[SemanticsProperties.ContentDescription])
+        compose.onNodeWithTag("cents-scale").performScrollTo().captureRoboImage("src/test/screenshots/tune-ears-first-hidden-needle.png")
+        compose.onNodeWithTag("last-note-trace").assertExists()
+        assertTrue(graph.tune.level.value.db > ticktock.app.audio.Level.LEVEL_FLOOR_DB)
+    }
+
+    @Test
+    fun `TRC-03 the live trace exposes one stable accessibility label`() {
+        val input = FakeAudioInput(sampleRate = rate)
+        launch(input)
+        compose.waitUntil(TIMEOUT) { input.isOpen }
+        fun assertLabel() {
+            val trace = compose.onNodeWithTag("trace").fetchSemanticsNode()
+            assertEquals(listOf("Pitch trace, last five seconds"), trace.config[SemanticsProperties.ContentDescription])
+            assertTrue(trace.children.isEmpty())
+            assertEquals(null, trace.config.getOrNull(SemanticsProperties.Text))
+            assertEquals(null, trace.config.getOrNull(SemanticsProperties.LiveRegion))
+        }
+        assertLabel()
+        play(input, 440.0)
+        compose.waitUntil(TIMEOUT) { text("readout-letter") != null }
+        assertLabel()
     }
 
     @Test
@@ -205,6 +285,59 @@ class TuneScreenTest {
         awaitFrames { compose.onAllNodes(hasTestTag("reveal-countdown"), useUnmergedTree = true).fetchSemanticsNodes().isEmpty() }
         assertEquals("—", text("readout-cents"))
         assertTrue(text("last-note").orEmpty(), text("last-note").orEmpty().startsWith("B5 +3 · "))
+    }
+
+    @Test
+    fun `EAR-02 enabling ears first never replays a note ended in Show`() {
+        val input = FakeAudioInput(sampleRate = rate)
+        launch(input)
+        compose.waitUntil(TIMEOUT) { input.isOpen }
+        decision(0, sounding = true)
+        compose.waitUntil(TIMEOUT) { text("readout-cents") == "+3" }
+        decision(10, sounding = false)
+        compose.waitUntil(TIMEOUT) { text("readout-cents") == "—" }
+        compose.onNodeWithTag("needle-1").performScrollTo()
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithTag("needle-1").performClick()
+        compose.mainClock.advanceTimeBy(100)
+        compose.onNodeWithTag("last-note-trace").assertExists()
+        compose.onNodeWithTag("reveal-countdown", useUnmergedTree = true).assertDoesNotExist()
+        assertEquals("—", text("readout-cents"))
+    }
+
+    @Test
+    fun `EAR-02 a new note without readings cancels the previous reveal permanently`() {
+        val input = FakeAudioInput(sampleRate = rate)
+        launch(input)
+        compose.waitUntil(TIMEOUT) { input.isOpen }
+        compose.onNodeWithTag("needle-1").performScrollTo().performClick()
+        decision(0, sounding = true)
+        compose.waitUntil(TIMEOUT) { text("readout-sounding") != null }
+        compose.mainClock.autoAdvance = false
+        decision(10, sounding = false)
+        awaitFrames { text("readout-cents") == "+3" }
+        decision(11, sounding = true, withReading = false)
+        awaitFrames { text("readout-sounding") != null }
+        decision(12, sounding = false)
+        compose.mainClock.advanceTimeBy(100)
+        compose.onNodeWithTag("reveal-countdown", useUnmergedTree = true).assertDoesNotExist()
+        assertEquals("—", text("readout-cents"))
+    }
+
+    /** Script release edges so clock tests cover notes with and without accepted readings. */
+    private fun decision(hop: Long, sounding: Boolean, withReading: Boolean = true) {
+        val session = TickTockApp.graph(ApplicationProvider.getApplicationContext()).tune
+        val field = session.javaClass.getDeclaredField("capture").apply { isAccessible = true }
+        val capture = field.get(session) as LiveCapture
+        val decision = Decision(
+            hop, if (sounding) HopClass.VOTE else HopClass.REJECT,
+            level = if (sounding) 0.1 else 0.0, incumbent = if (sounding) 69 else null,
+            attack = if (sounding) Attack(hop, 69, 3.0, 0) else null,
+            display = if (sounding && withReading) Reading(hop, 69, 440.8, 3.0, 440.0, 0) else null,
+            release = if (sounding) null else Release(hop, 69, 0, ReleaseCause.SILENCE),
+        )
+        val method = LiveCapture::class.java.getDeclaredMethod("onDecisions", List::class.java).apply { isAccessible = true }
+        method.invoke(capture, listOf(decision))
     }
 
     /** Steps the paused clock a frame at a time until [condition] holds, letting the analysis thread's flows land between frames. */
