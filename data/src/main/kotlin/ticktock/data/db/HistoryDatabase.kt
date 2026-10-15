@@ -12,7 +12,7 @@ import ticktock.data.Storage
  * applies to history too). Foreign keys are on so deleting a session takes
  * its runs, summaries and raw readings with it.
  */
-class HistoryDatabase(context: Context, name: String? = Storage.DATABASE_FILE) :
+open class HistoryDatabase(context: Context, name: String? = Storage.DATABASE_FILE) :
     SQLiteOpenHelper(context, name, null, Migrations.LATEST) {
 
     override fun onConfigure(db: SQLiteDatabase) {
