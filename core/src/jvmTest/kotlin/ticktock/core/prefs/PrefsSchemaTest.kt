@@ -66,6 +66,7 @@ class PrefsSchemaTest {
         assertEquals(1, p.metroSubdivision)
         assertEquals(1, p.metroBarsOn)
         assertEquals(0, p.metroBarsOff)
+        assertEquals(Theme.GRIDLINE, p.theme)
         assertEquals(emptyMap<String, JsonValue>(), p.unknownFields)
     }
 
@@ -104,6 +105,7 @@ class PrefsSchemaTest {
         "metroSubdivision" to 3,
         "metroBarsOn" to 3,
         "metroBarsOff" to 1,
+        "theme" to Theme.PIT,
     )
 
     @Test
@@ -142,7 +144,7 @@ class PrefsSchemaTest {
     fun `SES-12 a full round trip keeps every field and every unknown field`() {
         var prefs = Prefs()
         for (field in PrefsSchema.fields) prefs = setAny(field, prefs, samples.getValue(field.key))
-        prefs = prefs.copy(unknownFields = linkedMapOf("futureKnob" to Json.arr(listOf(Json.num(1), Json.num(2))), "theme" to Json.str("gray")))
+        prefs = prefs.copy(unknownFields = linkedMapOf("futureKnob" to Json.arr(listOf(Json.num(1), Json.num(2))), "futureTheme" to Json.str("gray")))
 
         val text = PrefsSchema.write(prefs)
         assertTrue(text, text.startsWith("{\n  \"schemaVersion\": ${PrefsSchema.VERSION},\n  \"instrument\": \"eb_alto\","))
@@ -154,7 +156,7 @@ class PrefsSchemaTest {
 
         // Unknown fields come after the known ones, as read.
         val written = Json.parse(text).obj!!
-        assertEquals(listOf("futureKnob", "theme"), written.keys.toList().takeLast(2))
+        assertEquals(listOf("futureKnob", "futureTheme"), written.keys.toList().takeLast(2))
         assertEquals(Json.parse("[1, 2]"), written["futureKnob"])
     }
 
