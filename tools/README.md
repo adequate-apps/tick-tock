@@ -53,3 +53,7 @@ The registry is the set of `@KnownGap` annotations in the test sources;
 `verify.sh` lists them in its verdict. Adding one is an owner decision
 (see `AGENTS.md`); removing one happens when the gap closes and the build
 turns red.
+
+`test-release.sh` creates temporary two-day signing fixtures, rejects incomplete or invalid
+credentials, and exercises the signed APK/AAB artifact pipeline with separate app and upload keys.
+It leaves its private fixtures and logs under the ignored `build/release-tests/` directory.
