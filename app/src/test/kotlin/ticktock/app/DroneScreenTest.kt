@@ -52,6 +52,21 @@ class DroneScreenTest {
     private fun latestVoice(): OutputCommand.VoiceOn = link.sent.filterIsInstance<OutputCommand.VoiceOn>().last()
 
     @Test
+    fun `TON-04 five volume decreases silence the drone and disable the lower endpoint`() {
+        launch()
+        tap("drone-toggle")
+        repeat(5) { tap("drone-volume-lower") }
+        assertEquals(0f, graph.prefs.prefs.value.droneGain, 0f)
+        assertTrue(graph.output.current().isEmpty())
+        assertFalse(graph.output.state.value.droneSounding)
+        compose.onNodeWithTag("drone-volume-lower").assertIsNotEnabled()
+        compose.onNodeWithTag("drone-sounding", useUnmergedTree = true).assertDoesNotExist()
+        repeat(10) { tap("drone-volume-raise") }
+        assertEquals(1f, graph.prefs.prefs.value.droneGain, 0f)
+        compose.onNodeWithTag("drone-volume-raise").assertIsNotEnabled()
+    }
+
+    @Test
     fun `OUT-02 parked and muted drone actions describe the actual state and cancel resume`() {
         launch()
         tap("drone-toggle")

@@ -41,6 +41,19 @@ class MetronomeScreenTest {
     @After fun close() { scenario?.close(); RuntimeEnvironment.setFontScale(1f) }
     private fun tap(tag: String) = compose.onNodeWithTag(tag).performScrollTo().performClick()
 
+    @Test fun `click volume steps reach both exact endpoints`() {
+        launch()
+        compose.runOnIdle { graph.prefs.update { it.copy(clickGain = 0.5f) } }
+        tap("metro-toggle")
+        repeat(5) { tap("metro-volume-lower") }
+        assertEquals(0f, graph.prefs.prefs.value.clickGain, 0f)
+        compose.onNodeWithTag("metro-volume-lower").assertIsNotEnabled()
+        assertEquals(0f, link.sent.filterIsInstance<OutputCommand.MetroUpdate>().last().setup.gain, 0f)
+        repeat(10) { tap("metro-volume-raise") }
+        assertEquals(1f, graph.prefs.prefs.value.clickGain, 0f)
+        compose.onNodeWithTag("metro-volume-raise").assertIsNotEnabled()
+    }
+
     @Test fun `OUT-02 parked and muted metronome actions preserve cancellation without claiming running`() {
         launch()
         tap("metro-toggle")
