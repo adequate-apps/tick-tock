@@ -64,11 +64,11 @@ class HopAnalyser(
     private var nextHop = 0L
     private var nextFrame = 0L
     private var bleedEpoch = 0L
-    @Volatile private var bleedFromFrame = 0L
+    @Volatile private var bleedFromFrame = Long.MIN_VALUE
     @Volatile private var inputBufferFrames = 0
 
     /**
-     * Suspends unison proof immediately. Call the returned acknowledgement only
+     * Suspends probe baselines and unison proof immediately. Call the returned acknowledgement only
      * after the output presents the completed duck ramp. Already delivered audio,
      * the platform input buffer and every window overlapping them stay excluded.
      * An older acknowledgement cannot release a newer request or capture stream.
@@ -167,7 +167,7 @@ class HopAnalyser(
         lastAnalysisError = null
         nextHop = 0
         nextFrame = 0
-        bleedFromFrame = 0
+        bleedFromFrame = Long.MIN_VALUE
         contextOnly = false
     }
 

@@ -14,7 +14,7 @@ data class BleedState(
     /** Consecutive hops that detected nothing the output is sounding. */
     val clearHops: Int = 0,
     val ducked: Boolean = false,
-    /** Hops since the duck was commanded; the floor is reached after [BleedPolicy.RAMP_HOPS]. */
+    /** Eligible capture hops since the duck acknowledgement; proof waits [BleedPolicy.RAMP_HOPS]. */
     val hopsSinceDuck: Int = 0,
     /** Level on the hop the duck was commanded; the unison test compares against it. */
     val preDuckLevel: Double = Double.NaN,
@@ -65,10 +65,10 @@ object BleedPolicy {
     val DUCK_FLOOR: Float = DUCK_FLOOR_LINEAR.toFloat()
     const val FULL_GAIN = 1.0f
 
-    /** The engine ramps the duck over about this long. */
+    /** Additional acoustic settling allowance after the presented ramp and capture fence. */
     const val RAMP_MILLIS = 80.0
 
-    /** Hops before the ramp has reached the floor and the unison test may begin. */
+    /** Eligible hops before the unison test may begin. */
     val RAMP_HOPS: Int = ceil(RAMP_MILLIS / Hop.MILLIS).toInt()
 
     /**
@@ -95,9 +95,9 @@ object BleedPolicy {
         }
         val leak = candidate != null && candidate in sounding
         if (!leak) return clear(state)
-        if (state.ducked && !evidenceReady) {
+        if (!evidenceReady) {
             // Buffered audio cannot prove how the player responded to a later gain change.
-            return BleedStep(state.copy(clearHops = 0, hopsSinceDuck = 0, strongHops = 0,
+            return BleedStep(state.copy(suspectHops = 0, clearHops = 0, hopsSinceDuck = 0, strongHops = 0,
                 strongNote = null, admitted = null, weakHops = 0), exclude = true)
         }
         if (state.admitted == candidate) return holdAdmission(state, level)

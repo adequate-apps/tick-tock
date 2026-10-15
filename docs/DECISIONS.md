@@ -256,6 +256,9 @@ questions below.
 - JNI ABI 4 adds the duck generation and the DuckSettled event. Generation zero keeps
   fire-and-forget callers compatible. Superseded ramps need no acknowledgement; missing
   or stale acknowledgements leave matching drone notes excluded from unison proof.
+- A restarted or changed output first restores full gain and fences capture through its
+  presented acknowledgement. A still-ducked old stream cannot establish the next probe's
+  reference level. The same fence then protects the reduced-gain unison evidence.
 - Analysis dispatches duck transitions before evaluating the next buffered hop. Its
   evidence fence resumes only after presentation and after all audio already delivered
   or still buffered upstream has passed. Both halves of an analysis window must clear
