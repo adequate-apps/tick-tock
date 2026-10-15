@@ -506,6 +506,23 @@ TEST(Metronome, compoundPulseDividesThePulseInThree) {
     EXPECT_EQ(0, beats[6].beatInBar);
 }
 
+// MET-07: a denominator edit changes the metre even with the same numerator.
+TEST(Metronome, changingTheBeatUnitResetsTheBar) {
+    RenderEngine engine;
+    engine.onStreamStart(48000);
+    auto setup = params(120, 4);
+    setup.barsOn = 1;
+    setup.barsOff = 1;
+    ASSERT_TRUE(engine.send(start(setup)));
+    ASSERT_EQ(2u, renderBeats(engine, 30000, 256).size());
+    setup.beatUnit = 8;
+    ASSERT_TRUE(engine.send(update(setup)));
+    const auto next = renderBeats(engine, 24000, 256);
+    ASSERT_EQ(1u, next.size());
+    EXPECT_EQ(0, next.front().beatInBar);
+    EXPECT_FALSE(next.front().audible);
+}
+
 // MetroStop ends the beats and the clicks at once.
 TEST(Metronome, stopLeavesNoFurtherBeats) {
     RenderEngine engine;
