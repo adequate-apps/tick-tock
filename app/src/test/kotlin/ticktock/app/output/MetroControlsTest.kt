@@ -21,7 +21,7 @@ class MetroControlsTest {
     }
 
     @Test
-    fun `tap tempo averages four intervals and resets at two seconds`() {
+    fun `tap tempo averages four intervals and resets after a three second pause`() {
         val tap = TapTempo()
         assertNull(tap.tap(0))
         assertEquals(120, tap.tap(500_000_000))
@@ -29,8 +29,8 @@ class MetroControlsTest {
         assertEquals(120, tap.tap(1_500_000_000))
         assertEquals(120, tap.tap(2_000_000_000))
         assertEquals(96, tap.tap(3_000_000_000))
-        assertNull(tap.tap(5_000_000_000))
-        assertEquals(60, tap.tap(6_000_000_000))
+        assertNull(tap.tap(6_000_000_000))
+        assertEquals(60, tap.tap(7_000_000_000))
     }
 
     @Test

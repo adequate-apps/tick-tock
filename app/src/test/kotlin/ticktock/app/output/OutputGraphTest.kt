@@ -26,7 +26,7 @@ class OutputGraphTest {
     fun `CTX-02 and POL-24 a zero-volume drone leaves player attacks and persisted context free`() {
         val context = RuntimeEnvironment.getApplication()
         val dir = File(context.filesDir, "output-silent").apply { mkdirs() }
-        File(dir, Storage.PREFS_FILE).writeText(PrefsSchema.write(Prefs(droneMidi = 69, droneGain = 0f,
+        File(dir, Storage.PREFS_FILE).writeText(PrefsSchema.write(Prefs(droneMidi = 69, droneGain = 0.5f,
             responseMode = ticktock.core.detect.ResponseMode.FAST)))
         val link = TestOutputConnection()
         val graph = AppGraph(context, dir, "output-silent.db") { link }
@@ -35,6 +35,8 @@ class OutputGraphTest {
         graph.tune.makeInput = { input }
         try {
             graph.output.startDrone()
+            repeat(5) { graph.output.droneVolume(-0.1f) }
+            assertEquals(0f, graph.prefs.prefs.value.droneGain, 0f)
             assertTrue(graph.output.current().isEmpty())
             assertFalse(graph.output.state.value.droneSounding)
             graph.tune.resume()

@@ -9,6 +9,20 @@ import ticktock.core.metro.ClickSound
 
 class DelayMeasurementTest {
     @Test
+    fun `BTC-01 advance beat delivery preserves signed endpoint contacts and rejects repeats`() {
+        for (offset in listOf(-500L, -100L, 200L, 500L)) {
+            val measurement = DelayMeasurement(21)
+            repeat(8) { assertTrue(measurement.beat(beat(it))) }
+            repeat(8) { index ->
+                val contact = beat(index).nanos + offset * 1_000_000L
+                assertTrue("offset $offset click $index", measurement.tap(contact))
+                assertFalse("repeat at offset $offset click $index", measurement.tap(contact + 10_000_000L))
+            }
+            assertEquals(offset.toInt(), measurement.medianMs())
+        }
+    }
+
+    @Test
     fun `BTC-01 original contact time retains its click after the next beat arrives`() {
         val measurement = DelayMeasurement(21)
         assertTrue(measurement.beat(beat(0)))
@@ -68,9 +82,9 @@ class DelayMeasurementTest {
         assertTrue(measurement.beat(beat(1)))
         assertTrue(measurement.beat(beat(0)))
         assertEquals(1, measurement.latest)
-        assertFalse(measurement.tap(beat(1).nanos + 501_000_000L))
-        assertFalse(measurement.tap(beat(1).nanos - 501_000_000L))
-        assertTrue(measurement.tap(beat(1).nanos - 100_000_000L))
+        assertFalse(measurement.tap(beat(1).nanos + 501_000_000L, 1))
+        assertFalse(measurement.tap(beat(1).nanos - 501_000_000L, 1))
+        assertTrue(measurement.tap(beat(1).nanos - 100_000_000L, 1))
         repeat(8) { index ->
             if (index > 1) assertTrue(measurement.beat(beat(index)))
             if (index != 1) assertTrue(measurement.tap(beat(index).nanos - 100_000_000L, index))

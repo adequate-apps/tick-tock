@@ -51,6 +51,25 @@ class CalibrationSessionTest {
     }
 
     @Test
+    fun `BTC-01 delayed pointer contacts retain their clicks after newer beats are consumed`() = runTest {
+        val r = Rig(this)
+        r.start()
+        repeat(8) { index ->
+            r.link.events.tryEmit(OutputEvent.Beat(index.toLong(), index % 4, index * 28_800L,
+                index * 600_000_000L, generation = r.generation(), audible = true))
+        }
+        testScheduler.runCurrent()
+        repeat(8) { index ->
+            testScheduler.advanceTimeBy(if (index == 0) 650 else 600)
+            r.output.calibrationTap(450)
+            testScheduler.runCurrent()
+        }
+        assertEquals(8, r.output.calibration.value?.taps)
+        assertEquals(200, r.output.calibration.value?.offsetMs)
+        assertEquals(true, r.output.calibration.value?.complete)
+    }
+
+    @Test
     fun `BTC-01 pointer dispatch delay leaves the measured contact offset unchanged`() = runTest {
         val r = Rig(this)
         r.start()
