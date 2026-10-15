@@ -5,6 +5,7 @@ import android.os.Process
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import ticktock.core.contracts.AudioInput
+import ticktock.core.contracts.HistorySink
 import ticktock.core.contracts.InputException
 import ticktock.core.contracts.InputFailure
 import ticktock.core.contracts.InputInfo
@@ -89,6 +90,8 @@ class LiveCapture(
     /** The A4 every reading is measured against (POL-19); the saved value in M4, a launch extra until then. */
     a4Hz: Double = Pitch.A4_DEFAULT_HZ,
     private val promote: () -> Unit = { Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO) },
+    /** Where saved readings go; it queues and returns, so the analysis thread never waits on disk (SES-06). */
+    private val history: HistorySink? = null,
 ) : InputListener {
     private val detector = Detector(mode).also { it.setA4(a4Hz) }
     val a4Hz: Double get() = detector.a4.hz
@@ -143,6 +146,9 @@ class LiveCapture(
     }
 
     private fun onDecisions(decisions: List<Decision>) {
+        if (history != null) {
+            for (decision in decisions) decision.saved?.let { history.accept(it, decision.firstSettled) }
+        }
         val newest = decisions.last()
         levelFlow.value = Level(newest.hop, Level.db(newest.level))
         val previous = stateFlow.value

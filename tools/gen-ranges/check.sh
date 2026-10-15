@@ -23,8 +23,8 @@ for f in "$xml" "$overlay_src"; do
     [ -f "$f" ] || { echo "gen-ranges check: missing input $f" >&2; exit 2; }
 done
 
-base="$root/core/src/main/resources/ranges/base.json"
-overlay="$root/core/src/main/resources/ranges/overlay.json"
+base="$root/core/src/jvmMain/resources/ranges/base.json"
+overlay="$root/core/src/jvmMain/resources/ranges/overlay.json"
 recorded_hash() { sed -n 's/^ *"sourceSha256": *"\([0-9a-f]*\)".*/\1/p' "$1" | head -1; }
 actual_hash() { sha256sum "$1" | cut -d' ' -f1; }
 
@@ -42,11 +42,11 @@ trap 'rm -rf "$work"' EXIT
 python3 -I "$root/tools/gen-ranges/gen_ranges.py" "$xml" "$work/base.json" > /dev/null
 python3 -I "$root/tools/gen-ranges/gen_overlay.py" "$overlay_src" "$work/overlay.json" > /dev/null
 for name in base overlay; do
-    if cmp -s "$work/$name.json" "$root/core/src/main/resources/ranges/$name.json"; then
+    if cmp -s "$work/$name.json" "$root/core/src/jvmMain/resources/ranges/$name.json"; then
         echo "gen-ranges check: $name.json reproduces byte for byte"
     else
         echo "gen-ranges check: $name.json differs from the generator's output" >&2
-        diff -u "$root/core/src/main/resources/ranges/$name.json" "$work/$name.json" | head -40 || true
+        diff -u "$root/core/src/jvmMain/resources/ranges/$name.json" "$work/$name.json" | head -40 || true
         status=1
     fi
 done

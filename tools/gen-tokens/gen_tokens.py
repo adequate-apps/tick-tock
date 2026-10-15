@@ -59,6 +59,12 @@ RENAMES = {
 
 COMMENT_RE = re.compile(r"/\*(.*?)\*/", re.DOTALL)
 ROOT_RE = re.compile(r":root\s*\{(.*?)\}", re.DOTALL)
+THEME_RE = re.compile(r"\.t-([a-z]+)\s*\{(.*?)\}", re.DOTALL)
+
+# The themes, in the order the app offers them. Gridline is the :root sheet;
+# the others are blocks in tokens/themes.css. The flag says whether the system
+# bars need light icons.
+THEMES = [("gridline", "Gridline", False), ("daylight", "Daylight", False), ("dark", "Dark", True), ("pit", "Pit", True)]
 VAR_RE = re.compile(r"var\(--([a-z0-9-]+)\)")
 HEX_RE = re.compile(r"^#([0-9A-Fa-f]{6})$")
 PX_RE = re.compile(r"^(-?\d+(?:\.\d+)?)px$")
@@ -84,6 +90,44 @@ class Token:
         self.resolved: str | None = None
 
 
+def declarations(block: str, where: str) -> list[Token]:
+    """Split one `{ ... }` body into tokens, keeping the group comments."""
+    tokens: list[Token] = []
+    group: str | None = None
+    for piece in re.split(r";", block):
+        piece = piece.strip()
+        if not piece:
+            continue
+        leading = COMMENT_RE.match(piece)
+        if leading:
+            group = leading.group(1).strip()
+            piece = piece[leading.end():].strip()
+        piece = COMMENT_RE.sub("", piece).strip()
+        if not piece:
+            continue
+        if not piece.startswith("--"):
+            raise SystemExit(f"{where}: unexpected declaration {piece!r}")
+        name, _, value = piece[2:].partition(":")
+        tokens.append(Token(name.strip(), value.strip(), group))
+    return tokens
+
+
+def parse_themes(path: Path, colors: dict[str, Token]) -> dict[str, dict[str, str]]:
+    """Read each `.t-name { ... }` block of the theme sheet into raw overrides."""
+    text = COMMENT_RE.sub("", path.read_text(encoding="utf-8"))
+    themes: dict[str, dict[str, str]] = {}
+    for name, block in THEME_RE.findall(text):
+        overrides = {t.name: t.raw for t in declarations(block, f"themes.css .t-{name}")}
+        unknown = sorted(set(overrides) - set(colors))
+        if unknown:
+            raise SystemExit(f"themes.css .t-{name}: unknown colour tokens {unknown}")
+        themes[name] = overrides
+    expected = [key for key, _, _ in THEMES if key != "gridline"]
+    if list(themes) != expected:
+        raise SystemExit(f"themes.css: expected theme blocks {expected}, found {list(themes)}")
+    return themes
+
+
 def parse(path: Path) -> list[Token]:
     """Read the :root block of one CSS file into tokens, in source order.
 
@@ -94,22 +138,7 @@ def parse(path: Path) -> list[Token]:
     text = path.read_text(encoding="utf-8")
     tokens: list[Token] = []
     for block in ROOT_RE.findall(text):
-        group: str | None = None
-        for piece in re.split(r";", block):
-            piece = piece.strip()
-            if not piece:
-                continue
-            leading = COMMENT_RE.match(piece)
-            if leading:
-                group = leading.group(1).strip()
-                piece = piece[leading.end():].strip()
-            piece = COMMENT_RE.sub("", piece).strip()
-            if not piece:
-                continue
-            if not piece.startswith("--"):
-                raise SystemExit(f"{path.name}: unexpected declaration {piece!r}")
-            name, _, value = piece[2:].partition(":")
-            tokens.append(Token(name.strip(), value.strip(), group))
+        tokens.extend(declarations(block, path.name))
     return tokens
 
 
@@ -146,37 +175,61 @@ def number_literal(text: str, suffix: str) -> str:
     return f"{body}{suffix}"
 
 
-def emit_colors(tokens: list[Token], by_name: dict[str, Token]) -> list[str]:
-    lines = ["/** Every Gridline colour. Green, amber and cyan carry meaning and appear nowhere else. */", "object GridlineColors {"]
+def resolve_theme(base: dict[str, Token], overrides: dict[str, str]) -> dict[str, str]:
+    """Resolve every token for one theme: its overrides first, the base sheet for the rest."""
+    themed = {name: Token(name, overrides.get(name, token.raw), token.group) for name, token in base.items()}
+    resolve(themed)
+    return {name: token.resolved or "" for name, token in themed.items()}
+
+
+def emit_colors(tokens: list[Token], by_name: dict[str, Token], themes: dict[str, dict[str, str]]) -> list[str]:
+    names = [t for t in tokens if t.name not in SKIPPED]
+    lines = [
+        "/**",
+        " * One theme's colours, by role. Components read the current palette through",
+        " * [GridlineColors]; green, amber and cyan carry meaning and appear nowhere else.",
+        " */",
+        "class GridlinePalette(",
+        "    /** The name the theme picker shows. */",
+        "    val name: String,",
+        "    /** True when the surfaces are dark, so the system bars need light icons. */",
+        "    val isDark: Boolean,",
+    ]
     group: str | None = None
-    first = True
-    for token in tokens:
-        if token.name in SKIPPED:
-            continue
-        resolved = by_name[token.name].resolved or ""
-        match = HEX_RE.match(resolved)
-        if not match:
-            raise SystemExit(f"colors.css: {token.name} is not a colour: {resolved!r}")
-        if token.group != group or first:
-            if not first:
-                lines.append("")
+    for token in names:
+        if token.group != group:
             group = token.group
             if group:
                 lines.append(f"    // {group}")
-        first = False
-        # A plain alias in the sheet stays an alias in Kotlin, so the reader sees
-        # that `surface` is the gray rather than a coincidentally equal colour.
-        alias = VAR_RE.fullmatch(token.raw)
-        value = kotlin_name(alias.group(1)) if alias else color_literal(match.group(1))
-        lines.append(f"    val {kotlin_name(token.name)} = {value}")
+        lines.append(f"    val {kotlin_name(token.name)}: Color,")
+    lines.append(") {")
+    lines.append("    /** The bevels and frames drawn in this palette's colours. */")
+    lines.append("    val relief: GridlineReliefSet = GridlineReliefSet(this)")
+    lines.append("}")
+    lines.append("")
+    lines.append("/** The four themes, in the order the picker offers them. */")
+    lines.append("object GridlineThemes {")
+    for key, label, dark in THEMES:
+        resolved = resolve_theme(by_name, themes.get(key, {}))
+        lines.append(f"    val {key} = GridlinePalette(")
+        lines.append(f'        name = "{label}",')
+        lines.append(f"        isDark = {str(dark).lower()},")
+        for token in names:
+            match = HEX_RE.match(resolved[token.name])
+            if not match:
+                raise SystemExit(f"colors.css: {token.name} is not a colour in {label}: {resolved[token.name]!r}")
+            lines.append(f"        {kotlin_name(token.name)} = {color_literal(match.group(1))},")
+        lines.append("    )")
+        lines.append("")
+    lines.append(f"    val all: List<GridlinePalette> = listOf({', '.join(k for k, _, _ in THEMES)})")
     lines.append("}")
     return lines
 
 
 def emit_relief(tokens: list[Token], by_name: dict[str, Token]) -> list[str]:
     lines = [
-        "/** Relief and frames, as pairs of colours; Relief.kt draws them one unit wide. */",
-        "object GridlineRelief {",
+        "/** Relief and frames, as pairs of colours from one palette; Relief.kt draws them one unit wide. */",
+        "class GridlineReliefSet(colors: GridlinePalette) {",
     ]
     for token in tokens:
         name = kotlin_name(token.name)
@@ -189,12 +242,12 @@ def emit_relief(tokens: list[Token], by_name: dict[str, Token]) -> list[str]:
                     raise SystemExit(f"relief.css: {token.name} refers to unknown --{c}")
             if token.group:
                 lines.append(f"    /** {token.group} */")
-            lines.append(f"    val {name} = Bevel(topLeft = GridlineColors.{top_left}, bottomRight = GridlineColors.{bottom_right})")
+            lines.append(f"    val {name} = Bevel(topLeft = colors.{top_left}, bottomRight = colors.{bottom_right})")
         elif line:
             width, color = line.groups()
             if color not in by_name:
                 raise SystemExit(f"relief.css: {token.name} refers to unknown --{color}")
-            lines.append(f"    val {name} = Line(width = {width}.dp, color = GridlineColors.{kotlin_name(color)})")
+            lines.append(f"    val {name} = Line(width = {width}.dp, color = colors.{kotlin_name(color)})")
         else:
             raise SystemExit(f"relief.css: cannot express {token.name}: {token.raw!r}")
     lines.append("}")
@@ -283,6 +336,7 @@ def generate() -> str:
             if token.name in by_name:
                 raise SystemExit(f"duplicate token --{token.name}")
             by_name[token.name] = token
+    themes = parse_themes(TOKENS_DIR / "themes.css", {t.name: t for t in per_file["colors.css"]})
     resolve(by_name)
 
     header = [
@@ -301,7 +355,7 @@ def generate() -> str:
         "",
     ]
     body = (
-        emit_colors(per_file["colors.css"], by_name)
+        emit_colors(per_file["colors.css"], by_name, themes)
         + [""]
         + emit_relief(per_file["relief.css"], by_name)
         + [""]

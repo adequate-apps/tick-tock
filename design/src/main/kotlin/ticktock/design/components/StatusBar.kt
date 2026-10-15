@@ -23,8 +23,8 @@ import ticktock.design.GridlineSpacing
 import ticktock.design.GridlineType
 
 /**
- * The always-visible status bar. Each [segments] entry is a whole sentence or
- * fact in mono type with a rule after it. The bar never hides and never shows
+ * The always-visible status bar. Each [segments] entry is a one- or two-word
+ * fact ("Mic off", "Bluetooth") in mono type with a rule after it. The bar never hides and never shows
  * a symbol without words beside it. At large font sizes the segments wrap
  * onto further lines rather than clip, so every fact stays readable.
  */
@@ -33,7 +33,14 @@ fun StatusBar(
     segments: List<String>,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth().background(GridlineColors.surface).testTag("statusbar")) {
+    // The bar keeps its height when empty, so the frame does not jump when a fact appears.
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = GridlineSpacing.statusBarHeight)
+            .background(GridlineColors.surface)
+            .testTag("statusbar"),
+    ) {
         Box(Modifier.fillMaxWidth().height(GridlineMetrics.line).background(GridlineColors.rule))
         FlowRow(modifier = Modifier.fillMaxWidth()) {
             segments.forEachIndexed { index, segment ->

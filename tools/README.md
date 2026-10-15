@@ -27,7 +27,7 @@ jar staged under `robolectric-deps/`.
   fixtures): it keeps failing on its merits and turns the build red the day it
   passes.
 - **Band thresholds.** The cents thresholds live in
-  `core/src/main/kotlin/ticktock/core/music/CentsBand.kt` only. Any other
+  `core/src/commonMain/kotlin/ticktock/core/music/CentsBand.kt` only. Any other
   `src/main` Kotlin file that declares a `...Cents` constant with a literal,
   compares cents to a literal, or compares anything against a band literal
   (5, 12, or the 1.x values 3, 15, 10, 25) is refused, whatever the variable

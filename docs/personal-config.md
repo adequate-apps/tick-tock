@@ -5,7 +5,7 @@ own instrument ranges, their named horns, and the settings that describe how the
 exports to one JSON file and imports on another device. Before an import applies anything, the
 app lists every change the file would make (see "Import" below).
 
-The code lives in `core/src/main/kotlin/ticktock/core/config/`:
+The code lives in `core/src/commonMain/kotlin/ticktock/core/config/`:
 `PersonalConfigCodec` parses, validates and writes the file; `PersonalConfigMerge` computes the
 import diff and the merged result. Both are pure functions with JVM tests.
 
@@ -76,7 +76,7 @@ added. Profiles are never removed by an import.
 | `clickSound` | text | `wood`, `click`, `beep` |
 | `visualOffsetMs` | whole number | -500 to 500 |
 
-The settings table is the prefs field table in `core/src/main/kotlin/ticktock/core/prefs/PrefsSchema.kt`:
+The settings table is the prefs field table in `core/src/commonMain/kotlin/ticktock/core/prefs/PrefsSchema.kt`:
 a row with a portable link travels in this file under the same key and the same spelling of its
 value, and `PrefsPortable` moves the rows in both directions. Device-bound state stays out of the
 file on purpose: permission grants, the paused-capture state, the measured Bluetooth offset, the

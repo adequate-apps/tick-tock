@@ -45,8 +45,8 @@ echo "prove-red: base ${base:0:12}, head ${head_sha:0:12}"
 
 # Test files are what the branch has to prove with; fixtures and androidTest
 # are support code and device tests, run elsewhere.
-changed_tests=$(git diff --name-only "$base" "$head_sha" -- '*/src/test/*' 'host-tests/*' | grep -v '^host-tests/build/' || true)
-changed_prod=$(git diff --name-only "$base" "$head_sha" -- '*/src/main/*' || true)
+changed_tests=$(git diff --name-only "$base" "$head_sha" -- '*/src/test/*' '*/src/jvmTest/*' 'host-tests/*' | grep -v '^host-tests/build/' || true)
+changed_prod=$(git diff --name-only "$base" "$head_sha" -- '*/src/main/*' '*/src/commonMain/*' '*/src/jvmMain/*' || true)
 
 if [ -z "$changed_tests" ]; then
     if [ -n "$changed_prod" ]; then
@@ -101,7 +101,8 @@ tasks=()
 native=0
 while IFS= read -r f; do
     case "$f" in
-        core/*) tasks+=(":core:test") ;;
+        core/*) tasks+=(":core:jvmTest") ;;
+        core-testing/*) tasks+=(":core:jvmTest") ;;
         host-tests/*) native=1 ;;
         */*) tasks+=(":${f%%/*}:testDebugUnitTest") ;;
     esac

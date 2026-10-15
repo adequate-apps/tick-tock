@@ -108,16 +108,16 @@ run_case() {
 plant_nothing() { :; }
 
 plant_missing_output() {
-    printf '\ntasks.test { enabled = false }\n' >> "$scratch/core/build.gradle.kts"
+    printf '\ntasks.named<Test>("jvmTest") { enabled = false }\n' >> "$scratch/core/build.gradle.kts"
 }
 
 plant_zero_tests() {
-    printf '\ntasks.test { filter { includeTestsMatching("ticktock.nothing.*"); isFailOnNoMatchingTests = false } }\n' >> "$scratch/core/build.gradle.kts"
+    printf '\ntasks.named<Test>("jvmTest") { filter { includeTestsMatching("ticktock.nothing.*"); isFailOnNoMatchingTests = false } }\n' >> "$scratch/core/build.gradle.kts"
 }
 
 plant_passing_gap() {
-    mkdir -p "$scratch/core/src/test/kotlin/ticktock/core"
-    cat > "$scratch/core/src/test/kotlin/ticktock/core/PlantedGapTest.kt" <<'EOF'
+    mkdir -p "$scratch/core/src/jvmTest/kotlin/ticktock/core"
+    cat > "$scratch/core/src/jvmTest/kotlin/ticktock/core/PlantedGapTest.kt" <<'EOF'
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.core
 
@@ -158,8 +158,8 @@ plant_callback_alloc() {
 }
 
 plant_threshold() {
-    mkdir -p "$scratch/core/src/main/kotlin/ticktock/core"
-    cat > "$scratch/core/src/main/kotlin/ticktock/core/Planted.kt" <<'EOF'
+    mkdir -p "$scratch/core/src/commonMain/kotlin/ticktock/core"
+    cat > "$scratch/core/src/commonMain/kotlin/ticktock/core/Planted.kt" <<'EOF'
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.core
 

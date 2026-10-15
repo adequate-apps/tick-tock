@@ -3,16 +3,24 @@ package ticktock.app.screens
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ticktock.app.BuildConfig
 import ticktock.app.R
+import ticktock.app.TickTockApp
 import ticktock.app.debug.DebugOutputExtras
 import ticktock.app.debug.DebugTuneExtras
+import ticktock.app.paletteOf
+import ticktock.core.prefs.Theme
 import ticktock.design.components.Field
 import ticktock.design.components.GlText
 import ticktock.design.components.Pane
+import ticktock.design.components.Segment
+import ticktock.design.components.Segmented
 
 /**
  * The three tool screens as placeholder panes. Each pane already has the
@@ -30,8 +38,12 @@ fun TuneScreen() {
 }
 
 @Composable
-fun DroneMetronomeScreen() {
+fun DroneScreen() {
     EmptyPane(title = R.string.pane_drone, text = R.string.empty_drone, tag = "drone", state = R.string.pane_state_stopped)
+}
+
+@Composable
+fun MetronomeScreen() {
     EmptyPane(title = R.string.pane_metronome, text = R.string.empty_metronome, tag = "metronome", state = R.string.pane_state_stopped)
 }
 
@@ -42,7 +54,16 @@ fun TableScreen() {
 
 @Composable
 fun SettingsScreen() {
-    EmptyPane(title = R.string.pane_settings, text = R.string.empty_settings, tag = "settings")
+    val graph = TickTockApp.graph(LocalContext.current)
+    val theme by graph.theme.collectAsStateWithLifecycle()
+    Pane(title = stringResource(R.string.pane_theme), modifier = Modifier.fillMaxWidth(), tag = "theme-pane") {
+        Segmented(
+            segments = Theme.entries.map { Segment(paletteOf(it).name) },
+            selectedIndex = theme.ordinal,
+            onSelect = { index -> graph.prefs.update { it.copy(theme = Theme.entries[index]) } },
+            tag = "theme",
+        )
+    }
 }
 
 @Composable

@@ -8,7 +8,7 @@
 #   2. sources    skipped-test markers, band thresholds outside CentsBand,
 #                 heap allocation, locking or logging on the render path
 #                 (render/ and the three callback functions outside it)
-#   3. U tier     :core:test
+#   3. U tier     :core:jvmTest
 #   4. N tier     host-tests/ (cmake, ninja, gtest) when present
 #   5. H tier     Robolectric tests, lint, assembleDebug, manifest allowlist,
 #                 16 KB page alignment of the native libraries
@@ -133,7 +133,7 @@ stage "sources"
 # Lines of code only: a comment may explain a rule without triggering it.
 code_lines() { grep -n -H -E -v '^[[:space:]]*(//|\*|/\*|#)' "$@" 2>/dev/null; }
 
-test_sources=$(find . -path ./build -prune -o \( -path '*/src/test/*' -o -path '*/src/androidTest/*' -o -path './host-tests/*' \) -type f \( -name '*.kt' -o -name '*.java' -o -name '*.cpp' -o -name '*.cc' -o -name '*.h' \) -print | grep -v '/build/' || true)
+test_sources=$(find . -path ./build -prune -o \( -path '*/src/test/*' -o -path '*/src/jvmTest/*' -o -path '*/src/androidTest/*' -o -path './core-testing/*' -o -path './host-tests/*' \) -type f \( -name '*.kt' -o -name '*.java' -o -name '*.cpp' -o -name '*.cc' -o -name '*.h' \) -print | grep -v '/build/' || true)
 if [ -n "$test_sources" ]; then
     # shellcheck disable=SC2086  # the list is newline-separated file names without spaces
     hits=$(code_lines $test_sources | grep -E '@Ignore\b|@Disabled\b|GTEST_SKIP|TEST(_F|_P)?\([A-Za-z_]+, *DISABLED_' || true)
@@ -147,10 +147,12 @@ echo "no skip markers in test sources"
 # 1.x values 3, 15, 10, 25) is a second threshold in the making, whatever the
 # variable is called. Unrelated uses are named in tools/band-literal-allowlist.txt.
 # The BND-04 test in :core applies the same rule from Kotlin.
-band_file="core/src/main/kotlin/ticktock/core/music/CentsBand.kt"
+band_file="core/src/commonMain/kotlin/ticktock/core/music/CentsBand.kt"
 [ -f "$band_file" ] || red sources "$band_file is missing; the band guard has nothing to exclude"
 band_literal='(3|5|10|12|15|25)(\.0+)?'
-main_sources=$(find . -path ./build -prune -o -path '*/src/main/*' -type f -name '*.kt' -print | grep -v '/build/' | grep -v "^\./$band_file\$" || true)
+# :core keeps its production code in the multiplatform source sets; the fakes
+# in :core-testing are test code.
+main_sources=$(find . -path ./build -prune -o \( -path '*/src/main/*' -o -path '*/src/commonMain/*' -o -path '*/src/jvmMain/*' \) -type f -name '*.kt' -print | grep -v '/build/' | grep -v '^\./core-testing/' | grep -v "^\./$band_file\$" || true)
 if [ -n "$main_sources" ]; then
     grep -v -e '^#' -e '^[[:space:]]*$' tools/band-literal-allowlist.txt > "$logdir/band-allow" || true
     # shellcheck disable=SC2086
@@ -226,10 +228,10 @@ fi
 
 # --- 3. U tier -----------------------------------------------------------------
 
-stage "U tier: :core:test"
+stage "U tier: :core:jvmTest"
 rm -rf core/build/test-results
-run_gradle u-tier :core:test || red "U tier" ":core:test failed"
-check_results "U tier" core/build/test-results/test
+run_gradle u-tier :core:jvmTest || red "U tier" ":core:jvmTest failed"
+check_results "U tier" core/build/test-results/jvmTest
 
 # --- 4. N tier -----------------------------------------------------------------
 
@@ -260,8 +262,11 @@ if ! (cd tools/robolectric-deps && sha256sum -c --quiet MANIFEST.sha256) 2>/dev/
     red "H tier" "the Robolectric jar in tools/robolectric-deps is missing or does not match MANIFEST.sha256"
 fi
 for m in engine data design app; do rm -rf "$m/build/test-results"; done
+# :design and :app run their unit tests in Roborazzi's verify mode, so every
+# screenshot is compared with its golden and any pixel change is red; a plain
+# test run skips the captures.
 run_gradle h-tier --continue \
-    :engine:testDebugUnitTest :data:testDebugUnitTest :design:testDebugUnitTest :app:testDebugUnitTest \
+    :engine:testDebugUnitTest :data:testDebugUnitTest :design:verifyRoborazziDebug :app:verifyRoborazziDebug \
     :app:lintDebug :app:assembleDebug \
     || red "H tier" "a Robolectric test, lint or assembleDebug failed"
 for m in engine data design app; do

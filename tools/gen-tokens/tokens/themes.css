@@ -1,0 +1,42 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Theme overrides. Gridline is the reference: the :root values in colors.css.
+   Each block below re-maps the same tokens; anything a block leaves out keeps
+   its Gridline value. The roles (accent-text, control-face, title-*,
+   selection-*) let a theme move the accent without new component code. */
+
+/* Daylight: white surfaces and black ink for glare and direct sun. Relief stays, softer. */
+.t-daylight{
+--gl-gray:#F4F4F4;--gl-gray-light:#E2E2E2;--gl-gray-lighter:#EBEBEB;--gl-white:#FFFFFF;
+--gl-ink:#000000;--gl-rule:#3A3A3A;--gl-rule-light:#8C8C8C;
+--text-secondary:#262626;--text-disabled:#666666;
+--bevel-light:#FFFFFF;--bevel-dark:#A8A8A8;
+--control-face:#FFFFFF;
+}
+
+/* Dark: charcoal surfaces, light ink, the blue chrome one step deeper so the
+   largest blue areas stay quiet at night, and a lighter blue wherever the
+   accent is text. */
+.t-dark{
+--gl-blue:#2A3CC8;--gl-blue-deep:#18248A;--gl-blue-hover:#4254E0;
+--gl-gray:#1E1E1E;--gl-gray-light:#2C2C2C;--gl-gray-lighter:#262626;--gl-white:#121212;
+--gl-ink:#E6E6E6;--gl-rule:#6A6A6A;--gl-rule-light:#454545;
+--gl-cyan:#3CC4D6;--gl-green:#4CC27A;--gl-yellow:#E8A93A;--gl-yellow-bg:#33260E;--gl-red:#FF6F61;--gl-red-bg:#3B1916;
+--text-secondary:#B4B4B4;--text-disabled:#7C7C7C;
+--bevel-light:#3C3C3C;--bevel-mid:#2E2E2E;--bevel-dark:#000000;--bevel-darker:#000000;
+--accent-text:#9AA8FF;--title-bg:var(--gl-blue-deep);--title-rule:var(--gl-blue-deep);
+--selection-outline:var(--accent-text);
+}
+
+/* Pit: black everywhere, dim ink, and the accent as a line, never as a fill.
+   Unlit pixels on an AMOLED panel emit nothing, so the screen stays dark beside
+   the stand light. Every text colour is at least 4.5:1 on black. */
+.t-pit{
+--gl-blue:#5566DD;--gl-blue-deep:#000000;--gl-blue-hover:#000000;
+--gl-gray:#000000;--gl-gray-light:#0C0C0C;--gl-gray-lighter:#060606;--gl-white:#000000;
+--gl-ink:#8E8E8E;--gl-rule:#5C5C5C;--gl-rule-light:#3A3A3A;
+--gl-cyan:#2C8C99;--gl-green:#3F9A5F;--gl-yellow:#A87C24;--gl-yellow-bg:#140E03;--gl-red:#C8504A;--gl-red-bg:#170705;
+--text-secondary:#767676;--text-disabled:#484848;--text-on-blue:var(--gl-ink);
+--bevel-light:#000000;--bevel-mid:#000000;--bevel-dark:#000000;--bevel-darker:#000000;
+--accent-text:#6F7EE6;--title-bg:#000000;--title-fg:var(--gl-ink);--title-rule:var(--gl-rule);
+--selection-bg:#000000;--selection-fg:#6F7EE6;--selection-outline:var(--gl-blue);
+}

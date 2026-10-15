@@ -34,8 +34,8 @@ import ticktock.design.components.TitleBarAction
 /**
  * The Gridline frame every screen lives in. Top to bottom: the app title strip
  * (extending up behind the system status bar), the tab row, the work area in
- * System Gray, and the status bar that always states what the microphone and
- * the output are doing.
+ * System Gray, and the status bar, which shows a microphone or output fact
+ * while there is one and stays empty at idle.
  *
  * Navigation is two pieces of saved state: which tab is open and whether
  * Settings is over it. The system back gesture closes Settings and otherwise
@@ -52,7 +52,7 @@ fun AppFrame() {
     }
 
     Column(Modifier.fillMaxSize().testTag("frame")) {
-        Column(Modifier.fillMaxWidth().background(GridlineColors.active).windowInsetsPadding(WindowInsets.statusBars)) {
+        Column(Modifier.fillMaxWidth().background(GridlineColors.titleBg).windowInsetsPadding(WindowInsets.statusBars)) {
             if (settingsOpen) {
                 TitleBar(title = stringResource(R.string.pane_settings)) {
                     TitleBarAction(label = stringResource(R.string.action_back), onClick = { settingsOpen = false }, tag = "back")
@@ -84,16 +84,16 @@ fun AppFrame() {
             when {
                 settingsOpen -> SettingsScreen()
                 tab == Tab.Tune -> TuneScreen()
-                tab == Tab.DroneMetronome -> DroneMetronomeScreen()
+                tab == Tab.Drone -> DroneScreen()
+                tab == Tab.Metronome -> MetronomeScreen()
                 tab == Tab.Table -> TableScreen()
             }
         }
 
+        // An idle microphone and a closed output show nothing: the bar carries a
+        // fact only while it is true and worth a glance (Listening, Mic busy, Bluetooth).
         StatusBar(
-            segments = listOf(
-                stringResource(R.string.status_microphone_closed),
-                stringResource(R.string.status_output_closed),
-            ),
+            segments = emptyList(),
             modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
         )
     }

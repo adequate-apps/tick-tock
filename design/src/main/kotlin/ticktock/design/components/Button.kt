@@ -22,12 +22,16 @@ import ticktock.design.GridlineMetrics
 import ticktock.design.GridlineRelief
 import ticktock.design.GridlineSpacing
 import ticktock.design.GridlineType
+import ticktock.design.Line
 import ticktock.design.bevel
+import ticktock.design.frame
+import ticktock.design.selectionOutline
 
 /**
- * Which face a button shows. [Default] is a raised System Gray face for most
- * actions; [Primary] is Active Blue for the one action a pane is about
- * (Start, Save, Continue).
+ * Which face a button shows. [Default] is a raised control face for most
+ * actions; [Primary] takes the theme's selection colours for the one action a
+ * pane is about (Start, Save, Continue): Active Blue in Gridline, an outline
+ * in Pit.
  */
 enum class ButtonTone { Default, Primary }
 
@@ -51,12 +55,12 @@ fun Button(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val face = when {
-        tone == ButtonTone.Primary -> GridlineColors.active
-        else -> GridlineColors.surface
+        tone == ButtonTone.Primary -> GridlineColors.selectionBg
+        else -> GridlineColors.controlFace
     }
     val text = when {
         !enabled -> GridlineColors.textDisabled
-        tone == ButtonTone.Primary -> GridlineColors.textOnBlue
+        tone == ButtonTone.Primary -> GridlineColors.selectionFg
         else -> GridlineColors.textBody
     }
     // A blue face keeps its relief in blues so the bevel reads as light falling
@@ -71,7 +75,11 @@ fun Button(
         modifier = modifier
             .defaultMinSize(minWidth = GridlineMetrics.touchTarget, minHeight = GridlineMetrics.touchTarget)
             .background(face)
-            .bevel(relief)
+            // A key is a rule-bordered face with the bevel inside the border, as in
+            // the mockups; in Pit, where bevels are black, the border is its edge.
+            // The tap target is the whole key, border included.
+            .frame(if (tone == ButtonTone.Primary) Line(GridlineMetrics.line, GridlineColors.blueDeep) else GridlineRelief.frame)
+            .then(if (tone == ButtonTone.Primary) Modifier.selectionOutline() else Modifier)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -79,6 +87,8 @@ fun Button(
                 role = Role.Button,
                 onClick = onClick,
             )
+            .padding(GridlineMetrics.line)
+            .bevel(relief)
             .padding(horizontal = GridlineSpacing.sp4, vertical = GridlineSpacing.sp2)
             .testTag(tag),
         contentAlignment = Alignment.Center,

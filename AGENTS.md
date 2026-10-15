@@ -43,7 +43,7 @@ specification documents the owner hands over. It links to no external site.
 
 | Role | Owns |
 |---|---|
-| Architect | `core/src/main/kotlin/ticktock/core/contracts`, `core/.../detect/Reading.kt`, `core/.../metro/MetroSetup.kt`, the JNI shape, `docs/DECISIONS.md`, `docs/ACCEPTANCE.md`, the module-wall tests |
+| Architect | `core/src/commonMain/kotlin/ticktock/core/contracts`, `core/.../detect/Reading.kt`, `core/.../metro/MetroSetup.kt`, the JNI shape, `docs/DECISIONS.md`, `docs/ACCEPTANCE.md`, the module-wall tests |
 | Core builder | `core/` |
 | Engine builder | `engine/`, `host-tests/` |
 | Data builder | `data/` |
@@ -60,7 +60,7 @@ the native side, the Kotlin side, the fake and the round-trip test in the same P
 - Every fix lands as two commits: `test:` adds a test that fails on the base, then `feat:` or
   `fix:` turns it green. A test only ever seen passing is a comment.
 - Known gaps are named strict-failing tests. `@Ignore` and skipped tests are rejected.
-- The fast tiers run on every edit: `./gradlew :core:test` and the host C++ tests. The full suite
+- The fast tiers run on every edit: `./gradlew :core:jvmTest` and the host C++ tests. The full suite
   runs before every PR.
 - `docs/ACCEPTANCE.md` is the ledger. Claim criterion IDs in the PR title; two open PRs never claim
   the same ID.
@@ -74,7 +74,8 @@ Gridline design system, built from Compose Foundation only:
   with ink `#101010` borders; Active Blue `#0000A8` title strips and active states;
 - green, amber and cyan only for their meanings (in tune, close, live);
 - IBM Plex Sans and Mono, bundled;
-- a visible status bar that states facts in whole sentences;
+- a visible status bar of one- or two-word facts ("Mic off", "Bluetooth");
+- show, don't tell: no prose about the interface; empty and gated states are dimmed ghost layouts with an icon;
 - no Material components, gradients, shadows, pills, ripples or emoji. The `:design` module exposes
   no API for any of these, so drift is a compile error or a screenshot diff.
 
@@ -102,7 +103,7 @@ No slogans, no marketing, no explanatory negatives.
 ```sh
 export JAVA_HOME=/path/to/jdk-21 ANDROID_HOME=/path/to/android-sdk
 ./gradlew help
-./gradlew :core:test
+./gradlew :core:jvmTest
 ./gradlew :app:assembleDebug
 ./gradlew :app:testDebugUnitTest :design:testDebugUnitTest :data:testDebugUnitTest :engine:testDebugUnitTest
 ```

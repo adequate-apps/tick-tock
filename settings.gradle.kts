@@ -20,6 +20,7 @@ dependencyResolutionManagement {
 rootProject.name = "ticktock"
 
 include(":core")
+include(":core-testing")
 include(":engine")
 include(":data")
 include(":design")

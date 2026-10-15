@@ -15,6 +15,7 @@ import ticktock.core.contracts.InputFailure
 import ticktock.core.contracts.InputInfo
 import ticktock.core.contracts.InputSource
 import ticktock.core.contracts.fakes.FakeAudioInput
+import ticktock.core.contracts.fakes.FakeHistorySink
 import ticktock.core.detect.Hop
 import ticktock.core.detect.fakes.Sine
 import ticktock.core.music.Pitch
@@ -54,6 +55,24 @@ class LiveCaptureTest {
         repeat(LiveCapture.DIAGNOSTICS_HOPS) { input.push(sine.next(Hop.frames(rate))) }
         awaitUntil("counters") { capture.diagnostics.value.counters.hopsAnalysed >= LiveCapture.DIAGNOSTICS_HOPS }
         assertTrue(capture.diagnostics.value.lastHopNanos > 0)
+    }
+
+    @Test
+    fun `saved readings reach history with the first one after each attack marked`() {
+        val sink = FakeHistorySink()
+        val stored = LiveCapture(promote = {}, history = sink)
+        val input = FakeAudioInput(sampleRate = rate)
+        stored.start(input)
+        val sine = Sine(Pitch.hzFromMidi(69, 440.0), 0.1, rate)
+        repeat(20) { input.push(sine.next(Hop.frames(rate))) }
+        awaitUntil("readings stored") { synchronized(sink) { sink.accepted.size } >= 5 }
+        stored.stop()
+
+        synchronized(sink) {
+            assertTrue(sink.accepted.all { it.midiSounding == 69 })
+            assertEquals("one attack, so one first-settled reading", 1, sink.firstSettled.count { it })
+            assertTrue(sink.firstSettled.first())
+        }
     }
 
     @Test

@@ -23,8 +23,8 @@ import org.robolectric.annotation.GraphicsMode
  * 1.3, 1.5 and 2.0 (A11Y-02). The goldens live in app/src/test/screenshots and are
  * written by `:app:recordRoborazziDebug`; `:app:verifyRoborazziDebug` fails
  * on any pixel change. Under a plain test run the capture is a no-op and the
- * layout assertions still have to hold: every label is displayed, and a tab
- * that no longer fits is reachable by scrolling rather than clipped.
+ * layout assertions still have to hold: every label is displayed, and the
+ * tabs wrap into rows rather than clip.
  *
  * NATIVE graphics mode is what makes this real rendering; in legacy mode
  * every draw call is a no-op and the image would be blank.
@@ -57,12 +57,10 @@ class FrameScreenshotTest {
     private fun assertFrameReadable() {
         compose.onNodeWithTag("titlebar-title", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithTag("open-settings").assertIsDisplayed()
-        // A tab that no longer fits must be reachable by scrolling; then return the
-        // row to its origin so the golden shows what the player sees first.
-        compose.onNodeWithTag("tabs-2").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("tabs-0").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("statusbar-0", useUnmergedTree = true).assertIsDisplayed()
-        compose.onNodeWithTag("statusbar-1", useUnmergedTree = true).assertIsDisplayed()
+        // Every tab is on screen at every font scale: the keys wrap into rows
+        // rather than scroll a label out of view.
+        for (i in 0..3) compose.onNodeWithTag("tabs-$i").assertIsDisplayed()
+        compose.onNodeWithTag("statusbar").assertIsDisplayed()
     }
 
     @Test
@@ -98,39 +96,75 @@ class FrameScreenshotTest {
     }
 
     @Test
-    fun `drone and metronome at font scale 1_0`() {
+    fun `drone at font scale 1_0`() {
         launch(1f)
         compose.onNodeWithTag("tabs-1").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
-        golden("frame-drone-metronome-360x640-fs1.0")
+        compose.onNodeWithTag("drone-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-drone-360x640-fs1.0")
     }
 
     @Test
-    fun `drone and metronome at font scale 1_3`() {
+    fun `drone at font scale 1_3`() {
         launch(1.3f)
         compose.onNodeWithTag("tabs-1").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
-        golden("frame-drone-metronome-360x640-fs1.3")
+        compose.onNodeWithTag("drone-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-drone-360x640-fs1.3")
     }
 
     @Test
-    fun `drone and metronome at font scale 1_5`() {
+    fun `drone at font scale 1_5`() {
         launch(1.5f)
         compose.onNodeWithTag("tabs-1").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
-        golden("frame-drone-metronome-360x640-fs1.5")
+        compose.onNodeWithTag("drone-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-drone-360x640-fs1.5")
     }
 
     @Test
-    fun `drone and metronome at font scale 2_0`() {
+    fun `drone at font scale 2_0`() {
         launch(2f)
         compose.onNodeWithTag("tabs-1").performClick()
         assertFrameReadable()
+        compose.onNodeWithTag("drone-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-drone-360x640-fs2.0")
+    }
+
+    @Test
+    fun `metronome at font scale 1_0`() {
+        launch(1f)
+        compose.onNodeWithTag("tabs-2").performClick()
+        assertFrameReadable()
         compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
-        golden("frame-drone-metronome-360x640-fs2.0")
+        golden("frame-metronome-360x640-fs1.0")
+    }
+
+    @Test
+    fun `metronome at font scale 1_3`() {
+        launch(1.3f)
+        compose.onNodeWithTag("tabs-2").performClick()
+        assertFrameReadable()
+        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-metronome-360x640-fs1.3")
+    }
+
+    @Test
+    fun `metronome at font scale 1_5`() {
+        launch(1.5f)
+        compose.onNodeWithTag("tabs-2").performClick()
+        assertFrameReadable()
+        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-metronome-360x640-fs1.5")
+    }
+
+    @Test
+    fun `metronome at font scale 2_0`() {
+        launch(2f)
+        compose.onNodeWithTag("tabs-2").performClick()
+        assertFrameReadable()
+        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-metronome-360x640-fs2.0")
     }
 
     @Test
@@ -138,7 +172,7 @@ class FrameScreenshotTest {
         launch(1f)
         compose.onNodeWithTag("open-settings").performClick()
         compose.onNodeWithTag("back").assertIsDisplayed()
-        compose.onNodeWithTag("settings-empty", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("theme-3").assertIsDisplayed()
         golden("frame-settings-360x640-fs1.0")
     }
 
@@ -147,7 +181,7 @@ class FrameScreenshotTest {
         launch(1.3f)
         compose.onNodeWithTag("open-settings").performClick()
         compose.onNodeWithTag("back").assertIsDisplayed()
-        compose.onNodeWithTag("settings-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("theme-3").performScrollTo().assertIsDisplayed()
         golden("frame-settings-360x640-fs1.3")
     }
 
@@ -156,7 +190,7 @@ class FrameScreenshotTest {
         launch(1.5f)
         compose.onNodeWithTag("open-settings").performClick()
         compose.onNodeWithTag("back").assertIsDisplayed()
-        compose.onNodeWithTag("settings-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("theme-3").performScrollTo().assertIsDisplayed()
         golden("frame-settings-360x640-fs1.5")
     }
 
@@ -165,7 +199,7 @@ class FrameScreenshotTest {
         launch(2f)
         compose.onNodeWithTag("open-settings").performClick()
         compose.onNodeWithTag("back").assertIsDisplayed()
-        compose.onNodeWithTag("settings-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("theme-3").performScrollTo().assertIsDisplayed()
         golden("frame-settings-360x640-fs2.0")
     }
 }

@@ -2,10 +2,10 @@
 
 The app's instrument ranges come in three layers (see `docs/DECISIONS.md`, decision 3):
 
-1. **Base**: `core/src/main/resources/ranges/base.json`, written by `gen_ranges.py` from
+1. **Base**: `core/src/jvmMain/resources/ranges/base.json`, written by `gen_ranges.py` from
    MuseScore's `instruments.xml` (GPL-3.0, credited in `THIRD_PARTY.md`). Values are copied in
    sounding MIDI with the transposition MuseScore declares. The XML stays out of the repository.
-2. **App overlay**: `core/src/main/resources/ranges/overlay.json`, written by `gen_overlay.py`
+2. **App overlay**: `core/src/jvmMain/resources/ranges/overlay.json`, written by `gen_overlay.py`
    from the owner's curated corrections. Every entry carries a reason.
 3. **User**: personal overrides, kept in the portable personal configuration
    (`docs/personal-config.md`).
@@ -30,7 +30,7 @@ is superseded and produces an overlay that fails RNG-05.
 ```sh
 python3 -I tools/gen-ranges/gen_ranges.py /path/to/inputs/musescore-instruments.xml
 python3 -I tools/gen-ranges/gen_overlay.py /path/to/inputs/range-overlay-source.with-decisions.json
-JAVA_HOME=/path/to/jdk-21 ./gradlew :core:test
+JAVA_HOME=/path/to/jdk-21 ./gradlew :core:jvmTest
 ```
 
 ## Checking reproduction (RNG-03)

@@ -11,62 +11,274 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
-/** Every Gridline colour. Green, amber and cyan carry meaning and appear nowhere else. */
-object GridlineColors {
+/**
+ * One theme's colours, by role. Components read the current palette through
+ * [GridlineColors]; green, amber and cyan carry meaning and appear nowhere else.
+ */
+class GridlinePalette(
+    /** The name the theme picker shows. */
+    val name: String,
+    /** True when the surfaces are dark, so the system bars need light icons. */
+    val isDark: Boolean,
     // base
-    val blue = Color(0xFF0000A8)
-    val blueDeep = Color(0xFF000078)
-    val blueHover = Color(0xFF1414B8)
-    val gray = Color(0xFFC6C6C6)
-    val grayLight = Color(0xFFE8E8E8)
-    val grayLighter = Color(0xFFF2F2F2)
-    val white = Color(0xFFFFFFFF)
-    val ink = Color(0xFF101010)
-    val rule = Color(0xFF666666)
-    val ruleLight = Color(0xFF9A9A9A)
-    val cyan = Color(0xFF008EA1)
-    val green = Color(0xFF18743A)
-    val yellow = Color(0xFFB87900)
-    val yellowBg = Color(0xFFFFF4DC)
-    val red = Color(0xFFB3261E)
-    val redBg = Color(0xFFFBEAE9)
-
+    val blue: Color,
+    val blueDeep: Color,
+    val blueHover: Color,
+    val gray: Color,
+    val grayLight: Color,
+    val grayLighter: Color,
+    val white: Color,
+    val ink: Color,
+    val rule: Color,
+    val ruleLight: Color,
+    val cyan: Color,
+    val green: Color,
+    val yellow: Color,
+    val yellowBg: Color,
+    val red: Color,
+    val redBg: Color,
     // relief
-    val bevelLight = Color(0xFFFFFFFF)
-    val bevelMid = Color(0xFFDFDFDF)
-    val bevelDark = Color(0xFF8A8A8A)
-    val bevelDarker = Color(0xFF4A4A4A)
-
+    val bevelLight: Color,
+    val bevelMid: Color,
+    val bevelDark: Color,
+    val bevelDarker: Color,
     // semantic
-    val surface = gray
-    val surface2 = grayLight
-    val field = white
-    val textBody = ink
-    val textSecondary = Color(0xFF3D3D3D)
-    val textDisabled = Color(0xFF7A7A7A)
-    val textOnBlue = Color(0xFFFFFFFF)
-    val active = blue
-    val selectionBg = blue
-    val selectionFg = Color(0xFFFFFFFF)
-    val live = cyan
-    val positive = green
-    val attention = yellow
-    val danger = red
-    val borderStrong = ink
-    val border = rule
-    val borderLight = ruleLight
+    val surface: Color,
+    val surface2: Color,
+    val field: Color,
+    val textBody: Color,
+    val textSecondary: Color,
+    val textDisabled: Color,
+    val textOnBlue: Color,
+    val active: Color,
+    val selectionBg: Color,
+    val selectionFg: Color,
+    val live: Color,
+    val positive: Color,
+    val attention: Color,
+    val danger: Color,
+    val borderStrong: Color,
+    val border: Color,
+    val borderLight: Color,
+    // roles
+    val accentText: Color,
+    val controlFace: Color,
+    val titleBg: Color,
+    val titleFg: Color,
+    val titleRule: Color,
+    val selectionOutline: Color,
+) {
+    /** The bevels and frames drawn in this palette's colours. */
+    val relief: GridlineReliefSet = GridlineReliefSet(this)
 }
 
-/** Relief and frames, as pairs of colours; Relief.kt draws them one unit wide. */
-object GridlineRelief {
+/** The four themes, in the order the picker offers them. */
+object GridlineThemes {
+    val gridline = GridlinePalette(
+        name = "Gridline",
+        isDark = false,
+        blue = Color(0xFF0000A8),
+        blueDeep = Color(0xFF000078),
+        blueHover = Color(0xFF1414B8),
+        gray = Color(0xFFC6C6C6),
+        grayLight = Color(0xFFE8E8E8),
+        grayLighter = Color(0xFFF2F2F2),
+        white = Color(0xFFFFFFFF),
+        ink = Color(0xFF101010),
+        rule = Color(0xFF666666),
+        ruleLight = Color(0xFF9A9A9A),
+        cyan = Color(0xFF008EA1),
+        green = Color(0xFF18743A),
+        yellow = Color(0xFFB87900),
+        yellowBg = Color(0xFFFFF4DC),
+        red = Color(0xFFB3261E),
+        redBg = Color(0xFFFBEAE9),
+        bevelLight = Color(0xFFFFFFFF),
+        bevelMid = Color(0xFFDFDFDF),
+        bevelDark = Color(0xFF8A8A8A),
+        bevelDarker = Color(0xFF4A4A4A),
+        surface = Color(0xFFC6C6C6),
+        surface2 = Color(0xFFE8E8E8),
+        field = Color(0xFFFFFFFF),
+        textBody = Color(0xFF101010),
+        textSecondary = Color(0xFF3D3D3D),
+        textDisabled = Color(0xFF7A7A7A),
+        textOnBlue = Color(0xFFFFFFFF),
+        active = Color(0xFF0000A8),
+        selectionBg = Color(0xFF0000A8),
+        selectionFg = Color(0xFFFFFFFF),
+        live = Color(0xFF008EA1),
+        positive = Color(0xFF18743A),
+        attention = Color(0xFFB87900),
+        danger = Color(0xFFB3261E),
+        borderStrong = Color(0xFF101010),
+        border = Color(0xFF666666),
+        borderLight = Color(0xFF9A9A9A),
+        accentText = Color(0xFF0000A8),
+        controlFace = Color(0xFFC6C6C6),
+        titleBg = Color(0xFF0000A8),
+        titleFg = Color(0xFFFFFFFF),
+        titleRule = Color(0xFF0000A8),
+        selectionOutline = Color(0xFF0000A8),
+    )
+
+    val daylight = GridlinePalette(
+        name = "Daylight",
+        isDark = false,
+        blue = Color(0xFF0000A8),
+        blueDeep = Color(0xFF000078),
+        blueHover = Color(0xFF1414B8),
+        gray = Color(0xFFF4F4F4),
+        grayLight = Color(0xFFE2E2E2),
+        grayLighter = Color(0xFFEBEBEB),
+        white = Color(0xFFFFFFFF),
+        ink = Color(0xFF000000),
+        rule = Color(0xFF3A3A3A),
+        ruleLight = Color(0xFF8C8C8C),
+        cyan = Color(0xFF008EA1),
+        green = Color(0xFF18743A),
+        yellow = Color(0xFFB87900),
+        yellowBg = Color(0xFFFFF4DC),
+        red = Color(0xFFB3261E),
+        redBg = Color(0xFFFBEAE9),
+        bevelLight = Color(0xFFFFFFFF),
+        bevelMid = Color(0xFFDFDFDF),
+        bevelDark = Color(0xFFA8A8A8),
+        bevelDarker = Color(0xFF4A4A4A),
+        surface = Color(0xFFF4F4F4),
+        surface2 = Color(0xFFE2E2E2),
+        field = Color(0xFFFFFFFF),
+        textBody = Color(0xFF000000),
+        textSecondary = Color(0xFF262626),
+        textDisabled = Color(0xFF666666),
+        textOnBlue = Color(0xFFFFFFFF),
+        active = Color(0xFF0000A8),
+        selectionBg = Color(0xFF0000A8),
+        selectionFg = Color(0xFFFFFFFF),
+        live = Color(0xFF008EA1),
+        positive = Color(0xFF18743A),
+        attention = Color(0xFFB87900),
+        danger = Color(0xFFB3261E),
+        borderStrong = Color(0xFF000000),
+        border = Color(0xFF3A3A3A),
+        borderLight = Color(0xFF8C8C8C),
+        accentText = Color(0xFF0000A8),
+        controlFace = Color(0xFFFFFFFF),
+        titleBg = Color(0xFF0000A8),
+        titleFg = Color(0xFFFFFFFF),
+        titleRule = Color(0xFF0000A8),
+        selectionOutline = Color(0xFF0000A8),
+    )
+
+    val dark = GridlinePalette(
+        name = "Dark",
+        isDark = true,
+        blue = Color(0xFF2A3CC8),
+        blueDeep = Color(0xFF18248A),
+        blueHover = Color(0xFF4254E0),
+        gray = Color(0xFF1E1E1E),
+        grayLight = Color(0xFF2C2C2C),
+        grayLighter = Color(0xFF262626),
+        white = Color(0xFF121212),
+        ink = Color(0xFFE6E6E6),
+        rule = Color(0xFF6A6A6A),
+        ruleLight = Color(0xFF454545),
+        cyan = Color(0xFF3CC4D6),
+        green = Color(0xFF4CC27A),
+        yellow = Color(0xFFE8A93A),
+        yellowBg = Color(0xFF33260E),
+        red = Color(0xFFFF6F61),
+        redBg = Color(0xFF3B1916),
+        bevelLight = Color(0xFF3C3C3C),
+        bevelMid = Color(0xFF2E2E2E),
+        bevelDark = Color(0xFF000000),
+        bevelDarker = Color(0xFF000000),
+        surface = Color(0xFF1E1E1E),
+        surface2 = Color(0xFF2C2C2C),
+        field = Color(0xFF121212),
+        textBody = Color(0xFFE6E6E6),
+        textSecondary = Color(0xFFB4B4B4),
+        textDisabled = Color(0xFF7C7C7C),
+        textOnBlue = Color(0xFFFFFFFF),
+        active = Color(0xFF2A3CC8),
+        selectionBg = Color(0xFF2A3CC8),
+        selectionFg = Color(0xFFFFFFFF),
+        live = Color(0xFF3CC4D6),
+        positive = Color(0xFF4CC27A),
+        attention = Color(0xFFE8A93A),
+        danger = Color(0xFFFF6F61),
+        borderStrong = Color(0xFFE6E6E6),
+        border = Color(0xFF6A6A6A),
+        borderLight = Color(0xFF454545),
+        accentText = Color(0xFF9AA8FF),
+        controlFace = Color(0xFF1E1E1E),
+        titleBg = Color(0xFF18248A),
+        titleFg = Color(0xFFFFFFFF),
+        titleRule = Color(0xFF18248A),
+        selectionOutline = Color(0xFF9AA8FF),
+    )
+
+    val pit = GridlinePalette(
+        name = "Pit",
+        isDark = true,
+        blue = Color(0xFF5566DD),
+        blueDeep = Color(0xFF000000),
+        blueHover = Color(0xFF000000),
+        gray = Color(0xFF000000),
+        grayLight = Color(0xFF0C0C0C),
+        grayLighter = Color(0xFF060606),
+        white = Color(0xFF000000),
+        ink = Color(0xFF8E8E8E),
+        rule = Color(0xFF5C5C5C),
+        ruleLight = Color(0xFF3A3A3A),
+        cyan = Color(0xFF2C8C99),
+        green = Color(0xFF3F9A5F),
+        yellow = Color(0xFFA87C24),
+        yellowBg = Color(0xFF140E03),
+        red = Color(0xFFC8504A),
+        redBg = Color(0xFF170705),
+        bevelLight = Color(0xFF000000),
+        bevelMid = Color(0xFF000000),
+        bevelDark = Color(0xFF000000),
+        bevelDarker = Color(0xFF000000),
+        surface = Color(0xFF000000),
+        surface2 = Color(0xFF0C0C0C),
+        field = Color(0xFF000000),
+        textBody = Color(0xFF8E8E8E),
+        textSecondary = Color(0xFF767676),
+        textDisabled = Color(0xFF484848),
+        textOnBlue = Color(0xFF8E8E8E),
+        active = Color(0xFF5566DD),
+        selectionBg = Color(0xFF000000),
+        selectionFg = Color(0xFF6F7EE6),
+        live = Color(0xFF2C8C99),
+        positive = Color(0xFF3F9A5F),
+        attention = Color(0xFFA87C24),
+        danger = Color(0xFFC8504A),
+        borderStrong = Color(0xFF8E8E8E),
+        border = Color(0xFF5C5C5C),
+        borderLight = Color(0xFF3A3A3A),
+        accentText = Color(0xFF6F7EE6),
+        controlFace = Color(0xFF000000),
+        titleBg = Color(0xFF000000),
+        titleFg = Color(0xFF8E8E8E),
+        titleRule = Color(0xFF5C5C5C),
+        selectionOutline = Color(0xFF5566DD),
+    )
+
+    val all: List<GridlinePalette> = listOf(gridline, daylight, dark, pit)
+}
+
+/** Relief and frames, as pairs of colours from one palette; Relief.kt draws them one unit wide. */
+class GridlineReliefSet(colors: GridlinePalette) {
     /** raised control (button face) */
-    val reliefRaised = Bevel(topLeft = GridlineColors.bevelLight, bottomRight = GridlineColors.bevelDark)
+    val reliefRaised = Bevel(topLeft = colors.bevelLight, bottomRight = colors.bevelDark)
     /** pressed control */
-    val reliefPressed = Bevel(topLeft = GridlineColors.bevelDark, bottomRight = GridlineColors.bevelLight)
+    val reliefPressed = Bevel(topLeft = colors.bevelDark, bottomRight = colors.bevelLight)
     /** inset editable field */
-    val reliefInset = Bevel(topLeft = GridlineColors.bevelDark, bottomRight = GridlineColors.bevelLight)
-    val frame = Line(width = 1.dp, color = GridlineColors.border)
-    val frameStrong = Line(width = 1.dp, color = GridlineColors.borderStrong)
+    val reliefInset = Bevel(topLeft = colors.bevelDark, bottomRight = colors.bevelLight)
+    val frame = Line(width = 1.dp, color = colors.border)
+    val frameStrong = Line(width = 1.dp, color = colors.borderStrong)
 }
 
 /** Spacing and fixed heights in dp. The radius is zero: Gridline has square corners only. */

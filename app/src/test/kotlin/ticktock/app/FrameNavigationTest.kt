@@ -19,10 +19,9 @@ class FrameNavigationTest {
     val compose = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun `the three tabs are present and Tune is selected first`() {
+    fun `the four tabs are present and Tune is selected first`() {
         compose.onNodeWithTag("tabs-0").assertIsSelected()
-        compose.onNodeWithTag("tabs-1").assertIsDisplayed()
-        compose.onNodeWithTag("tabs-2").assertIsDisplayed()
+        for (i in 1..3) compose.onNodeWithTag("tabs-$i").assertIsDisplayed()
     }
 
     @Test
@@ -30,21 +29,23 @@ class FrameNavigationTest {
         compose.onNodeWithTag("tabs-1").performClick()
         compose.onNodeWithTag("tabs-1").assertIsSelected()
         compose.onNodeWithTag("drone-pane-titlebar-title", useUnmergedTree = true).assertTextEquals("Drone")
-        compose.onNodeWithTag("metronome-pane-titlebar-state", useUnmergedTree = true).assertTextEquals("Stopped")
 
         compose.onNodeWithTag("tabs-2").performClick()
+        compose.onNodeWithTag("metronome-pane-titlebar-state", useUnmergedTree = true).assertTextEquals("Stopped")
+
+        compose.onNodeWithTag("tabs-3").performClick()
         compose.onNodeWithTag("table-empty", useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test
     fun `settings opens over the tabs and back closes it`() {
-        compose.onNodeWithTag("tabs-2").performClick()
+        compose.onNodeWithTag("tabs-3").performClick()
         compose.onNodeWithTag("open-settings").performClick()
         compose.onNodeWithTag("titlebar-title", useUnmergedTree = true).assertTextEquals("Settings")
-        compose.onNodeWithTag("settings-empty", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("theme-3").assertIsDisplayed()
         compose.onNodeWithTag("back").performClick()
         // The tab that was open is still open underneath.
-        compose.onNodeWithTag("tabs-2").assertIsSelected()
+        compose.onNodeWithTag("tabs-3").assertIsSelected()
         compose.onNodeWithTag("table-empty", useUnmergedTree = true).assertIsDisplayed()
     }
 
