@@ -28,6 +28,7 @@ object InputSeam {
     const val EXTRA_TONE_HZ = "ticktock.debug.tone_hz"
     const val EXTRA_TONE_AMPLITUDE = "ticktock.debug.tone_amp"
     const val EXTRA_TONE_RATE = "ticktock.debug.tone_rate"
+    const val EXTRA_BURST_HOPS = "ticktock.debug.burst_hops"
     const val EXTRA_A4_HZ = "ticktock.debug.a4_hz"
     const val DEFAULT_AMPLITUDE = 0.1f
     const val DEFAULT_RATE = 48_000
@@ -54,7 +55,8 @@ object InputSeam {
             val hz = intent.getFloatExtra(EXTRA_TONE_HZ, 0f).toDouble()
             val amplitude = intent.getFloatExtra(EXTRA_TONE_AMPLITUDE, DEFAULT_AMPLITUDE).toDouble()
             val rate = intent.getIntExtra(EXTRA_TONE_RATE, DEFAULT_RATE)
-            return Choice(needsMicrophone = false, a4Hz = a4Hz) { ToneInput(hz, amplitude, rate) }
+            val burst = intent.getIntExtra(EXTRA_BURST_HOPS, 0).coerceIn(0, 256)
+            return Choice(needsMicrophone = false, a4Hz = a4Hz) { ToneInput(hz, amplitude, rate, burst) }
         }
         if (intent.getBooleanExtra(EXTRA_LIVE, false)) {
             val platform = AndroidRecorderPlatform(activity.applicationContext)

@@ -22,6 +22,7 @@ class ToneInput(
     val hz: Double,
     val amplitude: Double,
     val sampleRate: Int = 48_000,
+    val burstHops: Int = 0,
 ) : AudioInput {
     @Volatile
     private var running = false
@@ -47,7 +48,13 @@ class ToneInput(
         val blockNanos = TimeUnit.SECONDS.toNanos(1) * frames / sampleRate
         var phase = 0.0
         var due = System.nanoTime()
+        var deliveredBlocks = 0
         while (running) {
+            if (burstHops > 0 && deliveredBlocks == BLOCKS_PER_HOP * 2) {
+                val burst = FloatArray(Hop.frames(sampleRate) * burstHops.coerceAtMost(256))
+                sink(burst, burst.size)
+            }
+            deliveredBlocks++
             for (i in 0 until frames) {
                 block[i] = (amplitude * sin(phase)).toFloat()
                 phase += step
