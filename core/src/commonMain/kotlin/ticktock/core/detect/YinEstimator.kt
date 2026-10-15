@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.core.detect
 
+import ticktock.core.yin.HarmonicRefiner
 import ticktock.core.yin.Yin
 import ticktock.core.yin.YinResult
 
@@ -21,6 +22,10 @@ import ticktock.core.yin.YinResult
  * [nonFiniteWindows], and the next clean window is analysed normally
  * (DET-15).
  *
+ * YIN names the period; [HarmonicRefiner] then settles the fundamental within
+ * a few cents of it against every partial in the window, which holds the
+ * reading still under breath and room noise.
+ *
  * One [Yin] serves one sample rate; a stream at a new rate gets a new one on
  * its first window. Not thread safe: the analysis thread owns it.
  */
@@ -32,6 +37,7 @@ class YinEstimator(private val threshold: () -> Double) : PitchEstimator {
     constructor(threshold: Double) : this({ threshold })
 
     private var yin: Yin? = null
+    private var refiner: HarmonicRefiner? = null
     private var scratch = FloatArray(0)
 
     /** Windows skipped because they held a NaN or an infinity, since this estimator was made. */
@@ -51,7 +57,7 @@ class YinEstimator(private val threshold: () -> Double) : PitchEstimator {
         // valid prefix is copied so YIN only ever sees valid samples.
         val view = if (window.size == frames) window else window.copyInto(scratch, 0, 0, frames)
         return when (val result = engine.analyse(view, threshold())) {
-            is YinResult.Period -> HopEstimate(result.hz, result.aperiodicity, HopEstimate.rms(window, frames))
+            is YinResult.Period -> HopEstimate(refiner!!.refine(view, result.hz), result.aperiodicity, HopEstimate.rms(window, frames))
             YinResult.NoPeriod -> HopEstimate.none(HopEstimate.rms(window, frames))
             YinResult.NonFinite -> {
                 nonFiniteWindows++
@@ -65,6 +71,7 @@ class YinEstimator(private val threshold: () -> Double) : PitchEstimator {
         if (current != null && sampleRate == rate) return current
         val fresh = Yin(rate)
         yin = fresh
+        refiner = HarmonicRefiner(rate, fresh.windowFrames)
         scratch = FloatArray(fresh.windowFrames)
         sampleRate = rate
         return fresh

@@ -87,7 +87,10 @@ class AndroidRecorderPlatformTest {
         assertTrue(manager.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED) != "true")
         assertEquals(false, platform.supportsUnprocessed())
 
-        val source = AudioRecordSource(platform)
+        // The production deadline (2 s) is for a phone's driver; a cold Robolectric
+        // AudioRecord on a loaded CI runner has been seen to take longer to open,
+        // which reads as a hung driver. This case is about the preset order.
+        val source = AudioRecordSource(platform, openTimeoutMillis = 30_000)
         val info = source.start { _, _ -> }.getOrThrow()
         source.stop()
 
