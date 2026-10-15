@@ -13,6 +13,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ticktock.core.contracts.AudioInput
+import ticktock.core.contracts.AudioSink
 import ticktock.core.contracts.InputFailure
 import ticktock.core.contracts.InputInfo
 import ticktock.core.contracts.InputSource
@@ -43,6 +45,88 @@ class LiveCaptureTest {
     @After
     fun stop() {
         capture.stop()
+    }
+
+    @Test
+    fun `startup preserves a disconnect delivered before the open result`() {
+        val failure = InputFailure.Disconnected("USB interface")
+        capture.start(object : AudioInput {
+            override fun start(sink: AudioSink): Result<InputInfo> {
+                capture.onStopped(failure)
+                return Result.success(InputInfo(rate, "USB interface", InputSource.FAKE))
+            }
+            override fun stop() = Unit
+        })
+        assertEquals(failure, capture.state.value.failure)
+        assertNull(capture.state.value.info)
+        assertFalse(capture.state.value.isListening)
+    }
+
+    @Test
+    fun `startup preserves resumed device and recording reports delivered before the open result`() {
+        val resumed = InputInfo(rate, "USB interface", InputSource.UNPROCESSED)
+        val recording = RecordingState(InputSource.UNPROCESSED, emptyList(), silenced = true, reported = true)
+        capture.start(object : AudioInput {
+            override fun start(sink: AudioSink): Result<InputInfo> {
+                capture.onStopped(InputFailure.Disconnected("Built-in microphone"))
+                capture.onResumed(resumed)
+                capture.recordingReported(recording)
+                return Result.success(InputInfo(rate, "Built-in microphone", InputSource.FAKE))
+            }
+            override fun stop() = Unit
+        })
+        assertEquals(resumed, capture.state.value.info)
+        assertEquals(recording, capture.state.value.recording)
+        assertNull(capture.state.value.failure)
+    }
+
+    @Test
+    fun `batched readings followed by a rejected hop match separate delivery`() {
+        fun reading(hop: Long, midi: Int, cents: Double) = Decision(
+            hop, HopClass.VOTE, level = 0.1, incumbent = midi,
+            display = Reading(hop, midi, Pitch.hzFromMidi(midi + cents / 100.0, 440.0), cents, 440.0, 0),
+        )
+        val initial = reading(0, 69, 0.0)
+        val batch = arrayOf(reading(1, 71, 0.0), reading(2, 71, 8.0),
+            Decision(3, HopClass.REJECT, level = 0.0, incumbent = 71))
+        fold(initial)
+        batch.forEach { fold(it) }
+        val separate = capture.state.value.readout
+        capture.stop()
+        fold(initial)
+        fold(*batch)
+        assertEquals(separate, capture.state.value.readout)
+        assertEquals(71, capture.state.value.readout.midi)
+        assertEquals(8, capture.state.value.readout.cents)
+    }
+
+    @Test
+    fun `a new incumbent without a reading clears the previous note values`() {
+        fold(Decision(0, HopClass.VOTE, level = 0.1, incumbent = 69,
+            display = Reading(0, 69, 440.0, 0.0, 440.0, 0)))
+        fold(Decision(1, HopClass.VOTE, level = 0.1, incumbent = 71, attack = Attack(1, 71, 0.0, 0)))
+        assertEquals(71, capture.state.value.readout.midi)
+        assertNull(capture.state.value.readout.hz)
+        assertNull(capture.state.value.readout.cents)
+    }
+
+    @Test
+    fun `EAR-02 last note preserves rejected and dropped hops through its last reading`() {
+        fun reading(hop: Long, cents: Double) = Reading(hop, 69, 440.0, cents, 440.0, 0)
+        fold(
+            Decision(10, HopClass.VOTE, level = 0.1, incumbent = 69,
+                attack = Attack(10, 69, 0.0, 0), display = reading(10, 0.0)),
+            Decision(11, HopClass.REJECT, level = 0.0, incumbent = 69),
+            Decision(14, HopClass.VOTE, level = 0.1, incumbent = 69, display = reading(14, 10.0)),
+            Decision(15, HopClass.REJECT, level = 0.0, incumbent = 69),
+            Decision(18, HopClass.REJECT, level = 0.0, incumbent = null,
+                release = Release(18, 69, 0, ReleaseCause.SILENCE)),
+        )
+        val note = requireNotNull(capture.lastNote.value)
+        assertArrayEquals(floatArrayOf(0f, Float.NaN, Float.NaN, Float.NaN, 10f), note.points, 0f)
+        assertArrayEquals(capture.trace.value.cents.takeLast(9).take(5).toFloatArray(), note.points, 0f)
+        assertEquals(5 * Hop.SECONDS, note.seconds, 0.0)
+        assertEquals(5.0, note.meanCents, 0.0)
     }
 
     @Test
