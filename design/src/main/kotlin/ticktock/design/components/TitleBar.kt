@@ -3,7 +3,9 @@ package ticktock.design.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -34,6 +36,8 @@ fun TitleBar(
     modifier: Modifier = Modifier,
     state: String? = null,
     tag: String = "titlebar",
+    /** A mark before the title: the app strip's bell. */
+    leading: (@Composable () -> Unit)? = null,
     trailing: @Composable () -> Unit = {},
 ) {
     val gap = GridlineSpacing.sp4
@@ -46,7 +50,10 @@ fun TitleBar(
             .padding(horizontal = GridlineSpacing.sp3, vertical = GridlineSpacing.sp1)
             .testTag(tag),
         content = {
-            GlText(text = title, style = GridlineType.titleBar, color = GridlineColors.titleFg, maxLines = 1, modifier = Modifier.testTag("$tag-title"))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(GridlineSpacing.sp3)) {
+                leading?.invoke()
+                GlText(text = title, style = GridlineType.titleBar, color = GridlineColors.titleFg, maxLines = 1, modifier = Modifier.testTag("$tag-title"))
+            }
             if (state != null) {
                 GlText(text = state, style = GridlineType.titleBar, color = GridlineColors.titleFg, maxLines = 1, modifier = Modifier.testTag("$tag-state"))
             } else {

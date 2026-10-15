@@ -15,7 +15,10 @@ import ticktock.design.GridlineSpacing
 /** The empty app boots to a Gridline frame: title strip, tabs, one pane, status bar. */
 @RunWith(AndroidJUnit4::class)
 class MainActivitySmokeTest {
-    @get:Rule
+    @get:Rule(order = 0)
+    val firstRunDone = SkipFirstRunRule()
+
+    @get:Rule(order = 1)
     val compose = createAndroidComposeRule<MainActivity>()
 
     @Test
@@ -24,14 +27,15 @@ class MainActivitySmokeTest {
     }
 
     @Test
-    fun `the status bar is present and empty at idle`() {
+    fun `the status bar says Mic off until the microphone is allowed, and nothing else`() {
         compose.onNodeWithTag("statusbar").assertIsDisplayed().assertHeightIsAtLeast(GridlineSpacing.statusBarHeight)
-        compose.onNodeWithTag("statusbar-0", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("statusbar-0", useUnmergedTree = true).assertTextEquals("Mic off")
+        compose.onNodeWithTag("statusbar-1", useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test
     fun `the work area opens on the Tune pane`() {
-        compose.onNodeWithTag("tune-pane-titlebar-title", useUnmergedTree = true).assertTextEquals("Tune")
-        compose.onNodeWithTag("tune-empty", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("readout").assertIsDisplayed()
+        compose.onNodeWithTag("cents-scale").assertIsDisplayed()
     }
 }

@@ -7,11 +7,16 @@
     <string name="brand_name">Adequate Metronome</string>
 
     <!-- Title strip -->
-    <string name="state_idle">Idle</string>
     <string name="action_settings">Settings</string>
     <string name="action_back">Back</string>
 
     <!-- Status bar: one or two words per segment, shown only while the fact is true. -->
+    <string name="status_listening">Listening</string>
+    <string name="status_mic_off">Mic off</string>
+    <string name="status_mic_denied">Mic denied</string>
+    <string name="status_mic_busy">Mic busy</string>
+    <string name="status_capture_paused">Capture paused</string>
+    <string name="status_a4">A4 %1$s</string>
 
     <!-- Tabs -->
     <string name="tab_tune">Tune</string>
@@ -26,15 +31,79 @@
     <string name="pane_table">Intonation table</string>
     <string name="pane_settings">Settings</string>
     <string name="pane_theme">Theme</string>
+    <string name="pane_tuning">Tuning</string>
+    <string name="pane_all_instruments">All instruments</string>
+    <string name="pane_instrument">Instrument</string>
+    <string name="setting_instrument">Instrument</string>
+    <string name="setting_spelling">Spelling</string>
+    <string name="setting_response">Response</string>
+    <string name="setting_keep_awake">Keep screen on</string>
+    <string name="spelling_auto">Auto</string>
+    <string name="spelling_sharps">Sharps</string>
+    <string name="spelling_flats">Flats</string>
+    <string name="response_fast">Fast</string>
+    <string name="response_normal">Normal</string>
+    <string name="response_slow">Slow</string>
+    <string name="keep_awake_on">Listening</string>
+    <string name="keep_awake_off">Never</string>
     <string name="pane_state_stopped">Stopped</string>
 
-    <!--
-        Empty states: each one says what will appear here and what makes it
-        appear. These are placeholders for an internal build; later milestones
-        replace them with the real panes.
-    -->
-    <string name="empty_tune">The note you play appears here as a name, whole cents and Hz, with a needle showing how far it sits from centre. Detection is scheduled for a later build.</string>
-    <string name="empty_drone">A held reference tone appears here: a tone grid with octave steps, three voices and a volume. Sound is scheduled for a later build.</string>
-    <string name="empty_metronome">The click appears here: tempo, time signature, accents and a beat row. Sound is scheduled for a later build.</string>
-    <string name="empty_table">Every note you hold builds a curve here. The table lists each note with its spread for this session or all history. Storage is scheduled for a later build.</string>
+    <!-- First run: the privacy line is the only sentence, on the one step the player must act on. -->
+    <string name="first_run_microphone">Microphone</string>
+    <string name="first_run_step">%1$d of %2$d</string>
+    <string name="first_run_privacy">Everything stays on this phone unless you share it.</string>
+    <string name="first_run_later">Later</string>
+    <string name="first_run_start">Start tuning</string>
+
+    <!-- Notices: one line each, only when the player must act or would be surprised. -->
+    <string name="notice_crash">Closed unexpectedly last time</string>
+    <string name="notice_share_log">Share log</string>
+    <string name="notice_dismiss">Dismiss</string>
+    <string name="notice_prefs_reset">Settings reset, old copy kept</string>
+    <string name="notice_prefs_unreadable">Settings unreadable</string>
+    <string name="notice_prefs_saving">Settings not saving</string>
+    <string name="notice_history">History not saving</string>
+
+    <!-- Tune -->
+    <string name="tune_level">Level</string>
+    <string name="tune_trace">Trace</string>
+    <string name="tune_attacks">%1$d attacks</string>
+    <string name="tune_attack_one">1 attack</string>
+    <string name="tune_capture">Capture</string>
+    <string name="tune_capture_on">On</string>
+    <string name="tune_capture_paused">Paused</string>
+    <string name="tune_needle">Needle</string>
+    <string name="tune_needle_show">Show</string>
+    <string name="tune_needle_ears">Ears first</string>
+    <string name="tune_names">Names</string>
+    <string name="tune_names_written">Written</string>
+    <string name="tune_names_concert">Concert</string>
+    <string name="tune_a4">A4</string>
+    <string name="tune_a4_lower">Lower A4</string>
+    <string name="tune_a4_raise">Raise A4</string>
+    <string name="tune_flat">Flat</string>
+    <string name="tune_sharp">Sharp</string>
+    <string name="tune_in_tune">in tune</string>
+    <string name="tune_close">close</string>
+    <string name="tune_off">off</string>
+    <string name="tune_concert">concert %1$s</string>
+    <string name="tune_written">written %1$s</string>
+    <string name="tune_hidden">Needle hidden</string>
+    <string name="tune_allow_mic">Allow microphone</string>
+    <string name="tune_denied">Denied.</string>
+    <string name="tune_open_settings">System settings</string>
+    <string name="tune_try_again">Try again</string>
+    <string name="tune_held">Held by another app</string>
+    <string name="tune_no_input">No input</string>
+    <string name="trace_minus_5">−5 s</string>
+    <string name="trace_attack">attack</string>
+    <string name="trace_end">end</string>
+    <string name="trace_description">Pitch trace, last five seconds</string>
+    <string name="trace_last_note_description">Pitch trace, last note</string>
+    <string name="tune_last_note">Last note</string>
+    <string name="tune_sounding">sounding</string>
+    <string name="tune_seconds">%1$s s</string>
+    <string name="tune_attack_settled">attack %1$s</string>
+    <string name="trace_minus_2">−2 s</string>
+    <string name="trace_now">now</string>
 </resources>

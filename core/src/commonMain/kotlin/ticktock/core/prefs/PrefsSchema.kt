@@ -164,6 +164,7 @@ object PrefsSchema {
             get = { it.theme },
             set = { p, v -> p.copy(theme = v) },
         ),
+        BoolField("micAsked", false, get = { it.micAsked }, set = { p, v -> p.copy(micAsked = v) }),
     )
 
     private val byKey: Map<String, PrefField<*>> = fields.associateBy { it.key }

@@ -9,6 +9,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -56,7 +57,14 @@ class DebugOutputTest {
         val intent = Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java)
         droneMidi?.let { intent.putExtra(OutputSeam.EXTRA_DRONE_MIDI, it) }
         metroBpm?.let { intent.putExtra(OutputSeam.EXTRA_METRO_BPM, it) }
+        skipFirstRun()
         scenario = ActivityScenario.launch(intent)
+        openDrone()
+    }
+
+    /** The debug output pane sits on the Drone tab until M5 replaces it with the real pane. */
+    private fun openDrone() {
+        compose.onNodeWithTag("tabs-1").performClick()
     }
 
     private fun value(tag: String) = compose.onNodeWithTag("$tag-value", useUnmergedTree = true)
@@ -66,8 +74,10 @@ class DebugOutputTest {
 
     @Test
     fun `a plain launch shows no output pane`() {
+        skipFirstRun()
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        compose.onNodeWithTag("tune-empty", useUnmergedTree = true).assertExists()
+        openDrone()
+        compose.onNodeWithTag("drone-empty", useUnmergedTree = true).assertExists()
         compose.onAllNodesWithTag("debug-output-titlebar", useUnmergedTree = true).assertCountEquals(0)
         assertEquals(emptyList<OutputCommand>(), port.sent)
     }
@@ -121,7 +131,9 @@ class DebugOutputTest {
         val intent = Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java)
             .putExtra(OutputSeam.EXTRA_DRONE_MIDI, 69)
             .putExtra(InputSeam.EXTRA_A4_HZ, 442f)
+        skipFirstRun()
         scenario = ActivityScenario.launch(intent)
+        openDrone()
         compose.waitUntil(TIMEOUT) { port.sent.size >= 3 }
         assertEquals(
             listOf(
@@ -161,7 +173,9 @@ class DebugOutputTest {
         OutputSeam.override = strict
         val intent = Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java)
             .putExtra(OutputSeam.EXTRA_DRONE_MIDI, 69)
+        skipFirstRun()
         scenario = ActivityScenario.launch(intent)
+        openDrone()
         compose.waitUntil(TIMEOUT) { strict.sent.size >= 2 }
         // The port emitted Opened inside Register; a collector that subscribed later would never see it.
         compose.waitUntil(TIMEOUT) { nodes("debug-last-event-value", "Opened") == 1 }

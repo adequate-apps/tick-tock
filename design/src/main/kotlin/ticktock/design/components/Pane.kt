@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import ticktock.design.GridlineColors
 import ticktock.design.GridlineMetrics
 import ticktock.design.GridlineSpacing
@@ -31,7 +32,8 @@ fun Pane(
     Column(
         modifier = modifier
             .background(GridlineColors.surface)
-            .frame(),
+            .frame()
+            .testTag(tag),
     ) {
         TitleBar(title = title, state = state, tag = "$tag-titlebar")
         Column(modifier = Modifier.fillMaxWidth().padding(GridlineSpacing.sp2), content = content)

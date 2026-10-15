@@ -29,6 +29,11 @@ class ThemeContrastTest {
             Triple("accentText on field", p.accentText to p.field, text),
             Triple("textBody on yellowBg", p.textBody to p.yellowBg, text),
             Triple("textBody on redBg", p.textBody to p.redBg, text),
+            // Band words and small band numbers on the readout's field (SPEC 4).
+            Triple("positive text on field", p.positive to p.field, text),
+            Triple("attentionInk text on field", p.attentionInk to p.field, text),
+            Triple("attentionInk text on surface", p.attentionInk to p.surface, text),
+            Triple("danger text on field", p.danger to p.field, text),
             // Edges and marks that carry meaning without words beside them.
             Triple("borderStrong on surface", p.borderStrong to p.surface, ui),
             // A key's edge: in Pit, where the bevels are black, it is the only sign of a key.

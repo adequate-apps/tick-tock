@@ -67,6 +67,7 @@ class PrefsSchemaTest {
         assertEquals(1, p.metroBarsOn)
         assertEquals(0, p.metroBarsOff)
         assertEquals(Theme.GRIDLINE, p.theme)
+        assertEquals(false, p.micAsked)
         assertEquals(emptyMap<String, JsonValue>(), p.unknownFields)
     }
 
@@ -106,6 +107,7 @@ class PrefsSchemaTest {
         "metroBarsOn" to 3,
         "metroBarsOff" to 1,
         "theme" to Theme.PIT,
+        "micAsked" to true,
     )
 
     @Test

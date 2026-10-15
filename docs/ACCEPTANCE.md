@@ -75,7 +75,7 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 | POL-28 | pure leakage is never re-admitted | N + U | 2.0 | U: BleedPolicyTest `POL-28` (two tests: leakage alone; leakage after the player stops, where the admission lapses and nothing is saved); N fixtures land with the engine | open |
 | POL-29 | no duck, no re-admission | N + U | 2.0 | U: BleedPolicyTest `POL-29`; N fixtures land with the engine | open |
 | POL-30 | pipes are duck consumers | N + U | 2.0 | U: BleedPolicyTest `POL-30`; N fixtures land with the engine | open |
-| POL-31 | render scope | H | 2.0 | H: LiveCaptureTest `POL-31` (66 hops of one held note move the capture state at most four times, the level flow every hop and the diagnostics flow three times, about once a second) and DebugReadoutTest (the counters row is sampled, never per hop); the level and the counters sit in composables of their own under the debug pane, so a held note redraws nothing else; the harness count of the real Tune screen's root renders lands with M4 | open |
+| POL-31 | render scope | H | 2.0 | LiveCaptureTest `POL-31 a held note moves the state a few times, the level every hop and the diagnostics about once a second`; TuneScreenTest `POL-31 five seconds of a held note recompose the frame not once` | green |
 
 ## Colour bands and rounding
 
@@ -84,7 +84,7 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 | BND-01 | one rounding function | U | 2.0 | CentsBandTest `BND-01` | green |
 | BND-02 | one band rule | U | 2.0 | CentsBandTest `BND-02` | green |
 | BND-03 | colour agrees with digits | U | 2.0 | CentsBandTest `BND-03` | green |
-| BND-04 | no other thresholds exist | U + source grep | 2.0 | CentsBandTest `BND-04` (three tests) + `tools/verify.sh` sources stage, shared allowlist `tools/band-literal-allowlist.txt` | green |
+| BND-04 | no other thresholds exist | U + source grep | 2.0 | CentsBandTest `BND-04` (three tests) + `tools/verify.sh` sources stage, shared allowlist `tools/band-literal-allowlist.txt`; SourceGuardTest `band plots receive their edges without declaring local thresholds`; the app supplies both plot edges from CentsBand | green |
 | BND-05 | no data | U | 2.0 | CentsBandTest `BND-05` | green |
 | BND-06 | whole cents only | U | 2.0 |  | open |
 
@@ -146,7 +146,7 @@ ledgered under their own prefixes below.
 | SES-04 | per-nickname separation | H | 2.0 | HistoryStoreTest `SES-04` | green |
 | SES-05 | validate before storing | H | 2.0 | HistoryStoreTest `SES-05`; the rule is `HistorySink.storable` in :core, SmallContractsTest | green |
 | SES-06 | batched writes | H | 2.0 | HistoryStoreTest `SES-06` (a burst is one transaction; 3.2 s of continuous readings at about 200 a second is at most one transaction a second) | green |
-| SES-07 | write errors surface | H | 2.0 | HistoryStoreTest `SES-07` (two tests; a session change whose flush fails is refused) (batch kept, counted, banner state after three failures in a row, recovery); the store half is green, the player-facing half (offer, notice, banner) lands with the M4 screens | open |
+| SES-07 | write errors surface | H | 2.0 | HistoryStoreTest `SES-07 a failing flush keeps the buffer, counts, raises the banner after three, and recovers` and `SES-07 a session change whose flush fails is refused and files nothing under the next session`; AppNotices renders `notice-history`, but no UI failure-injection test proves that persistent failures reach the player | open |
 | SES-08 | summaries and indexes | H | 2.0 | HistoryStoreTest `SES-08`; SchemaTest `SES-08` (indexes); `StoreStatus.flushes` is the refresh signal | green |
 | SES-09 | retention | H | 2.0 | HistoryStoreTest `SES-09` (two tests: raw readings of unsaved sessions age out with summaries kept; a saved session keeps its readings, decision 5) | green |
 | SES-10 | storage budget | H | 2.0 | HistoryStoreTest `SES-10` (a simulated year: 53 MB against 100 MB) | green |
@@ -226,10 +226,10 @@ ledgered under their own prefixes below.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| ERR-01 | error boundary per screen | H | 2.0 |  | open |
-| ERR-02 | fatal errors | H | 2.0 | CrashLogTest `ERR-02` (offered once, capped at 256 KiB keeping whole newest entries, nickname only when set); the store half is green, the player-facing half (offer, notice, banner) lands with the M4 screens | open |
+| ERR-01 | error boundary per screen | H | 2.0 | Compose has no composition error boundary; per-screen recovery remains an owner design decision | open |
+| ERR-02 | fatal errors | H | 2.0 | CrashLogTest `ERR-02` and `the cap is the 256 KiB the storage names promise`; AppNoticesTest `ERR-02 a crash last time is offered once, and Dismiss puts it away for good` prove stored JVM crash offers and dismissal; native fatal-error capture remains unproved | open |
 | ERR-03 | no silent catches | H | 2.0 |  | open |
-| ERR-04 | corrupt prefs | H | 2.0 | PrefsStoreTest `ERR-04` (two tests: the copy is kept before the first write; when no copy can be kept nothing is written and the player is not told one was); the store half is green, the player-facing half (offer, notice, banner) lands with the M4 screens | open |
+| ERR-04 | corrupt prefs | H | 2.0 | PrefsStoreTest `ERR-04 a corrupt blob is copied before the first write and the player is told once` and `ERR-04 when the corrupt blob cannot be copied, nothing overwrites it and the player is not told it was kept`; AppNoticesTest `ERR-04 a corrupt settings file says so once, keeps the player out of first run, and Dismiss clears it` | green |
 | ERR-05 | unreadable prefs | H | 2.0 | PrefsStoreTest `ERR-05` (two tests: never a first run, and a change made while unreadable is replayed onto the saved prefs once they can be read, never written over them) | green |
 | ERR-06 | prefs save failure | H | 2.0 | PrefsStoreTest `ERR-06` | green |
 | ERR-07 | analysis errors | H | 2.0 |  | open |
@@ -238,10 +238,10 @@ ledgered under their own prefixes below.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| A11Y-01 | tuner readout | H | 2.0 | | open |
-| A11Y-02 | every screen | H | 2.0 (supplemented by CLR-01..03) | | open |
-| A11Y-03 | colour is never alone | H | 2.0 | | open |
-| A11Y-04 | touch targets | H | 2.0 | | open |
+| A11Y-01 | tuner readout | H | 2.0 | FrameScreenshotTest `tune at font scale 1_0`, `1_3`, `1_5`, `2_0` cover the ghost readout; sounding note, cents and Hz clipping at every scale still need assertions | open |
+| A11Y-02 | every screen | H | 2.0 (supplemented by CLR-01..03) | AdaptiveRowsTest `denied notices keep the message and action on readable lines` and `setting rows keep labels whole and long values inside the row` assert text fit at four font scales and two widths; FrameScreenshotTest covers Tune, Drone, Metronome and Settings at four scales; ComponentZooTest `labels fit, targets are 48 dp and every control is labelled` covers components in four themes and two widths; unfinished screens and all dialogs remain unproved | open |
+| A11Y-03 | colour is never alone | H | 2.0 | TuneScreenTest `a played A4 on the default tenor sax reads written B5, in tune, concert A4, and the pane is listening` and `a sharp note shows the sharp cue, the close band and its cents` prove signed digits for in-tune and close; off-band and every other band-bearing surface remain unproved | open |
+| A11Y-04 | touch targets | H | 2.0 | ComponentZooTest `labels fit, targets are 48 dp and every control is labelled`; ControlsTest `a button fires once per tap and meets the touch target` prove component targets; an inventory of every screen and dialog control remains unproved | open |
 
 ## Scope revision, 2026-10-14
 
@@ -252,7 +252,7 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| CAP-01 | paused capture drives the needle and reaches no store | H | 2.0 | HistoryStoreTest `CAP-01 and CAP-03` (the store half; the needle half is M4) | open |
+| CAP-01 | paused capture drives the needle and reaches no store | H | 2.0 | TuneScreenTest `CAP-01 paused capture keeps listening and live plots while history waits until On` proves Listening plus Capture paused and the Tune tab running indicator, live needle/trace/level, unchanged stored count while paused and resumed writes on On; HistoryStoreTest `CAP-01 and CAP-03 paused readings are counted and only the empty run is recorded` | green |
 | CAP-02 | paused state survives process death | H | 2.0 | prefs field `capturePaused`, device-bound | open |
 | CAP-03 | a run opened while paused counts skipped readings | H | 2.0 | HistoryStoreTest `CAP-01 and CAP-03` | green |
 
@@ -299,17 +299,17 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| EAR-01 | readout hidden, capture unchanged | H | 2.0 |  | open |
-| EAR-02 | reveal after the note | H | 2.0 |  | open |
-| EAR-03 | setting persists | H | 2.0 | prefs field `earsFirst`, portable | open |
+| EAR-01 | readout hidden, capture unchanged | H | 2.0 | TuneScreenTest `EAR-01 ears first hides the needle and preserves every held history reading` compares ten saved hops in Show with ten in Ears first, asserts hidden cents/Hz and the blank needle label; `tune-ears-first-hidden-needle.png` verifies the ghost pointer; the existing ears-first reveal test and hidden readout golden cover sounding feedback | green |
+| EAR-02 | reveal after the note | H | 2.0 | TuneScreenTest `ears first hides the cents, Hz and needle while a note sounds, shows its mean for two seconds after it ends, then hides`, `EAR-02 enabling ears first never replays a note ended in Show`, and `EAR-02 a new note without readings cancels the previous reveal permanently`; LiveCaptureTest `EAR-02 duration ends after the last accepted hop and excludes release silence`, held-mean/settled/serial tracking, same-hop note changes, and A4/mode release tests; LiveCaptureTest `EAR-02 last note preserves rejected and dropped hops through its last reading`; TuneScreenTest `EAR-02 a short note reveals a ghost attack when no settled reading exists`; TracePlotTest `a singleton reading and an isolated reading between gaps both draw a visible point`; reveal golden and round-one reveal mutation | green |
+| EAR-03 | setting persists | H | 2.0 | PrefsSchemaTest `SES-12 a full round trip keeps every field and every unknown field` includes `earsFirst = true`; PrefsStoreTest `SES-01 saved prefs come back on a cold start` exercises other fields; an ears-first cold restart test remains | open |
 
 ### Pitch trace
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| TRC-01 | five-second trace from a fixed ring, no root recomposition | H | 2.0 |  | open |
-| TRC-02 | silence breaks the line | H | 2.0 |  | open |
-| TRC-03 | TalkBack reads the trace once | H | 2.0 |  | open |
+| TRC-01 | five-second trace from a fixed ring, no root recomposition | H | 2.0 | LiveCaptureTest `TRC-01 dropped hops occupy time and old attacks leave the five second ring` proves capacity, missing-hop padding and attack expiry; TuneScreenTest `POL-31 five seconds of a held note recompose the frame not once`; ComponentZooTest goldens cover the five-second labels and band rules supplied by CentsBand through the app | green |
+| TRC-02 | silence breaks the line | H | 2.0 | LiveCaptureTest `TRC-02 rejected hops break the trace while the readout holds its note` proves two silent NaN points during an incumbent hold and a fresh point after the gap; LiveCaptureTest `EAR-02 last note preserves rejected and dropped hops through its last reading` proves matching gaps in Last note; Trace starts a new path after NaN | green |
+| TRC-03 | TalkBack reads the trace once | H | 2.0 | TuneScreenTest `TRC-03 the live trace exposes one stable accessibility label` checks the exact Pitch trace, last five seconds description, no semantic children or text, and no live region, before and during a note | green |
 
 ### Gap bars and offbeats
 
@@ -366,9 +366,9 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| CLR-01 | `attention-ink` token at 4.5:1 on white and 3:1 on gray | U | 2.0 |  | open |
-| CLR-02 | small close-band text uses `attention-ink` | H | 2.0 |  | open |
-| CLR-03 | a geometric cue beside every band, drawn by `CentsBand` only | U, H | 2.0 |  | open |
+| CLR-01 | `attention-ink` token at 4.5:1 on white and 3:1 on gray | U | 2.0 | ThemeContrastTest `every text and mark clears its contrast threshold in all four themes` checks attentionInk on field and surface at 4.5:1; TokensGeneratedTest `the committed Tokens kt matches the generator output` ties the palettes to generated tokens | green |
+| CLR-02 | small close-band text uses `attention-ink` | H | 2.0 | ThemeContrastTest `every text and mark clears its contrast threshold in all four themes` proves token contrast; TuneScreenTest `a sharp note shows the sharp cue, the close band and its cents` checks text only; a rendered close-band colour assertion remains | open |
+| CLR-03 | a geometric cue beside every band, drawn by `CentsBand` only | U, H | 2.0 | TuneScreen draws cues from CentsBand with GlIcon; no test proves every cue, and cue selection is still in the screen rather than centralized with the band rule | open |
 
 ### Export
 

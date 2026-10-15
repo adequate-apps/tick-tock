@@ -10,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ticktock.app.debug.installDebugInput
 import ticktock.app.screens.AppFrame
 import ticktock.design.GridlineTheme
 
@@ -18,6 +19,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // Prefs load here, before any screen reads them or any reading is stored (SES-01).
         val graph = TickTockApp.graph(this)
+        installDebugInput(this, graph)
         setContent {
             val theme by graph.theme.collectAsStateWithLifecycle()
             val palette = paletteOf(theme)
@@ -38,6 +40,11 @@ class MainActivity : ComponentActivity() {
                 AppFrame()
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        TickTockApp.graph(this).onForeground()
     }
 
     override fun onStop() {

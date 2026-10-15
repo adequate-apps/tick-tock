@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import ticktock.app.tune.TuneSession
 import ticktock.core.catalogue.Catalogue
 import ticktock.core.prefs.Prefs
 import ticktock.core.prefs.Theme
@@ -40,6 +41,9 @@ class AppGraph(context: Context, filesDir: File = context.filesDir, databaseName
     private val database = HistoryDatabase(context, databaseName)
     val history = HistoryStore(database, storage, runContextOf(prefs.prefs.value))
 
+    /** The microphone and the live readout. */
+    val tune = TuneSession(context, prefs.prefs.value, history)
+
     /** The screen theme, as its own flow so the root recomposes on a theme change and on nothing else in prefs. */
     val theme: StateFlow<Theme> = prefs.prefs.map { it.theme }.stateIn(scope, SharingStarted.Eagerly, prefs.prefs.value.theme)
 
@@ -47,17 +51,27 @@ class AppGraph(context: Context, filesDir: File = context.filesDir, databaseName
         crashLog.install { prefs.prefs.value.hornNickname }
         history.start()
         // On the changing thread, so no reading after a label change carries the old label.
-        prefs.addListener { history.setContext(runContextOf(it)) }
+        prefs.addListener {
+            history.setContext(runContextOf(it))
+            tune.settingsChanged(it)
+        }
     }
 
-    /** The app went to the background: write what is pending now (SES-06, PLAN 3.4). */
+    /** The app came to the foreground: listen again if the microphone is allowed. */
+    fun onForeground() {
+        tune.resume()
+    }
+
+    /** The app went to the background: stop listening and write what is pending now (OUT-11, SES-06). */
     fun onBackground() {
+        tune.pause()
         prefs.flushSoon()
         history.flushSoon()
     }
 
     /** Tests only: a process never closes its graph. */
     fun close() {
+        tune.close()
         scope.cancel()
         history.stop()
         storage.shutdown()
