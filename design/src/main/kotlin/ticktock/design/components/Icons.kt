@@ -72,6 +72,7 @@ enum class GlIcon(val marks: List<IconMark>) {
             IconMark.Line("M4 3l16 18"),
         ),
     ),
+    BLUETOOTH(listOf(IconMark.Line("M6 6l12 12-6 4V2l6 4L6 18"))),
     DRONE(listOf(IconMark.Line("M7 2v12h10V2M12 14v7M8 21h8"))),
     METRONOME(listOf(IconMark.Line("M8 3h8l4 18H4zM12 18l4-9"))),
     TABLE(listOf(IconMark.Line("M3 4h18v16H3zM3 10h18M3 15h18M10 4v16"))),

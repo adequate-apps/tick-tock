@@ -18,6 +18,8 @@ import ticktock.app.audio.LiveCapture
 import ticktock.app.audio.TraceSnapshot
 import ticktock.core.contracts.AudioInput
 import ticktock.core.contracts.HistorySink
+import ticktock.core.contracts.SoundingNotes
+import ticktock.core.detect.NoSoundingNotes
 import ticktock.core.prefs.Prefs
 import ticktock.engine.input.AndroidRecorderPlatform
 import ticktock.engine.input.AudioRecordSource
@@ -45,9 +47,12 @@ class TuneSession(
     var micAllowed: () -> Boolean = {
         context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
     },
+    sounding: SoundingNotes = NoSoundingNotes,
+    onDuck: (Float, () -> Unit) -> Unit = { _, settled -> settled() },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val capture = LiveCapture(mode = prefs.responseMode, a4Hz = prefs.a4Hz, history = history)
+    private val capture = LiveCapture(mode = prefs.responseMode, a4Hz = prefs.a4Hz, history = history,
+        sounding = sounding, onDuck = onDuck)
     private var requestedA4 = prefs.a4Hz
     private var requestedMode = prefs.responseMode
     private var input: AudioInput? = null
@@ -100,6 +105,8 @@ class TuneSession(
             capture.requestMode(prefs.responseMode)
         }
     }
+
+    fun outputContextChanged() = capture.outputContextChanged()
 
     /** Tests only. */
     fun close() {

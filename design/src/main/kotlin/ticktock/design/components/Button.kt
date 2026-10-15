@@ -3,6 +3,10 @@ package ticktock.design.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
@@ -11,9 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -56,9 +63,32 @@ fun Button(
     /** The label's side padding; a square symbol key (−, +) uses the 8 dp minimum so it can stay 48 dp wide. */
     labelPadding: Dp = GridlineSpacing.sp4,
     labelStyle: TextStyle = GridlineType.uiStrong,
+    /** Timed actions receive the contact's uptime, with the ordinary click kept for accessible activation. */
+    onContact: ((Long) -> Unit)? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val contact by rememberUpdatedState(onContact)
+    val contactPress = if (enabled && onContact != null) Modifier.pointerInput(interaction) {
+        awaitEachGesture {
+            val down = awaitFirstDown(pass = PointerEventPass.Initial)
+            down.consume()
+            val press = PressInteraction.Press(down.position)
+            interaction.tryEmit(press)
+            var released = false
+            try {
+                contact?.invoke(down.uptimeMillis)
+                val up = waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                if (up != null) {
+                    up.consume()
+                    interaction.tryEmit(PressInteraction.Release(press))
+                    released = true
+                }
+            } finally {
+                if (!released) interaction.tryEmit(PressInteraction.Cancel(press))
+            }
+        }
+    } else Modifier
     val face = when {
         tone == ButtonTone.Primary -> GridlineColors.selectionBg
         else -> GridlineColors.controlFace
@@ -85,6 +115,7 @@ fun Button(
             // The tap target is the whole key, border included.
             .frame(if (tone == ButtonTone.Primary) Line(GridlineMetrics.line, GridlineColors.blueDeep) else GridlineRelief.frame)
             .then(if (tone == ButtonTone.Primary) Modifier.selectionOutline() else Modifier)
+            .then(contactPress)
             .clickable(
                 interactionSource = interaction,
                 indication = null,

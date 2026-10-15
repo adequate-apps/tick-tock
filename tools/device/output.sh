@@ -58,7 +58,7 @@ extras=()
 "$adb" logcat -c
 "$adb" shell am start -W -n "$activity" "${extras[@]}" > /dev/null
 sleep "$seconds"
-# Leaving the screen stops the tools; the Closed event and the stop commands land in the log too.
+# Backgrounding the app stops the tools; the Closed event and the stop commands land in the log too.
 "$adb" shell input keyevent KEYCODE_HOME
 sleep 1
 
@@ -96,8 +96,8 @@ if [ -n "$metro" ]; then
     fi
 fi
 if ! printf '%s\n' "$lines" | grep -q -E '^output event=Closed'; then
-    echo "output: FAILED, the stream did not close when the screen was left" >&2
+    echo "output: FAILED, the stream did not close when the app was backgrounded" >&2
     status=1
 fi
-[ "$status" -eq 0 ] && echo "output: OK, stream opened, ${frames} frames rendered, $beats beats, closed on leave"
+[ "$status" -eq 0 ] && echo "output: OK, stream opened, ${frames} frames rendered, $beats beats, closed on background"
 exit "$status"

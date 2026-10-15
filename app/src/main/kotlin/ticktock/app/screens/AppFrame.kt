@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ticktock.core.contracts.RouteClass
 import ticktock.app.R
 import ticktock.app.TickTockApp
 import ticktock.app.tune.MicState
@@ -62,11 +63,12 @@ fun AppFrame() {
     val mic = rememberMicAccess(graph)
     val capture = graph.tune.state.collectAsStateWithLifecycle()
     val prefs = graph.prefs.prefs.collectAsStateWithLifecycle()
+    val output by graph.output.state.collectAsStateWithLifecycle()
     // The frame reads the capture only through these, so a held note's readout,
     // which changes several times a second, recomposes nothing here (POL-31).
     val micWord by remember(mic.state) { derivedStateOf { micWord(mic.state, capture.value, prefs.value) } }
     val a4Hz by remember { derivedStateOf { prefs.value.a4Hz } }
-    val keepAwake by remember { derivedStateOf { capture.value.isListening && prefs.value.keepAwake } }
+    val keepAwake by remember(output.toolRunning) { derivedStateOf { (capture.value.isListening || output.toolRunning) && prefs.value.keepAwake } }
     KeepScreenOn(keepAwake)
     SideEffect { FrameCompositions.count++ }
 
@@ -114,7 +116,12 @@ fun AppFrame() {
             Segmented(
                 segments = Tab.entries.map {
                     Segment(label = stringResource(it.label),
-                        running = it == Tab.Tune && (micWord == MicWord.LISTENING || micWord == MicWord.PAUSED))
+                        running = when (it) {
+                            Tab.Tune -> micWord == MicWord.LISTENING || micWord == MicWord.PAUSED
+                            Tab.Drone -> output.droneSounding
+                            Tab.Metronome -> output.metroSounding
+                            Tab.Table -> false
+                        })
                 },
                 selectedIndex = tab.ordinal,
                 onSelect = { tab = Tab.entries[it] },
@@ -131,24 +138,39 @@ fun AppFrame() {
             verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2),
         ) {
             AppNotices(graph)
+            BluetoothNotice(graph.output)
             when {
                 firstRun -> FirstRun(graph, mic, firstStep) { firstStep = it }
                 settings == SettingsPage.INSTRUMENT -> InstrumentPicker(graph) { settings = SettingsPage.MAIN }
                 settingsOpen -> SettingsScreen(graph) { settings = SettingsPage.INSTRUMENT }
                 tab == Tab.Tune -> TuneScreen(graph, mic)
-                tab == Tab.Drone -> DroneScreen()
+                tab == Tab.Drone -> DroneScreen(showAction = !output.droneWanted)
                 tab == Tab.Metronome -> MetronomeScreen()
                 tab == Tab.Table -> TableScreen()
             }
         }
 
+        if (!firstRun && !settingsOpen && tab == Tab.Drone && output.droneWanted) {
+            OutputAction(output, output.droneWanted, output.droneSounding, graph.output::toggleDrone,
+                Modifier.fillMaxWidth().padding(GridlineSpacing.sp2), tag = "drone-toggle")
+        }
+
         // An idle microphone and a closed output show nothing: the bar carries a
         // fact only while it is true and worth a glance (Listening, Mic busy, Bluetooth).
         StatusBar(
-            segments = statusWords(micWord, a4Hz),
+            segments = statusWords(micWord, a4Hz) + listOfNotNull(
+                when {
+                    output.info?.wireless == true -> stringResource(R.string.bluetooth_name)
+                    output.info?.routeClass == RouteClass.HEADPHONES -> stringResource(R.string.status_headphones)
+                    output.info?.routeClass == RouteClass.SPEAKER -> stringResource(R.string.status_speaker)
+                    else -> null
+                },
+                if (output.muted) stringResource(R.string.tool_muted) else null,
+            ),
             modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
         )
     }
+    DelayDialog(graph.output)
 }
 
 /** Keeps the screen on while [active]: the player's hands are on the instrument (keep-awake, PLAN 3.3). */
