@@ -131,11 +131,15 @@ class Detector(
     }
 
     /**
-     * Forgets the held note, its pending readings and the vote window, as
-     * when the stream restarts. The bleed state is about the output and
-     * stays. Returns the release of the note it forgot, or null.
+     * Forgets the held note, pending readings, vote window and bleed evidence
+     * when a microphone stream restarts. The capture owner restores output gain
+     * when stopping. Returns the release of the note it forgot, or null.
      */
-    fun reset(): Release? = forget(ReleaseCause.RESTART)
+    fun reset(): Release? {
+        // A new microphone stream must earn its own unison evidence.
+        bleed = BleedState.IDLE
+        return forget(ReleaseCause.RESTART)
+    }
 
     private fun forget(cause: ReleaseCause): Release? {
         val release = if (incumbent != null) endNote(lastHop, cause) else null

@@ -70,9 +70,9 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 | POL-23 | table after an A4 change | U | 2.0 | DetectorA4Test `POL-23` (`Pitch.centsFrom` re-derives from stored Hz, and every reading carries its A4) | green |
 | POL-24 | bleed is excluded | N + U | 2.0 | U: BleedPolicyTest `POL-24` on scripted estimates, and `POL-28 leakage after the player stops` (leakage after a unison is never saved); N fixtures land with the engine | open |
 | POL-25 | an excluded hop keeps the player's note | N + U | 2.0 | U: BleedPolicyTest `POL-25`; N fixtures land with the engine | open |
-| POL-26 | duck on suspicion | N + U | 2.0 | U: BleedPolicyTest `POL-26` (two tests); N fixtures land with the engine | open |
+| POL-26 | duck on suspicion | N + U | 2.0 | U: BleedPolicyTest `POL-26`, including `POL-26 a capture restarted during a duck requests a fresh duck`; N fixtures land with the engine | open |
 | POL-27 | unison is measured | N + U | 2.0 | U: BleedPolicyTest `POL-27` (three tests: admission, a dip restarts the count, one weak hop in unison is skipped and three end the admission); N fixtures land with the engine | open |
-| POL-28 | pure leakage is never re-admitted | N + U | 2.0 | U: BleedPolicyTest `POL-28` (two tests: leakage alone; leakage after the player stops, where the admission lapses and nothing is saved); N fixtures land with the engine | open |
+| POL-28 | pure leakage is never re-admitted | N + U | 2.0 | U: BleedPolicyTest `POL-28` (leakage alone; leakage after the player stops; `POL-28 a new capture forgets an earlier unison admission and probes leakage again`); N fixtures land with the engine | open |
 | POL-29 | no duck, no re-admission | N + U | 2.0 | U: BleedPolicyTest `POL-29`; N fixtures land with the engine | open |
 | POL-30 | pipes are duck consumers | N + U | 2.0 | U: BleedPolicyTest `POL-30`; N fixtures land with the engine | open |
 | POL-31 | render scope | H | 2.0 | LiveCaptureTest `POL-31 a held note moves the state a few times, the level every hop and the diagnostics about once a second`; TuneScreenTest `POL-31 five seconds of a held note recompose the frame not once` | green |
