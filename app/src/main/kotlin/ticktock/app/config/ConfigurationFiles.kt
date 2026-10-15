@@ -5,8 +5,11 @@ import android.content.Context
 import android.net.Uri
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
+import ticktock.core.config.PersonalConfig
 import ticktock.core.config.ParseResult
 import ticktock.core.config.PersonalConfigCodec
+
+internal class ConfigurationTooLarge : IllegalArgumentException("configuration exceeds the file limit")
 
 /** Document access is bounded and completed before the player sees an import preview. */
 object ConfigurationFiles {
@@ -27,6 +30,10 @@ object ConfigurationFiles {
         val text = Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
             .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString()
         return PersonalConfigCodec.parse(text)
+    }
+
+    fun encode(config: PersonalConfig): ByteArray = PersonalConfigCodec.write(config).toByteArray(Charsets.UTF_8).also {
+        if (it.size > MAX_BYTES) throw ConfigurationTooLarge()
     }
 
     fun write(context: Context, uri: Uri, bytes: ByteArray) {

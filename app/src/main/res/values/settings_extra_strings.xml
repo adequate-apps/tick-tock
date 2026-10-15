@@ -3,6 +3,7 @@
 <resources>
     <string name="config_exported">Settings exported</string>
     <string name="config_write_error">Phone storage refused settings export</string>
+    <string name="config_too_large">Phone refused settings over 1 MiB; choose a smaller file</string>
     <string name="config_invalid">Phone refused invalid settings</string>
     <string name="config_read_error">Phone storage refused settings import</string>
     <string name="config_export">Export settings</string>

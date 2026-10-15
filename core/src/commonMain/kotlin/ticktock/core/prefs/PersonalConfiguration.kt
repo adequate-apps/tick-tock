@@ -12,7 +12,8 @@ object PersonalConfiguration {
 
     fun apply(prefs: Prefs, incoming: PersonalConfig): Prefs {
         val merged = PersonalConfigMerge.merge(snapshot(prefs), incoming)
-        return PrefsPortable.apply(prefs, merged.settings).copy(personalConfig = merged.copy(
+        val nickname = if (merged.settings.instrumentKey != prefs.instrumentKey) "" else prefs.hornNickname
+        return PrefsPortable.apply(prefs, merged.settings).copy(hornNickname = nickname, personalConfig = merged.copy(
             settings = PortableSettings(unknownFields = merged.settings.unknownFields)))
     }
 }

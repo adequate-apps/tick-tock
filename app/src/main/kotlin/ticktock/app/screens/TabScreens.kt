@@ -234,9 +234,10 @@ private fun TableGhost(gated: Boolean) {
 
 @Composable
 internal fun TableHistogram(note: NoteSummary, history: List<NoteSummary>, compact: Boolean, scopeLabel: String) {
-    Histogram(note.bins, history.find { it.label == note.label && it.midiSounding == note.midiSounding }?.bins ?: IntArray(101),
+    val comparison = history.find { it.label == note.label && it.midiSounding == note.midiSounding }
+    Histogram(note.bins, comparison?.bins ?: IntArray(101),
         CentsBand.IN_TUNE_MAX.toFloat(), CentsBand.CLOSE_MAX.toFloat(),
-        stringResource(R.string.table_chart_spoken, scopeLabel, if (history.isEmpty()) "" else stringResource(R.string.table_history_overlay), if (compact) 25 else 50),
+        stringResource(R.string.table_chart_spoken, scopeLabel, if (comparison == null) "" else stringResource(R.string.table_history_overlay), if (compact) 25 else 50),
         Modifier.fillMaxWidth(), compact = compact, dimmed = note.n < MIN_TABLE_READINGS)
 }
 

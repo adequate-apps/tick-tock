@@ -406,6 +406,12 @@ of a pending payload, generic selection after a saved horn and repeated first-ru
 ConfigurationFilesTest rejects oversized, deeply nested and malformed UTF-8 documents; the UI rejects
 deep input without changing preferences and remains usable. PersonalConfigurationTest
 round-trips portable settings, user ranges, horn profiles and unknown fields in one prefs payload.
+PersonalConfigurationTest rejects numeric overflow in unknown fields and clears an incompatible nickname
+when the imported instrument changes. SettingsExtrasTest proves rejected overflow leaves ordinary saves
+usable, imported identity reaches capture and CSV, and both pretty-print expansion and cumulative merges
+are refused before changing preferences when their export exceeds 1 MiB. Each successful merged result
+exports and re-imports with its retained fields. TableHistogramTest announces a history overlay only for
+a matching stored label and note.
 SettingsExtrasScreenshotTest and TableScreenshotTest cover four text scales at phone and tablet widths,
 plus every other theme. ComponentZooTest covers history controls in all four themes at every scale.
 The standalone range editor remains a v1.1 item. Existing open device and recovery criteria remain open.

@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.StateFlow
 import ticktock.app.R
 import ticktock.core.config.ParseResult
 import ticktock.core.config.PersonalConfig
-import ticktock.core.config.PersonalConfigCodec
 import ticktock.core.prefs.PersonalConfiguration
 import ticktock.data.prefs.PrefsStore
 
@@ -39,7 +38,7 @@ internal class ConfigurationSession(
     }
 
     fun export(uri: Uri) = action(R.string.config_write_error) {
-        val bytes = PersonalConfigCodec.write(PersonalConfiguration.snapshot(prefs.prefs.value)).toByteArray(Charsets.UTF_8)
+        val bytes = withContext(Dispatchers.Default) { ConfigurationFiles.encode(PersonalConfiguration.snapshot(prefs.prefs.value)) }
         withContext(Dispatchers.IO) { ConfigurationFiles.write(context, uri, bytes) }
         ConfigurationState(message = R.string.config_exported)
     }
@@ -50,7 +49,12 @@ internal class ConfigurationSession(
 
     fun apply() = action(R.string.config_apply_error) {
         val config = state.value.incoming ?: return@action ConfigurationState()
-        prefs.update { PersonalConfiguration.apply(it, config) }
+        prefs.update { current ->
+            PersonalConfiguration.apply(current, config).also { merged ->
+                // Validate the exact merged export before publishing any preferences or capture labels.
+                ConfigurationFiles.encode(PersonalConfiguration.snapshot(merged))
+            }
+        }
         withContext(Dispatchers.IO) { prefs.flushAndWait().getOrThrow() }
         ConfigurationState(message = R.string.config_applied)
     }
@@ -61,6 +65,7 @@ internal class ConfigurationSession(
         return jobs.launch {
             try { mutableState.value = work() }
             catch (cancelled: CancellationException) { throw cancelled }
+            catch (limit: ConfigurationTooLarge) { mutableState.value = state.value.copy(busy = false, message = R.string.config_too_large, failed = true) }
             catch (failure: Exception) { mutableState.value = state.value.copy(busy = false, message = error, failed = true) }
         }
     }

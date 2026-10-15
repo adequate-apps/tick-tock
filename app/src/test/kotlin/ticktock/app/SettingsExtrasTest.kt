@@ -293,7 +293,7 @@ class SettingsExtrasTest {
             } else {
                 assertTrue("oversized merged export refused", graph.configuration.state.value.failed)
                 assertEquals(before, graph.prefs.prefs.value)
-                compose.onNodeWithText("Phone refused settings over 1 MiB; choose a smaller file").assertExists()
+                compose.onNode(hasText("Phone refused settings over 1 MiB; choose a smaller file") and hasAnyAncestor(hasTestTag("config-preview"))).assertExists()
                 click("config-cancel")
             }
             click("config-export")

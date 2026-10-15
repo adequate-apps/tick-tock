@@ -256,6 +256,7 @@ object Json {
             while (!atEnd() && (text[pos] in '0'..'9' || text[pos] == '.' || text[pos] == 'e' || text[pos] == 'E' || text[pos] == '+' || text[pos] == '-')) pos++
             val slice = text.substring(start, pos)
             val value = slice.toDoubleOrNull() ?: throw error("bad number '$slice'")
+            if (!value.isFinite()) throw error("number exceeds the supported range")
             return JsonValue.JsonNumber(value)
         }
 
