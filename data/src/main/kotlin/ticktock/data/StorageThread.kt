@@ -38,6 +38,9 @@ class StorageThread(name: String = THREAD_NAME) {
     /** Runs [block] on the storage thread and waits for its result; on the storage thread itself it runs inline. */
     fun <T> call(block: () -> T): T = if (isCurrent) block() else executor.submit(Callable(block)).get()
 
+    fun later(delayMillis: Long, block: () -> Unit): ScheduledFuture<*> =
+        executor.schedule(block, delayMillis, TimeUnit.MILLISECONDS)
+
     fun every(periodMillis: Long, initialDelayMillis: Long = periodMillis, block: () -> Unit): ScheduledFuture<*> =
         executor.scheduleWithFixedDelay(block, initialDelayMillis, periodMillis, TimeUnit.MILLISECONDS)
 
