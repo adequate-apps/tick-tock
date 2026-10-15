@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.data.prefs
 
+import kotlin.concurrent.thread
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -11,14 +12,15 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
-import ticktock.core.prefs.PrefsSchema
 import ticktock.core.contracts.Voice
+import ticktock.core.prefs.PrefsSchema
+import ticktock.core.prefs.ReadResult
+import ticktock.core.prefs.Theme
 import ticktock.data.Storage
 import ticktock.data.StorageThread
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.CountDownLatch
-import kotlin.concurrent.thread
 
 @RunWith(RobolectricTestRunner::class)
 class PrefsStoreTest {
@@ -135,6 +137,46 @@ class PrefsStoreTest {
     }
 
     @Test
+    fun `ERR-05 a change made while storage is unreadable lands on the saved prefs, never over them`() {
+        path.writeText(PrefsSchema.write(ticktock.core.prefs.Prefs(firstRunComplete = true, metroBpm = 66, hornNickname = "Horn B")))
+        disk.failReads = true
+        val store = store()
+        assertTrue(store.load() is PrefsLoad.Unreadable)
+        store.update { it.copy(theme = Theme.DARK) }
+        assertTrue("nothing is written while the file cannot be read", store.flushAndWait().isFailure)
+        assertEquals(66, PrefsSchema.read(path.readText()).let { (it as ReadResult.Ok).result.prefs.metroBpm })
+
+        disk.failReads = false
+        val deadline = System.nanoTime() + 2_000_000_000L
+        while (store.prefs.value.hornNickname != "Horn B" && System.nanoTime() < deadline) Thread.sleep(10)
+        assertTrue(store.flushAndWait().isSuccess)
+        val back = store().also { it.load() }.prefs.value
+        assertEquals("Horn B", back.hornNickname)
+        assertEquals(66, back.metroBpm)
+        assertEquals(Theme.DARK, back.theme)
+    }
+
+    @Test
+    fun `ERR-04 when the corrupt blob cannot be copied, nothing overwrites it and the player is not told it was kept`() {
+        path.writeText("{ broken")
+        disk.failCopies = true
+        val store = store()
+        val load = store.load() as PrefsLoad.Corrupt
+        assertEquals(null, load.copy)
+        assertEquals(PrefsNotice.UNREADABLE, store.notice.value)
+        store.update { it.copy(metroBpm = 90) }
+        assertTrue(store.flushAndWait().isFailure)
+        assertEquals("{ broken", path.readText())
+
+        disk.failCopies = false
+        val deadline = System.nanoTime() + 2_000_000_000L
+        while (dir.listFiles().orEmpty().none { it.name.startsWith("prefs.corrupt-") } && System.nanoTime() < deadline) Thread.sleep(10)
+        assertTrue(store.flushAndWait().isSuccess)
+        assertEquals(90, store().also { it.load() }.prefs.value.metroBpm)
+        assertEquals("{ broken", dir.listFiles()!!.single { it.name.startsWith("prefs.corrupt-") }.readText())
+    }
+
+    @Test
     fun `ERR-06 a failed save reaches the caller and the retry lands it`() = runBlocking {
         val store = store()
         store.load()
@@ -156,11 +198,12 @@ class PrefsStoreTest {
     private class FaultyFile(private val real: PrefsFile, private val dir: File) : PrefsFile {
         @Volatile var failReads = false
         @Volatile var failWrites = false
+        @Volatile var failCopies = false
 
         override fun read(): String? = if (failReads) throw IOException("read failed (planted)") else real.read()
 
         override fun write(text: String) = if (failWrites) throw IOException("no space left (planted)") else real.write(text)
 
-        override fun copyAside(name: String) = real.copyAside(name)
+        override fun copyAside(name: String) = if (failCopies) throw IOException("copy failed (planted)") else real.copyAside(name)
     }
 }

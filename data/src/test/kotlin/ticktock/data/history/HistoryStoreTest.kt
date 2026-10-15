@@ -158,8 +158,8 @@ class HistoryStoreTest {
         }
         store.stop()
         val elapsedSeconds = (System.nanoTime() - started) / 1e9
-        // Scheduled flushes at most one per second, plus the closing flush from stop().
-        assertTrue("${store.transactions} transactions in $elapsedSeconds s", store.transactions <= elapsedSeconds.toLong() + 2)
+        // Scheduled flushes at most one per second (the first after one second), plus the closing flush from stop().
+        assertTrue("${store.transactions} transactions in $elapsedSeconds s", store.transactions <= elapsedSeconds.toLong() + 1)
         assertEquals(hop, count("SELECT COUNT(*) FROM readings"))
     }
 
@@ -212,6 +212,49 @@ class HistoryStoreTest {
         assertEquals(1L, count("SELECT COUNT(*) FROM readings"))
         assertEquals(2L, store.summaries(Scope.AllHistory()).single().n)
         assertEquals(1L, store.status.value.readingsDeletedByRetention)
+    }
+
+    @Test
+    fun `SES-09 a saved session keeps its raw readings past the retention period`() = runBlocking {
+        store.accept(reading(midi = 60))
+        store.flushAndWait()
+        store.saveSession(store.currentSessionId()!!, "Etude 12", "")
+        store.newSession()
+        store.accept(reading(midi = 62))
+        store.flushAndWait()
+        now += 8 * HistoryStore.DAY_MILLIS
+        store.applyRetentionNow()
+
+        assertEquals("the saved session's reading stays; the unsaved one goes", 1L, count("SELECT COUNT(*) FROM readings"))
+        assertEquals(60L, count("SELECT midi_sounding FROM readings"))
+    }
+
+    @Test
+    fun `SES-07 a session change whose flush fails is refused and files nothing under the next session`() = runBlocking {
+        store.accept(reading(midi = 60))
+        store.flushAndWait()
+        val first = store.currentSessionId()!!
+        store.accept(reading(midi = 62))
+        database.failWrites = true
+        val refused = runCatching { store.newSession() }
+        assertTrue("the failure reaches the caller", refused.exceptionOrNull() is HistoryWriteException)
+        database.failWrites = false
+        store.accept(reading(midi = 64))
+        store.flushAndWait()
+
+        assertEquals(first, store.currentSessionId())
+        assertEquals(listOf(60, 62, 64), store.summaries(Scope.Session(first)).map { it.midiSounding })
+    }
+
+    @Test
+    fun `CAP-03 a new session while paused still records its uncaptured run`() = runBlocking {
+        store.setContext(alto.copy(captured = false))
+        store.accept(reading())
+        store.flushAndWait()
+        store.newSession()
+        repeat(3) { store.accept(reading()) }
+        store.flushAndWait()
+        assertEquals(2L, count("SELECT COUNT(*) FROM runs WHERE captured = 0"))
     }
 
     /**

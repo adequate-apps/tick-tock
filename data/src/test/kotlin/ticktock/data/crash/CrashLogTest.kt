@@ -56,4 +56,21 @@ class CrashLogTest {
     fun `the cap is the 256 KiB the storage names promise`() {
         assertEquals(256 * 1024, Storage.CRASH_LOG_MAX_BYTES)
     }
+
+    @Test
+    fun `ERR-02 an error while recording still hands the crash to the platform handler`() {
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        var handedOn = false
+        Thread.setDefaultUncaughtExceptionHandler { _, _ -> handedOn = true }
+        try {
+            CrashLog(dir).install { throw OutOfMemoryError("planted while reading the nickname") }
+            val poisoned = object : RuntimeException("crash") {
+                override fun printStackTrace(s: java.io.PrintWriter) = throw OutOfMemoryError("planted while formatting")
+            }
+            Thread.getDefaultUncaughtExceptionHandler()!!.uncaughtException(Thread.currentThread(), poisoned)
+            assertTrue(handedOn)
+        } finally {
+            Thread.setDefaultUncaughtExceptionHandler(previous)
+        }
+    }
 }
