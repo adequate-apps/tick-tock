@@ -18,6 +18,8 @@ import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import ticktock.design.components.ButtonAction
+import ticktock.design.components.ButtonRow
 import ticktock.design.components.GlText
 import ticktock.design.components.HistoryRow
 import ticktock.design.components.TextField
@@ -73,6 +75,33 @@ class HistoryControlsTest(private val fontScale: Float, private val width: Int) 
         compose.onNodeWithTag("text-entry").performTextInput("Cold start\nNew reed")
         assertEquals("Cold start\nNew reed", draft.value)
         compose.onNodeWithTag("text-entry").assertContentDescriptionEquals("Notes")
+    }
+
+    @Test fun `action groups keep complete labels and reachable actions at every text size`() {
+        var action = ""
+        val labels = listOf("Save session", "Sessions", "New session")
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
+                GridlineTheme {
+                    ButtonRow(labels.map { label -> ButtonAction(label, { action = label }, tag = label) }, Modifier.width(width.dp))
+                }
+            }
+        }
+        labels.forEach { label ->
+            val node = compose.onNodeWithText(label, useUnmergedTree = true)
+            val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+            node.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            assertTrue(layouts.isNotEmpty())
+            layouts.forEach {
+                assertEquals(1, it.lineCount)
+                assertFalse(it.didOverflowHeight)
+                assertTrue(it.getLineRight(0) - it.getLineLeft(0) <= it.size.width + 1f)
+                assertEquals(label.length, it.getLineEnd(0, visibleEnd = true))
+            }
+            compose.onNodeWithTag(label).performClick()
+            assertEquals(label, action)
+        }
     }
 
     companion object {
