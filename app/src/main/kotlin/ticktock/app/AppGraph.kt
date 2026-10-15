@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import ticktock.app.history.TableSession
 import ticktock.app.tune.TuneSession
 import ticktock.app.output.DeviceOutputConnection
 import ticktock.app.output.OutputConnection
@@ -51,6 +52,7 @@ class AppGraph(
     val prefsLoad: PrefsLoad = prefs.load()
     private val database = HistoryDatabase(context, databaseName)
     val history = HistoryStore(database, storage, runContextOf(prefs.prefs.value))
+    val table = TableSession(history, { prefs.prefs.value }, prefs::update)
     private val historyContextLock = Any()
 
     val output = OutputSession(
@@ -104,6 +106,7 @@ class AppGraph(
 
     /** Tests only: a process never closes its graph. */
     fun close() {
+        table.close()
         tune.close()
         output.close()
         scope.cancel()

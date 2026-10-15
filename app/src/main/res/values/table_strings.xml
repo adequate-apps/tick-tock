@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="table_note_detail">Note detail</string>
+    <string name="table_stop_drone">Stop drone</string>
+    <string name="table_hear_drone">Hear drone</string>
+    <string name="table_clear_note">Clear this note</string>
+    <string name="table_session_counts">%1$d notes · %2$d attacks · %3$d s captured</string>
+    <string name="table_open">Open</string>
+    <string name="table_resume">Resume</string>
+    <string name="table_delete">Delete</string>
+    <string name="table_session">Session</string>
+    <string name="table_all_history">All history</string>
+    <string name="table_drone_included">Drone runs included</string>
+    <string name="table_drone_excluded">Drone runs excluded</string>
+    <string name="table_free_play">Free play</string>
+    <string name="table_with_drone">Include drone</string>
+    <string name="table_since">Since %1$s · %2$s</string>
+    <string name="table_row_spoken">%1$s, mean %2$s, spread %3$d, %4$d attacks, %5$d readings</string>
+    <string name="table_save_session">Save session</string>
+    <string name="table_sessions">Sessions</string>
+    <string name="table_new_session">New session</string>
+    <string name="table_share_csv">Share CSV</string>
+    <string name="table_clear_session">Clear session</string>
+    <string name="table_share_error">Phone refused CSV sharing</string>
+    <string name="table_delete_session">Delete session</string>
+    <string name="table_locked">Saved history locked</string>
+    <string name="table_empty">Play notes with Capture on</string>
+    <string name="table_distribution">Cents distribution</string>
+    <string name="table_cancel">Cancel</string>
+    <string name="table_confirm">Clear</string>
+    <string name="table_name">Name</string>
+    <string name="table_equipment">Equipment</string>
+    <string name="table_notes">Notes</string>
+    <string name="table_purpose">Purpose</string>
+    <string name="table_practice">Practice</string>
+    <string name="table_shop">Shop test</string>
+    <string name="table_equipment_test">Equipment</string>
+    <string name="table_save">Save</string>
+    <string name="table_readings">Readings</string>
+    <string name="table_attacks">Attacks</string>
+    <string name="table_mean">Mean</string>
+    <string name="table_spread">Spread</string>
+    <string name="table_landing">Attack landing</string>
+    <string name="table_first">Since</string>
+    <string name="table_concert">Concert %1$s</string>
+    <string name="table_confirm_note">Stored readings will be cleared</string>
+    <string name="table_confirm_session">The session and its readings will be deleted</string>
+    <string name="table_low">Low</string>
+    <string name="table_middle">Middle</string>
+    <string name="table_high">High</string>
+    <plurals name="table_session_total"><item quantity="one">%d session</item><item quantity="other">%d sessions</item></plurals>
+    <plurals name="table_attack_total"><item quantity="one">%d attack</item><item quantity="other">%d attacks</item></plurals>
+    <plurals name="table_reading_total"><item quantity="one">%d reading</item><item quantity="other">%d readings</item></plurals>
+</resources>
