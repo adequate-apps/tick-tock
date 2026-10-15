@@ -93,7 +93,11 @@ class SettingsExtrasTest {
         assertEquals(-60, graph.prefs.prefs.value.noiseFloorDb)
         assertEquals(config.hornProfiles, graph.prefs.prefs.value.personalConfig.hornProfiles)
         click("config-export")
-        chooseDocument(Intent.ACTION_CREATE_DOCUMENT, document)
+        val request = arrayOfNulls<Intent>(1)
+        scenario!!.onActivity { request[0] = shadowOf(it).nextStartedActivityForResult.intent }
+        assertEquals(Intent.ACTION_CREATE_DOCUMENT, request[0]!!.action)
+        scenario!!.recreate()
+        scenario!!.onActivity { shadowOf(it).receiveResult(request[0], Activity.RESULT_OK, Intent().setData(Uri.fromFile(document))) }
         awaitState { compose.onAllNodesWithText("Settings exported").fetchSemanticsNodes().isNotEmpty() }
         val exported = (PersonalConfigCodec.parse(document.readText()) as ParseResult.Ok).config
         assertEquals(442.0, exported.settings.a4Hz!!, 0.0)
