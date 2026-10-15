@@ -71,6 +71,16 @@ fun Trace(
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(2 * line, 3 * line)),
             )
             val values = points()
+            // A lone accepted hop remains visible even when silence surrounds it.
+            values.forEachIndexed { i, c ->
+                if (!c.isNaN() && (i == 0 || values[i - 1].isNaN()) && (i == values.lastIndex || values[i + 1].isNaN())) {
+                    val x = if (values.size == 1) size.width / 2f else i * size.width / values.lastIndex
+                    val mark = minOf(3 * line, size.width, size.height)
+                    drawRect(colors.textBody,
+                        Offset((x - mark / 2).coerceIn(0f, size.width - mark), (y(c) - mark / 2).coerceIn(0f, size.height - mark)),
+                        Size(mark, mark))
+                }
+            }
             if (values.size > 1) {
                 val step = size.width / (values.size - 1)
                 val path = Path()

@@ -162,7 +162,7 @@ fun TuneScreen(graph: AppGraph, mic: MicAccess) {
         } else {
             LiveTrace(trace, listening)
         }
-        Controls(prefs, graph, listening, stacked)
+        Controls(prefs, graph, listening, stacked, hasTransposition = instrument.transposition != 0)
     }
 }
 
@@ -212,7 +212,7 @@ private fun LastNoteTrace(note: LastNote?, revealing: Boolean, prefs: Prefs, ins
         when {
             !revealing -> "$name ${signed(Cents.shown(it.meanCents, it.meanHz) ?: 0)} · $seconds"
             settled != null -> stringResource(R.string.tune_attack_settled, signed(settled)) + " · $seconds"
-            else -> "$name · $seconds"
+            else -> stringResource(R.string.tune_attack_settled, "—") + " · $seconds"
         }
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -387,7 +387,7 @@ private fun RevealCountdown(remaining: () -> Float) {
 }
 
 @Composable
-private fun Controls(prefs: Prefs, graph: AppGraph, listening: Boolean, stacked: Boolean) {
+private fun Controls(prefs: Prefs, graph: AppGraph, listening: Boolean, stacked: Boolean, hasTransposition: Boolean) {
     val capture: @Composable () -> Unit = {
         ControlGroup(stringResource(R.string.tune_capture)) {
             Segmented(
@@ -439,11 +439,11 @@ private fun Controls(prefs: Prefs, graph: AppGraph, listening: Boolean, stacked:
         if (stacked) {
             capture()
             needle()
-            names()
+            if (hasTransposition) names()
             a4()
         } else {
             TwoUp(capture, needle)
-            TwoUp(names, a4)
+            if (hasTransposition) TwoUp(names, a4) else a4()
         }
     }
 }

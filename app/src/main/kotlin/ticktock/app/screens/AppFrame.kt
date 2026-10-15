@@ -112,7 +112,10 @@ fun AppFrame() {
 
         if (!settingsOpen && !firstRun) {
             Segmented(
-                segments = Tab.entries.map { Segment(label = stringResource(it.label), running = it == Tab.Tune && micWord == MicWord.LISTENING) },
+                segments = Tab.entries.map {
+                    Segment(label = stringResource(it.label),
+                        running = it == Tab.Tune && (micWord == MicWord.LISTENING || micWord == MicWord.PAUSED))
+                },
                 selectedIndex = tab.ordinal,
                 onSelect = { tab = Tab.entries[it] },
                 tag = "tabs",
