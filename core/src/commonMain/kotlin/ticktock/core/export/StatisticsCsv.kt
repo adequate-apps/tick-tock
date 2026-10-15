@@ -30,12 +30,15 @@ object StatisticsCsv {
         rows.forEach { row ->
             require(row.a4Hz.isFinite() && row.mean.isFinite() && row.spread.isFinite())
             require(row.readings >= 0 && row.attacks in 0..row.readings && row.spread >= 0)
-            val fields = listOf(row.instrument, row.a4Hz.toString(), row.writtenNote, row.concertNote,
+            val fields = listOf(safeText(row.instrument), row.a4Hz.toString(), safeText(row.writtenNote), safeText(row.concertNote),
                 row.readings.toString(), row.attacks.toString(), tenth(row.mean), tenth(row.spread),
-                row.context, row.equipment, row.session, row.date)
+                safeText(row.context), safeText(row.equipment), safeText(row.session), safeText(row.date))
             append(fields.joinToString(",", transform = ::quoted)); append("\r\n")
         }
     }.encodeToByteArray()
+
+    private fun safeText(value: String): String =
+        if (value.firstOrNull() in listOf('=', '+', '-', '@', '\t', '\r')) "'$value" else value
 
     private fun quoted(value: String): String = if (value.any { it == ',' || it == '"' || it == '\r' || it == '\n' })
         "\"${value.replace("\"", "\"\"")}\"" else value
