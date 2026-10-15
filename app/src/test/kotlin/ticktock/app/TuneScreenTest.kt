@@ -7,6 +7,7 @@ import ticktock.data.history.Scope
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
@@ -175,6 +176,7 @@ class TuneScreenTest {
         assertTrue(saved > 0)
         compose.onNodeWithTag("capture-1").performScrollTo().performClick()
         awaitStatus("Listening", "Capture paused")
+        compose.onNode(hasTestTag("running") and hasAnyAncestor(hasTestTag("tabs-0")), useUnmergedTree = true).assertExists()
         val oldTrace = graph.tune.trace.value
         val oldHop = graph.tune.level.value.hop
         play(input, 444.0)
@@ -322,6 +324,33 @@ class TuneScreenTest {
         compose.mainClock.advanceTimeBy(100)
         compose.onNodeWithTag("reveal-countdown", useUnmergedTree = true).assertDoesNotExist()
         assertEquals("—", text("readout-cents"))
+    }
+
+    @Test
+    fun `EAR-02 a short note reveals a ghost attack when no settled reading exists`() {
+        val input = FakeAudioInput(sampleRate = rate)
+        launch(input)
+        compose.waitUntil(TIMEOUT) { input.isOpen }
+        compose.onNodeWithTag("needle-1").performScrollTo().performClick()
+        decision(0, sounding = true)
+        compose.waitUntil(TIMEOUT) { text("readout-sounding") != null }
+        compose.mainClock.autoAdvance = false
+        decision(1, sounding = false)
+        awaitFrames { text("readout-cents") == "+3" }
+        assertTrue(text("last-note").orEmpty(), text("last-note").orEmpty().startsWith("attack — · "))
+    }
+
+    @Test
+    fun `Names is hidden for C instruments and keeps the saved choice for transposing instruments`() {
+        launch(null)
+        val graph = TickTockApp.graph(ApplicationProvider.getApplicationContext())
+        compose.runOnIdle {
+            graph.prefs.update { it.copy(instrumentKey = "flute", displayMode = ticktock.core.config.DisplayMode.CONCERT) }
+        }
+        compose.onNodeWithTag("names").assertDoesNotExist()
+        assertEquals(ticktock.core.config.DisplayMode.CONCERT, graph.prefs.prefs.value.displayMode)
+        compose.runOnIdle { graph.prefs.update { it.copy(instrumentKey = ticktock.core.catalogue.Catalogue.DEFAULT_KEY) } }
+        compose.onNodeWithTag("names-1").assertIsSelected()
     }
 
     /** Script release edges so clock tests cover notes with and without accepted readings. */
