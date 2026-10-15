@@ -35,7 +35,6 @@ object GridlineFonts {
 object GridlineType {
     private val base = TextStyle(
         fontFamily = GridlineFonts.sans,
-        color = GridlineColors.textBody,
         platformStyle = PlatformTextStyle(includeFontPadding = false),
         lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
     )
@@ -59,6 +58,6 @@ object GridlineType {
     /** Small numeric facts beside a label: a value in a settings row, a count. */
     val value = mono.copy(fontSize = GridlineTypeScale.fontSizeUi, lineHeight = GridlineTypeScale.lineHeightUi)
 
-    val titleBar = base.copy(fontSize = GridlineTypeScale.fontSizeUi, lineHeight = GridlineTypeScale.lineHeightUi, fontWeight = FontWeight.SemiBold, color = GridlineColors.textOnBlue)
+    val titleBar = base.copy(fontSize = GridlineTypeScale.fontSizeUi, lineHeight = GridlineTypeScale.lineHeightUi, fontWeight = FontWeight.SemiBold)
     val statusBar = mono.copy(fontSize = GridlineTypeScale.fontSizeDense, lineHeight = GridlineTypeScale.lineHeightUi)
 }

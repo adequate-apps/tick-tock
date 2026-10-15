@@ -14,4 +14,8 @@
 --live:var(--gl-cyan);--positive:var(--gl-green);--attention:var(--gl-yellow);--danger:var(--gl-red);
 --border-strong:var(--gl-ink);--border:var(--gl-rule);--border-light:var(--gl-rule-light);
 --focus-ring:1px dotted var(--gl-ink);
+/* roles */
+--accent-text:var(--gl-blue);--control-face:var(--gl-gray);
+--title-bg:var(--gl-blue);--title-fg:var(--text-on-blue);--title-rule:var(--gl-blue);
+--selection-outline:var(--selection-bg);
 }

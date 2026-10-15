@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.design
 
+import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -31,17 +33,29 @@ class TokensGeneratedTest {
 
     @Test
     fun `the generated colours carry the four Gridline anchors`() {
-        assertEquals(0xFF0000A8.toInt(), GridlineColors.active.value.shr(32).toInt())
-        assertEquals(0xFFC6C6C6.toInt(), GridlineColors.surface.value.shr(32).toInt())
-        assertEquals(0xFFFFFFFF.toInt(), GridlineColors.field.value.shr(32).toInt())
-        assertEquals(0xFF101010.toInt(), GridlineColors.borderStrong.value.shr(32).toInt())
+        val gridline = GridlineThemes.gridline
+        assertEquals(0xFF0000A8.toInt(), gridline.active.value.shr(32).toInt())
+        assertEquals(0xFFC6C6C6.toInt(), gridline.surface.value.shr(32).toInt())
+        assertEquals(0xFFFFFFFF.toInt(), gridline.field.value.shr(32).toInt())
+        assertEquals(0xFF101010.toInt(), gridline.borderStrong.value.shr(32).toInt())
+    }
+
+    @Test
+    fun `four themes in picker order, and Pit is black with the accent only as a line`() {
+        assertEquals(listOf("Gridline", "Daylight", "Dark", "Pit"), GridlineThemes.all.map { it.name })
+        assertEquals(listOf(false, false, true, true), GridlineThemes.all.map { it.isDark })
+        val pit = GridlineThemes.pit
+        for (fill in listOf(pit.surface, pit.field, pit.controlFace, pit.titleBg, pit.selectionBg)) assertEquals(Color.Black, fill)
+        assertNotEquals(pit.selectionBg, pit.selectionOutline)
     }
 
     @Test
     fun `corners are square and relief is one unit`() {
         assertEquals(0f, GridlineSpacing.radius.value)
-        assertEquals(1f, GridlineRelief.frameStrong.width.value)
-        assertEquals(GridlineColors.bevelLight, GridlineRelief.reliefRaised.topLeft)
-        assertEquals(GridlineColors.bevelDark, GridlineRelief.reliefPressed.topLeft)
+        for (palette in GridlineThemes.all) {
+            assertEquals(1f, palette.relief.frameStrong.width.value)
+            assertEquals(palette.bevelLight, palette.relief.reliefRaised.topLeft)
+            assertEquals(palette.bevelDark, palette.relief.reliefPressed.topLeft)
+        }
     }
 }

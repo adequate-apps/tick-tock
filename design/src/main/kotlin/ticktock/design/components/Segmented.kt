@@ -30,7 +30,10 @@ import ticktock.design.GridlineMetrics
 import ticktock.design.GridlineRelief
 import ticktock.design.GridlineSpacing
 import ticktock.design.GridlineType
+import ticktock.design.Line
 import ticktock.design.bevel
+import ticktock.design.frame
+import ticktock.design.selectionOutline
 
 /**
  * One choice in a [Segmented] control. [running] marks a tool that is making
@@ -41,8 +44,9 @@ data class Segment(val label: String, val running: Boolean = false)
 
 /**
  * A row of mutually exclusive choices, which is also the tab bar. Every
- * segment is a raised gray face; the chosen one is Active Blue with pressed
- * relief, so the row reads like a bank of keys with one held down.
+ * segment is a raised control face; the chosen one takes the selection
+ * colours with pressed relief, so the row reads like a bank of keys with one
+ * held down.
  *
  * Segments share the width equally while every label fits on one line. When a
  * label is wider than its share (large font sizes, narrow screens) the row
@@ -84,14 +88,15 @@ private fun SegmentKey(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val face = if (selected) GridlineColors.active else GridlineColors.surface
-    val text = if (selected) GridlineColors.textOnBlue else GridlineColors.textBody
+    val face = if (selected) GridlineColors.selectionBg else GridlineColors.controlFace
+    val text = if (selected) GridlineColors.selectionFg else GridlineColors.textBody
     val relief = if (selected || pressed) GridlineRelief.reliefPressed else GridlineRelief.reliefRaised
     Row(
         modifier = modifier
             .defaultMinSize(minHeight = GridlineMetrics.touchTarget)
             .background(face)
             .bevel(relief)
+            .then(if (selected) Modifier.selectionOutline() else Modifier)
             .selectable(
                 selected = selected,
                 interactionSource = interaction,
@@ -104,7 +109,8 @@ private fun SegmentKey(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (segment.running) {
-            Box(Modifier.size(GridlineSpacing.sp2).background(GridlineColors.live).testTag("running"))
+            // Cyan alone is too light on a gray key (2.3:1); the ink edge in the label's own colour carries it.
+            Box(Modifier.size(GridlineSpacing.sp2).background(GridlineColors.live).frame(Line(GridlineMetrics.line, text)).testTag("running"))
         }
         GlText(
             text = segment.label,

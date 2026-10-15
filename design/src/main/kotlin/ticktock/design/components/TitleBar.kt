@@ -21,9 +21,11 @@ import ticktock.design.GridlineSpacing
 import ticktock.design.GridlineType
 import ticktock.design.Line
 import ticktock.design.frame
+import ticktock.design.titleRule
 
 /**
- * The Active Blue strip that names a pane or the app. [state] sits at the
+ * The title strip that names a pane or the app: Active Blue in Gridline,
+ * black over a rule in Pit. [state] sits at the
  * right edge and is always a short fact ("Listening", "Idle"), never a slogan.
  * [tag] prefixes the test tags so nested strips stay distinguishable.
  * [trailing] holds at most one [TitleBarAction].
@@ -39,17 +41,18 @@ fun TitleBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(GridlineColors.active)
+            .background(GridlineColors.titleBg)
+            .titleRule()
             .defaultMinSize(minHeight = GridlineSpacing.titleBarHeight)
             .padding(horizontal = GridlineSpacing.sp3, vertical = GridlineSpacing.sp1)
             .testTag(tag),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(GridlineSpacing.sp4),
     ) {
-        GlText(text = title, style = GridlineType.titleBar, modifier = Modifier.testTag("$tag-title"))
+        GlText(text = title, style = GridlineType.titleBar, color = GridlineColors.titleFg, modifier = Modifier.testTag("$tag-title"))
         Spacer(Modifier.weight(1f))
         if (state != null) {
-            GlText(text = state, style = GridlineType.titleBar, modifier = Modifier.testTag("$tag-state"))
+            GlText(text = state, style = GridlineType.titleBar, color = GridlineColors.titleFg, modifier = Modifier.testTag("$tag-state"))
         }
         trailing()
     }
@@ -70,12 +73,12 @@ fun TitleBarAction(
     Box(
         modifier = modifier
             .defaultMinSize(minWidth = GridlineMetrics.touchTarget, minHeight = GridlineMetrics.touchTarget)
-            .frame(Line(GridlineMetrics.line, GridlineColors.textOnBlue))
+            .frame(Line(GridlineMetrics.line, GridlineColors.titleFg))
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = GridlineSpacing.sp3, vertical = GridlineSpacing.sp1)
             .testTag(tag),
         contentAlignment = Alignment.Center,
     ) {
-        GlText(text = label, style = GridlineType.titleBar)
+        GlText(text = label, style = GridlineType.titleBar, color = GridlineColors.titleFg)
     }
 }

@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
+import ticktock.design.GridlineColors
 import ticktock.design.GridlineType
 
 /**
@@ -22,6 +23,12 @@ fun GlText(
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
 ) {
-    val resolved = if (color == Color.Unspecified) style else style.copy(color = color)
+    // An explicit colour wins, then the style's own, then the theme's body ink.
+    val ink = when {
+        color != Color.Unspecified -> color
+        style.color != Color.Unspecified -> style.color
+        else -> GridlineColors.textBody
+    }
+    val resolved = style.copy(color = ink)
     BasicText(text = text, modifier = modifier, style = resolved, maxLines = maxLines, overflow = overflow)
 }
