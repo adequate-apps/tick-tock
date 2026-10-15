@@ -185,17 +185,22 @@ class LiveCapture(
     private var hopsSinceDiagnostics = 0
 
     fun start(input: AudioInput) {
-        val result = thread.start(input)
+        thread.stop()
         hopsSinceDiagnostics = 0
         levelFlow.value = Level()
         diagnosticsFlow.value = CaptureDiagnostics()
+        stateFlow.update { CaptureState(absentDevice = it.absentDevice) }
+        val result = thread.start(input)
         stateFlow.update { previous ->
             result.fold(
-                onSuccess = { info -> CaptureState(info = info, absentDevice = previous.absentDevice) },
+                // Capture callbacks may report a stop or a newer route before open returns.
+                onSuccess = { info ->
+                    if (previous.failure != null || previous.info != null) previous else previous.copy(info = info)
+                },
                 onFailure = { error ->
                     val failure = (error as? InputException)?.failure
                         ?: InputFailure.Refused(UNKNOWN_DEVICE, emptyList())
-                    CaptureState(failure = failure)
+                    previous.copy(info = null, failure = failure)
                 },
             )
         }
@@ -249,7 +254,7 @@ class LiveCapture(
         val newest = decisions.last()
         levelFlow.value = Level(newest.hop, Level.db(newest.level))
         stateFlow.update { previous ->
-            val readout = previous.readout.after(newest)
+            val readout = decisions.fold(previous.readout) { held, decision -> held.after(decision) }
             // A held readout reuses the state; retries preserve concurrent stream reports.
             if (readout == previous.readout) previous else previous.copy(readout = readout)
         }
@@ -282,7 +287,13 @@ class LiveCapture(
                 noteCentsSum += reading.cents
                 noteHzSum += reading.hz
                 noteReadings++
-                if (notePointCount < notePoints.size) notePoints[notePointCount++] = reading.cents.toFloat()
+                // Each position is elapsed hop time; rejected and missing hops remain gaps.
+                val position = (reading.hop - noteStartHop).coerceIn(0L, notePoints.size.toLong()).toInt()
+                while (notePointCount < position) notePoints[notePointCount++] = Float.NaN
+                if (position < notePoints.size) {
+                    notePoints[position] = reading.cents.toFloat()
+                    notePointCount = position + 1
+                }
             }
             if (decision.firstSettled) noteSettled = decision.saved?.cents
         }
@@ -333,7 +344,8 @@ class LiveCapture(
             note == null -> Readout()
             reading != null -> Readout(note, decision.incumbent, Cents.shown(reading.cents, reading.hz), Readout.shownHz(reading.hz))
             // The readout holds its last value while the note is held and this hop added nothing.
-            else -> copy(note = note, midi = decision.incumbent)
+            midi == decision.incumbent -> this
+            else -> Readout(note = note, midi = decision.incumbent)
         }
     }
 
