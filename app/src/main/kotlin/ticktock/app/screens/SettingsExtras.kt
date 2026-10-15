@@ -95,10 +95,11 @@ private fun AboutDialog(dismiss: () -> Unit) {
     var document by rememberSaveable { mutableStateOf<String?>(null) }
     var text by remember { mutableStateOf("") }
     var error by remember { mutableStateOf(false) }
-    LaunchedEffect(document) {
+    val noticeError = stringResource(R.string.settings_notice_error)
+    LaunchedEffect(document, noticeError) {
         text = ""
         document?.let { file -> text = withContext(Dispatchers.IO) {
-            runCatching { context.assets.open(file).bufferedReader().use { it.readText() } }.getOrElse { context.getString(R.string.settings_notice_error) }
+            runCatching { context.assets.open(file).bufferedReader().use { it.readText() } }.getOrElse { noticeError }
         } }
     }
     SquareDialog(stringResource(R.string.settings_about), { if (document != null) document = null else dismiss() }, tag = "about-dialog") {

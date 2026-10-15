@@ -36,7 +36,7 @@ internal fun ConfigurationPanel(graph: AppGraph) {
     val prefs by graph.prefs.prefs.collectAsStateWithLifecycle()
     var incoming by remember { mutableStateOf<PersonalConfig?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var message by rememberSaveable { mutableStateOf<String?>(null) }
+    var message by rememberSaveable { mutableStateOf<Int?>(null) }
     var failed by rememberSaveable { mutableStateOf(false) }
     val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) jobs.launch {
@@ -44,9 +44,9 @@ internal fun ConfigurationPanel(graph: AppGraph) {
             try {
                 val bytes = PersonalConfigCodec.write(PersonalConfiguration.snapshot(graph.prefs.prefs.value)).toByteArray(Charsets.UTF_8)
                 withContext(Dispatchers.IO) { ConfigurationFiles.write(context, uri, bytes) }
-                failed = false; message = context.getString(R.string.config_exported)
+                failed = false; message = R.string.config_exported
             } catch (cancelled: CancellationException) { throw cancelled }
-            catch (failure: Exception) { failed = true; message = context.getString(R.string.config_write_error) }
+            catch (failure: Exception) { failed = true; message = R.string.config_write_error }
             finally { busy = false }
         }
     }
@@ -56,10 +56,10 @@ internal fun ConfigurationPanel(graph: AppGraph) {
             try {
                 when (val parsed = withContext(Dispatchers.IO) { ConfigurationFiles.read(context, uri) }) {
                     is ParseResult.Ok -> { incoming = parsed.config; message = null; failed = false }
-                    is ParseResult.Failed -> { failed = true; message = context.getString(R.string.config_invalid) }
+                    is ParseResult.Failed -> { failed = true; message = R.string.config_invalid }
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
-            catch (failure: Exception) { failed = true; message = context.getString(R.string.config_read_error) }
+            catch (failure: Exception) { failed = true; message = R.string.config_read_error }
             finally { busy = false }
         }
     }
@@ -69,7 +69,7 @@ internal fun ConfigurationPanel(graph: AppGraph) {
                 save.launch("metronome-settings.json")
             }, !busy, tag = "config-export"),
             ButtonAction(stringResource(R.string.config_import), { open.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }, !busy, tag = "config-import")))
-        message?.let { GlText(it, style = GridlineType.small, color = if (failed) GridlineColors.danger else GridlineColors.textSecondary) }
+        message?.let { GlText(stringResource(it), style = GridlineType.small, color = if (failed) GridlineColors.danger else GridlineColors.textSecondary) }
     }
     incoming?.let { config ->
         val diff = PersonalConfigMerge.diff(PersonalConfiguration.snapshot(prefs), config)
@@ -82,7 +82,7 @@ internal fun ConfigurationPanel(graph: AppGraph) {
                         GlText("${change.before ?: "—"} → ${change.after}", style = GridlineType.value)
                     }
                 }
-                if (failed) message?.let { GlText(it, color = GridlineColors.danger) }
+                if (failed) message?.let { GlText(stringResource(it), color = GridlineColors.danger) }
                 ButtonRow(listOf(ButtonAction(stringResource(R.string.action_cancel), { incoming = null }, !busy, tag = "config-cancel"),
                     ButtonAction(stringResource(R.string.config_apply), {
                         jobs.launch {
@@ -90,9 +90,9 @@ internal fun ConfigurationPanel(graph: AppGraph) {
                             try {
                                 graph.prefs.update { PersonalConfiguration.apply(it, config) }
                                 withContext(Dispatchers.IO) { graph.prefs.flushAndWait().getOrThrow() }
-                                incoming = null; failed = false; message = context.getString(R.string.config_applied)
+                                incoming = null; failed = false; message = R.string.config_applied
                             } catch (cancelled: CancellationException) { throw cancelled }
-                            catch (failure: Exception) { failed = true; message = context.getString(R.string.config_apply_error) }
+                            catch (failure: Exception) { failed = true; message = R.string.config_apply_error }
                             finally { busy = false }
                         }
                     }, !busy, true, "config-apply")))

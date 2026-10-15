@@ -48,6 +48,7 @@ fun TableScreen(graph: AppGraph = TickTockApp.graph(LocalContext.current)) {
     val output by graph.output.state.collectAsStateWithLifecycle()
     val jobs = rememberCoroutineScope()
     val context = LocalContext.current
+    val csvLabel = stringResource(R.string.table_share_csv)
     var selected by remember { mutableStateOf<Pair<RunLabel, Int>?>(null) }
     var sessions by rememberSaveable { mutableStateOf(false) }
     var saving by remember { mutableStateOf<SessionRow?>(null) }
@@ -128,7 +129,7 @@ fun TableScreen(graph: AppGraph = TickTockApp.graph(LocalContext.current)) {
                             val bytes = owner.csv() ?: return@launch
                             try {
                                 val intent = withContext(Dispatchers.IO) { ShareFiles.csv(context, bytes) }
-                                context.startActivity(Intent.createChooser(intent, context.getString(R.string.table_share_csv)))
+                                context.startActivity(Intent.createChooser(intent, csvLabel))
                                 shareError = false
                             } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
                             catch (failure: Exception) { shareError = true }
@@ -173,7 +174,7 @@ fun TableScreen(graph: AppGraph = TickTockApp.graph(LocalContext.current)) {
         jobs.launch { owner.save(session.id, name, equipment, purpose, notes).join(); if (owner.state.value.error == null) saving = null }
     } }
     deleting?.let { session -> TableConfirmation(stringResource(R.string.table_delete_session),
-        session.name.ifBlank { context.getString(R.string.table_session) }, state.busy, state.error, { deleting = null }) {
+        session.name.ifBlank { stringResource(R.string.table_session) }, state.busy, state.error, { deleting = null }) {
         jobs.launch { owner.delete(session.id).join(); if (owner.state.value.error == null) { deleting = null; selected = null } }
     } }
     clearNote?.let { (scope, label, midi) -> TableConfirmation(stringResource(R.string.table_clear_note),
