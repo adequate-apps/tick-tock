@@ -68,6 +68,7 @@ class TableScreenTest {
 
     @Test fun `SES-03 table scope and note clear retain saved history and historical A4`() {
         launch()
+        compose.onNodeWithTag("table-note-71").assertContentDescriptionEquals("A flat 5, mean minus 8, spread 0, 1 attack, 8 readings")
         compose.onAllNodesWithTag("table-note-69").assertCountEquals(0)
         click("table-scope-1")
         awaitRows(69, 71)
