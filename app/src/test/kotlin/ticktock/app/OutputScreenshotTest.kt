@@ -46,7 +46,8 @@ class OutputScreenshotTest(private val scale: Float, private val theme: Theme) {
         compose.onNodeWithTag("tabs-1").performClick()
         compose.onNodeWithTag("drone-readout", true).performScrollTo().assertIsDisplayed()
         golden("drone")
-        compose.onNodeWithTag("drone-toggle").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("drone-next").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("drone-toggle").assertIsDisplayed()
         golden("drone-controls")
         compose.runOnIdle { graph.prefs.update { it.copy(displayMode = DisplayMode.CONCERT) } }
         compose.onAllNodesWithText("check", useUnmergedTree = true).assertCountEquals(0)
