@@ -49,6 +49,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        TickTockApp.graph(this).onBackground()
+        if (!isChangingConfigurations) TickTockApp.graph(this).onBackground()
     }
 }
