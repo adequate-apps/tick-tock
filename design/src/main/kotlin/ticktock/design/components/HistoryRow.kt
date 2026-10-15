@@ -34,7 +34,7 @@ fun HistoryRow(note: String, counts: String, description: String, dimmed: Boolea
         .testTag(tag).clearAndSetSemantics { contentDescription = description }) {
         BoxWithConstraints(Modifier.fillMaxWidth().defaultMinSize(minHeight = GridlineMetrics.touchTarget).padding(GridlineSpacing.sp3)) {
             val stacked = maxWidth < 260.dp || LocalDensity.current.fontScale >= 1.5f
-            val ink = if (dimmed) GridlineColors.textDisabled else GridlineColors.active
+            val ink = if (dimmed) GridlineColors.textDisabled else GridlineColors.accentText
             if (stacked) {
                 Column(verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {

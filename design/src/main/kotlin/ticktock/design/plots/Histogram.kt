@@ -57,7 +57,7 @@ fun Histogram(
                 }
             }
             bars(previous, colors.borderLight)
-            bars(current, if (dimmed) colors.textDisabled else colors.active)
+            bars(current, if (dimmed) colors.textDisabled else colors.accentText)
             if (!compact) drawLine(colors.textBody, Offset(0f, size.height - line), Offset(size.width, size.height - line), line)
         }
         if (!compact) ScaleLabels(listOf(0f to "−50", 0.25f to "−25", 0.5f to "0", 0.75f to "+25", 1f to "+50"), Modifier.fillMaxWidth())
