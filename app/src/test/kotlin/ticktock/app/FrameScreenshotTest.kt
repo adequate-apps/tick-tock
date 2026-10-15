@@ -59,9 +59,8 @@ class FrameScreenshotTest {
         compose.onNodeWithTag("open-settings").assertIsDisplayed()
         // Every tab is on screen at every font scale: the keys wrap into rows
         // rather than scroll a label out of view.
-        for (i in 0..2) compose.onNodeWithTag("tabs-$i").assertIsDisplayed()
-        compose.onNodeWithTag("statusbar-0", useUnmergedTree = true).assertIsDisplayed()
-        compose.onNodeWithTag("statusbar-1", useUnmergedTree = true).assertIsDisplayed()
+        for (i in 0..3) compose.onNodeWithTag("tabs-$i").assertIsDisplayed()
+        compose.onNodeWithTag("statusbar").assertIsDisplayed()
     }
 
     @Test
@@ -97,39 +96,39 @@ class FrameScreenshotTest {
     }
 
     @Test
-    fun `drone and metronome at font scale 1_0`() {
+    fun `drone at font scale 1_0`() {
         launch(1f)
         compose.onNodeWithTag("tabs-1").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
-        golden("frame-drone-metronome-360x640-fs1.0")
+        compose.onNodeWithTag("drone-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-drone-360x640-fs1.0")
     }
 
     @Test
-    fun `drone and metronome at font scale 1_3`() {
+    fun `drone at font scale 1_3`() {
         launch(1.3f)
         compose.onNodeWithTag("tabs-1").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
-        golden("frame-drone-metronome-360x640-fs1.3")
+        compose.onNodeWithTag("drone-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-drone-360x640-fs1.3")
     }
 
     @Test
-    fun `drone and metronome at font scale 1_5`() {
+    fun `drone at font scale 1_5`() {
         launch(1.5f)
         compose.onNodeWithTag("tabs-1").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
-        golden("frame-drone-metronome-360x640-fs1.5")
+        compose.onNodeWithTag("drone-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-drone-360x640-fs1.5")
     }
 
     @Test
-    fun `drone and metronome at font scale 2_0`() {
+    fun `drone at font scale 2_0`() {
         launch(2f)
         compose.onNodeWithTag("tabs-1").performClick()
         assertFrameReadable()
-        compose.onNodeWithTag("metronome-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
-        golden("frame-drone-metronome-360x640-fs2.0")
+        compose.onNodeWithTag("drone-empty", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        golden("frame-drone-360x640-fs2.0")
     }
 
     @Test

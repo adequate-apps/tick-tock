@@ -27,6 +27,7 @@ import ticktock.design.components.NoticeKind
 import ticktock.design.components.Segment
 import ticktock.design.components.Segmented
 import ticktock.design.components.SettingRow
+import ticktock.design.components.TitleBar
 
 /** The interactive Gridline controls: targets, states and semantics. */
 @RunWith(AndroidJUnit4::class)

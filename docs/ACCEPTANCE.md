@@ -72,14 +72,14 @@ Tiers: **U** pure JVM (`:core:jvmTest`), **N** host C++ (gtest, offline render),
 | BND-03 | colour agrees with digits | U | 2.0 | CentsBandTest `BND-03` | green |
 | BND-04 | no other thresholds exist | U + source grep | 2.0 | CentsBandTest `BND-04` (three tests) + `tools/verify.sh` sources stage, shared allowlist `tools/band-literal-allowlist.txt` | green |
 | BND-05 | no data | U | 2.0 | CentsBandTest `BND-05` | green |
-| BND-06 | whole cents only | U | 2.0 | | open |
+| BND-06 | whole cents only | U | 2.0 |  | open |
 
 ## Instrument ranges and transpositions
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | RNG-01 | two tiers per key | U | 2.0 | RangeGoldenTest `RNG-01` | green |
-| RNG-02 | what each tier drives | U | 2.0 | | open |
+| RNG-02 | what each tier drives | U | 2.0 |  | open |
 | RNG-03 | data source | U | 2.0 | RangeLayerDataTest (source hashes) + `tools/gen-ranges/check.sh` (byte-for-byte reproduction where the inputs are present) | green |
 | RNG-04 | golden file | U | 2.0 | RangeGoldenTest `RNG-04` | green |
 | RNG-05 | policy test | U | 2.0 | RangeGoldenTest `RNG-05`; the twenty decisions were drafted during M0 and await the owner's confirmation (see `tools/gen-ranges/README.md`) | green |
@@ -88,20 +88,20 @@ Tiers: **U** pure JVM (`:core:jvmTest`), **N** host C++ (gtest, offline render),
 | RNG-08 | corrected families | U | 2.0 | RangeGoldenTest `RNG-08` | green |
 | RNG-09 | mappings | U | 2.0 | CatalogueTest `RNG-09` | green |
 | RNG-10 | catch-all keys | U | 2.0 | RangeResolverTest `RNG-10` | green |
-| RNG-11 | always show cents | U | 2.0 | | open |
-| RNG-12 | played out-of-range notes in the table | U | 2.0 | | open |
-| RNG-13 | narrowing a range | U | v1.1 | | deferred |
-| RNG-14 | instrument switch | U | 2.0 | | open |
+| RNG-11 | always show cents | U | 2.0 |  | open |
+| RNG-12 | played out-of-range notes in the table | U | 2.0 |  | open |
+| RNG-13 | narrowing a range | U | v1.1 |  | deferred |
+| RNG-14 | instrument switch | U | 2.0 |  | open |
 | RNG-15 | an override can only widen | U | v1.1 | RangeResolverTest `RNG-15` (the resolver rule landed with the layers; the editor ships in v1.1) | green |
-| RNG-16 | strict read before write | U | v1.1 | | deferred |
-| RNG-17 | save reports the truth | U | v1.1 | | deferred |
-| RNG-18 | envelope v2 | U | v1.1 | | deferred |
-| RNG-19 | editor input | U | v1.1 | | deferred |
-| RNG-20 | editor limits | U | v1.1 | | deferred |
-| RNG-21 | say where ranges come from | U | v1.1 | | deferred |
+| RNG-16 | strict read before write | U | v1.1 |  | deferred |
+| RNG-17 | save reports the truth | U | v1.1 |  | deferred |
+| RNG-18 | envelope v2 | U | v1.1 |  | deferred |
+| RNG-19 | editor input | U | v1.1 |  | deferred |
+| RNG-20 | editor limits | U | v1.1 |  | deferred |
+| RNG-21 | say where ranges come from | U | v1.1 |  | deferred |
 | TRN-01 | the four the 1.x app has wrong | U | 2.0 | CatalogueTest `TRN-01` | green |
 | TRN-02 | end to end | U | 2.0 | CatalogueTest `TRN-02` | green |
-| TRN-03 | migrating stored data | U | resolved: no 1.x migration | | closed |
+| TRN-03 | migrating stored data | U | resolved: no 1.x migration |  | closed |
 | TRN-04 | octave-clef convention | U | 2.0 | CatalogueTest `TRN-04` | green |
 | TRN-05 | sign convention is global | U | 2.0 | CatalogueTest `TRN-05` | green |
 
@@ -113,8 +113,8 @@ Tiers: **U** pure JVM (`:core:jvmTest`), **N** host C++ (gtest, offline render),
 | HNT-02 | the window is playing time | U | 2.0 | StrayCounterTest `HNT-02` | green |
 | HNT-03 | single-note cases never trigger it | U | 2.0 | StrayCounterTest `HNT-03` | green |
 | HNT-04 | spread-out strays never trigger it | U | 2.0 | StrayCounterTest `HNT-04` | green |
-| HNT-05 | it offers the fix | U | v1.1 | | deferred |
-| HNT-06 | editing forgets covered strays | U | v1.1 | | deferred |
+| HNT-05 | it offers the fix | U | v1.1 |  | deferred |
+| HNT-06 | editing forgets covered strays | U | v1.1 |  | deferred |
 | HNT-07 | scope | U | 2.0 | StrayCounterTest `HNT-07` | green |
 | HNT-08 | cents keep showing | U | 2.0 | StrayCounterTest `HNT-08` | green |
 
@@ -132,15 +132,15 @@ ledgered under their own prefixes below.
 | SES-04 | per-nickname separation | H | 2.0 | HistoryStoreTest `SES-04` | green |
 | SES-05 | validate before storing | H | 2.0 | HistoryStoreTest `SES-05`; the rule is `HistorySink.storable` in :core, SmallContractsTest | green |
 | SES-06 | batched writes | H | 2.0 | HistoryStoreTest `SES-06` (a burst is one transaction; 3.2 s of continuous readings at about 200 a second is at most one transaction a second) | green |
-| SES-07 | write errors surface | H | 2.0 | HistoryStoreTest `SES-07` (batch kept, counted, banner state after three failures in a row, recovery); the banner itself lands with the screens in M4 | green |
+| SES-07 | write errors surface | H | 2.0 | HistoryStoreTest `SES-07` (two tests; a session change whose flush fails is refused) (batch kept, counted, banner state after three failures in a row, recovery); the store half is green, the player-facing half (offer, notice, banner) lands with the M4 screens | open |
 | SES-08 | summaries and indexes | H | 2.0 | HistoryStoreTest `SES-08`; SchemaTest `SES-08` (indexes); `StoreStatus.flushes` is the refresh signal | green |
-| SES-09 | retention | H | 2.0 | HistoryStoreTest `SES-09` | green |
+| SES-09 | retention | H | 2.0 | HistoryStoreTest `SES-09` (two tests: raw readings of unsaved sessions age out with summaries kept; a saved session keeps its readings, decision 5) | green |
 | SES-10 | storage budget | H | 2.0 | HistoryStoreTest `SES-10` (a simulated year: 53 MB against 100 MB) | green |
 | SES-11 | one writer | H | 2.0 | the field table and the normaliser derived from it: PrefsSchemaTest `SES-11`; the noise-floor range tops out where the gate stays reachable under every preset (ResponseModeTableTest `the top of the noise-floor range`); the one writer lands with `PrefsStore` in M3; PrefsStoreTest `SES-11` (two threads updating different fields lose nothing) | green |
 | SES-12 | unknown and newer fields | H | 2.0 | the normaliser's round trip of unknown and newer-version fields: PrefsSchemaTest `SES-12`; PrefsStoreTest `SES-12` (the store keeps unknown and newer-version fields through a save) | green |
 | SES-13 | zero stays zero | H | 2.0 | the normaliser keeps a gain of 0: PrefsSchemaTest `SES-13`; PrefsStoreTest `SES-13` (restart path) | green |
 | SES-14 | golden stored data | H | 2.0 | SchemaTest `SES-14` (the created schema matches `data/src/test/resources/db/schema-v1.sql`); 2.0 is the first shipped schema and prefs version, so upgrade goldens start with the next version | green |
-| SES-15 | CSV and TXT export | H | v1.1 | | deferred |
+| SES-15 | CSV and TXT export | H | v1.1 |  | deferred |
 
 ## Output lifecycle and the microphone
 
@@ -149,11 +149,11 @@ ledgered under their own prefixes below.
 | OUT-01 | output-user registry | H | 2.0 (decision 12 removes the focus clause: the registry opens the stream on the first tool and closes it on the last, and its two transitions drive BGH-01) | OutputRegistryTest `OUT-01` (the registry's transitions), AudioControlThreadTest `OUT-01` (the real control thread opens the fake backend's stream on the first tool and closes it on the last, Opened then Closed) and AndroidAudioControlTest `OUT-01` (the same over the native backend and a fake of the bridge: the first tool opens one native handle, the last destroys it); N: `OutputController.theFirstRegistrationOpensSharedLowLatencyAtTwoBurstsAndTheLastCloses`; D: the emulator output run shows Opened on the first Register and Closed on the last Unregister | green |
 | OUT-02 | truthful state | H | 2.0 | engine half: every loss of output is a Parked event carrying its reason: AudioControlThreadTest `OUT-03` (headphones disconnected), `OUT-17` (output failed, with the device and the refused rates), `CAL-02` (incoming call), `OUT-11` (background), and `OUT-02` (two tests: a stream that keeps ending with its device present is output failing after three reopens in place, with a Failed naming the device; a stream that lives a second resets the budget); a parked tool under a partial background policy stops sounding (`OUT-11`); the control that shows off with the reason lands in M5 | open |
 | OUT-03 | unplug | H, D | 2.0 | H green: AudioControlThreadTest `OUT-03` (two tests: the noisy broadcast, and a device vanishing without one; every registered tool parks, the stream closes with its engine kept, and nothing opens on the speaker; the dead stream's late disconnect is ignored); over the bridge: AndroidAudioControlTest `OUT-03` (three tests: a native disconnect with the device gone parks and keeps the native handle until the tools are switched off; the platform reporting the device removed parks with no noisy broadcast and no stream error, matched against the device captured at open; an input device appearing is not a replug, so parked tools never come out on the speaker); D: the owner's phone check is pending | open |
-| OUT-04 | drone AUTO on unplug | H | v1.1 | | deferred |
+| OUT-04 | drone AUTO on unplug | H | v1.1 |  | deferred |
 | OUT-05 | replug | H, D | 2.0 | H green: AudioControlThreadTest `OUT-05 OUT-13 and MET-09` (replug at 44.1 kHz restarts exactly the parked set on the engine the unplug kept: A4 and the voices re-sent, the metronome continued as an edit), `OUT-05` (two more: a speaker appearing is not a replug; a tool the player starts while unplugged brings the parked set back on the route in hand) and `OUT-06` (what the player switches off while unplugged is switched off in the continued engine); over the bridge: AndroidAudioControlTest `OUT-05 and MET-09` (a replug resumes the parked native handle: one handle, one resume, no second MetroStart); D: the owner's phone check is pending | open |
 | OUT-06 | off stays off | H | 2.0 | AudioControlThreadTest `OUT-06` (two tests: a tool switched off while unplugged is not in the Resumed set; when every parked tool is switched off the registry empties and a replug restarts nothing) | green |
 | OUT-07 | late devices | H | 2.0 | AudioControlThreadTest `OUT-07` (a headset plugged in after start-up becomes the route when the speaker stream ends: Resumed, no Parked) and AndroidAdaptersTest `OUT-07` (the platform adapter lists outputs and hears late devices and the noisy broadcast); 2.0 has no manual output setting (scope revision), so the late device is observed and used rather than listed | green |
-| OUT-08 | permanent loss | H | superseded by decisions 4 and 12: another app taking audio never parks the tools; the contract has no focus reason | | closed |
+| OUT-08 | permanent loss | H | superseded by decisions 4 and 12: another app taking audio never parks the tools; the contract has no focus reason |  | closed |
 | OUT-09 | transient loss | H | superseded by decisions 4 and 12: an answered call parks every tool (`ParkReason.INCOMING_CALL`) and nothing restarts on its own; ringing is CAL-01; no duck on focus | OutputPortContractTest (the contract) and AudioControlThreadTest `CAL-02` (the real control thread parks every tool with `INCOMING_CALL` when the mode becomes in-call and restarts nothing when it ends) | green |
 | OUT-10 | mute reasons | H | 2.0 | MuteReasonsTest `OUT-10` (two tests: overlap in any order, clearing an unset reason) and AudioControlThreadTest `OUT-10` (two tests: a recording mute and the ringing reason overlap on the real stream and the sounding notes empty while muted; a mute set before the stream opens is in force when it opens) | green |
 | OUT-11 | background policy | H | 2.0 (v1 policy: stop everything) | AudioControlThreadTest `OUT-11` (four tests: `BackgroundPolicy.StopEverything` parks every tool with `BACKGROUND` and the foreground restarts nothing; a policy that keeps the metronome parks the drone and silences every voice slot; one that keeps the drone stops the parked metronome; the background with nothing registered is nothing) | green |
@@ -193,32 +193,32 @@ ledgered under their own prefixes below.
 | TON-02 | accuracy | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Voices.everyVoiceIsInTuneAt442` (7 notes x 3 voices x 2 rates, FFT peak within 0.5 c, sine within 0.1 c) | green |
 | TON-03 | held notes retune | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Voices.aHeldNoteRetunesInPlaceWhenA4Changes` (no gap, no re-strike) and `Voices.aHeldVoiceKeepsItsPitchAcrossARateChange` | green |
 | TON-04 | volume is gain | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Voices.volumeIsAGainChangeAndNotARestrike` (ramped gain, constant voice count) and `Mixer.duckIsARampedGainWithAFloor` | green |
-| TON-05 | sine voice and fallback | N | 2.0 | | open |
-| TON-06 | transposition persists | H | 2.0 | | open |
+| TON-05 | sine voice and fallback | N | 2.0 |  | open |
+| TON-06 | transposition persists | H | 2.0 |  | open |
 
 ## Deck recording and save location
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| DCK-01 | headphone monitoring | H | v1.1 | | deferred |
-| DCK-02 | speaker route mute | H | v1.1 | | deferred |
-| DCK-03 | survives process death | H | v1.1 | | deferred |
-| DCK-04 | a real destination | H | v1.1 | | deferred |
-| DCK-05 | failed save | H | v1.1 | | deferred |
-| DCK-06 | playback after a rate change | H | v1.1 | | deferred |
-| DCK-07 | share | H | v1.1 | | deferred |
+| DCK-01 | headphone monitoring | H | v1.1 |  | deferred |
+| DCK-02 | speaker route mute | H | v1.1 |  | deferred |
+| DCK-03 | survives process death | H | v1.1 |  | deferred |
+| DCK-04 | a real destination | H | v1.1 |  | deferred |
+| DCK-05 | failed save | H | v1.1 |  | deferred |
+| DCK-06 | playback after a rate change | H | v1.1 |  | deferred |
+| DCK-07 | share | H | v1.1 |  | deferred |
 
 ## Crash and error handling
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| ERR-01 | error boundary per screen | H | 2.0 | | open |
-| ERR-02 | fatal errors | H | 2.0 | CrashLogTest `ERR-02` (offered once, capped at 256 KiB keeping whole newest entries, nickname only when set); the offer itself lands with the screens in M4 | green |
-| ERR-03 | no silent catches | H | 2.0 | | open |
-| ERR-04 | corrupt prefs | H | 2.0 | PrefsStoreTest `ERR-04`; the pane notice lands in M4 | green |
-| ERR-05 | unreadable prefs | H | 2.0 | PrefsStoreTest `ERR-05` | green |
+| ERR-01 | error boundary per screen | H | 2.0 |  | open |
+| ERR-02 | fatal errors | H | 2.0 | CrashLogTest `ERR-02` (offered once, capped at 256 KiB keeping whole newest entries, nickname only when set); the store half is green, the player-facing half (offer, notice, banner) lands with the M4 screens | open |
+| ERR-03 | no silent catches | H | 2.0 |  | open |
+| ERR-04 | corrupt prefs | H | 2.0 | PrefsStoreTest `ERR-04` (two tests: the copy is kept before the first write; when no copy can be kept nothing is written and the player is not told one was); the store half is green, the player-facing half (offer, notice, banner) lands with the M4 screens | open |
+| ERR-05 | unreadable prefs | H | 2.0 | PrefsStoreTest `ERR-05` (two tests: never a first run, and a change made while unreadable is replayed onto the saved prefs once they can be read, never written over them) | green |
 | ERR-06 | prefs save failure | H | 2.0 | PrefsStoreTest `ERR-06` | green |
-| ERR-07 | analysis errors | H | 2.0 | | open |
+| ERR-07 | analysis errors | H | 2.0 |  | open |
 
 ## Accessibility (font scale)
 
@@ -248,8 +248,8 @@ revision document; the IDs are claimed here like any other.
 |---|---|---|---|---|---|
 | ATK-01 | attack columns in note_hist | H | 2.0 | SchemaTest `SES-01` and the golden schema | green |
 | ATK-02 | one attack per attack edge, landing cents from the first settled reading | U, H | 2.0 | U: DetectorPolicyTest `ATK-02` (two tests: one `Attack` per attack edge carrying the landing cents of the confirming hops, and the first settled reading flagged `firstSettled`); H: the store counts them in M3; H: HistoryStoreTest `ATK-02`, LiveCaptureTest (the first settled reading reaches history marked) | green |
-| ATK-03 | held note versus sweep | H | 2.0 | | open |
-| ATK-04 | attacks shown beside readings | H | 2.0 | | open |
+| ATK-03 | held note versus sweep | H | 2.0 |  | open |
+| ATK-04 | attacks shown beside readings | H | 2.0 |  | open |
 
 ### Run context and target
 
@@ -285,17 +285,17 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| EAR-01 | readout hidden, capture unchanged | H | 2.0 | | open |
-| EAR-02 | reveal after the note | H | 2.0 | | open |
+| EAR-01 | readout hidden, capture unchanged | H | 2.0 |  | open |
+| EAR-02 | reveal after the note | H | 2.0 |  | open |
 | EAR-03 | setting persists | H | 2.0 | prefs field `earsFirst`, portable | open |
 
 ### Pitch trace
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| TRC-01 | five-second trace from a fixed ring, no root recomposition | H | 2.0 | | open |
-| TRC-02 | silence breaks the line | H | 2.0 | | open |
-| TRC-03 | TalkBack reads the trace once | H | 2.0 | | open |
+| TRC-01 | five-second trace from a fixed ring, no root recomposition | H | 2.0 |  | open |
+| TRC-02 | silence breaks the line | H | 2.0 |  | open |
+| TRC-03 | TalkBack reads the trace once | H | 2.0 |  | open |
 
 ### Gap bars and offbeats
 
@@ -304,7 +304,7 @@ revision document; the IDs are claimed here like any other.
 | GAP-01 | N bars on, M bars off (the fields and the on/off rule landed in M0: MetroSetupTest; the generator lands in M2) | N, H | 2.0 | M0: MetroSetupTest (the fields and the on/off rule); N: `Metronome.gapBarsSilenceWholeBarsWhileBeatsKeepComing` and `Metronome.aSilentBarHasNoSubdivisionClicks` (the generator follows `MetroParams.barSounds`, the mirror of `MetroSetup.barSounds`); the beat row's outline is M5 | green (N; the H half is the beat row, M5) |
 | GAP-02 | the cycle keeps its bar position across a tempo change | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Metronome.gapBarsKeepTheirBarPositionAcrossATempoChange` | green |
 | GAP-03 | a muted beat keeps its subdivisions | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Metronome.aMutedBeatKeepsItsSubdivisionsAudible` and `Metronome.accentLevelsAreGainMultipliersAndMuteIsSilent` | green |
-| GAP-04 | odd-metre presets | H | 2.0 | | open |
+| GAP-04 | odd-metre presets | H | 2.0 |  | open |
 
 ### Calls without audio focus
 
@@ -314,7 +314,7 @@ revision document; the IDs are claimed here like any other.
 | CAL-02 | an answered call parks with "Paused: phone call" | H | 2.0 | AudioControlThreadTest `CAL-02` (ringtone then in-call parks every tool with `INCOMING_CALL`, the owner hears stopped, and neither the mode returning to normal nor a replug restarts anything; a later start replays no stale voice) and CallWatcherTest `CAL-02` (in-call, in-communication and call-screening are all answered) | green |
 | CAL-03 | mode observed by poll on 28–30 and by listener on 31+; no READ_PHONE_STATE | H | 2.0 | CallWatcherTest `CAL-03` (two tests: API 28 polls at 2 Hz and sees a change within a second, and stops polling on stop; API 31 registers the listener once and never polls) and AndroidAdaptersTest `CAL-03` (the platform adapter hears the mode-changed listener); the manifest half is `tools/check-manifest.sh` in the gate (DST-02) | green |
 | CAL-04 | another app's music changes nothing | H, D | 2.0 | H: NoAudioFocusGuardTest `CAL-04` (the engine's production sources contain no focus request, focus listener, playback callback or music-active query, so another app's playback has no path into the control thread; the guard was seen failing on a planted hit); D: the owner's phone check with music playing is pending | open |
-| CAL-05 | a silenced client is named in the status sentence | H | 2.0 | | open |
+| CAL-05 | a silenced client is named in the status sentence | H | 2.0 |  | open |
 
 ### Input source
 
@@ -336,41 +336,41 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| BTC-01 | tap calibration on Bluetooth routes | H, D | 2.0 | | open |
+| BTC-01 | tap calibration on Bluetooth routes | H, D | 2.0 |  | open |
 | BTC-02 | one offset per route class | H | 2.0 | prefs fields `visualOffsetMs` for wired and speaker, `bluetoothVisualOffsetMs` for Bluetooth | open |
 
 ### TalkBack
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| TLK-01 | needle state description, read on focus only | H | 2.0 | | open |
+| TLK-01 | needle state description, read on focus only | H | 2.0 |  | open |
 | TLK-02 | opt-in settled-note live region | H | 2.0 | prefs field `announceSettledNotes`, default off, portable | open |
-| TLK-03 | table rows read as sentences | H | 2.0 | | open |
-| TLK-04 | beats never announced; stepper actions | H | 2.0 | | open |
+| TLK-03 | table rows read as sentences | H | 2.0 |  | open |
+| TLK-04 | beats never announced; stepper actions | H | 2.0 |  | open |
 
 ### Colour and shape
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| CLR-01 | `attention-ink` token at 4.5:1 on white and 3:1 on gray | U | 2.0 | | open |
-| CLR-02 | small close-band text uses `attention-ink` | H | 2.0 | | open |
-| CLR-03 | a geometric cue beside every band, drawn by `CentsBand` only | U, H | 2.0 | | open |
+| CLR-01 | `attention-ink` token at 4.5:1 on white and 3:1 on gray | U | 2.0 |  | open |
+| CLR-02 | small close-band text uses `attention-ink` | H | 2.0 |  | open |
+| CLR-03 | a geometric cue beside every band, drawn by `CentsBand` only | U, H | 2.0 |  | open |
 
 ### Export
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| EXP-01 | CSV through the share sheet | H | 2.0 | | open |
-| EXP-02 | CSV rows round-trip to 0.1 c | U | 2.0 | | open |
+| EXP-01 | CSV through the share sheet | H | 2.0 |  | open |
+| EXP-02 | CSV rows round-trip to 0.1 c | U | 2.0 |  | open |
 
 ### Distribution
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| DST-01 | AAB, universal APK and SHA256SUMS from one build | CI | 2.0 | | open |
+| DST-01 | AAB, universal APK and SHA256SUMS from one build | CI | 2.0 |  | open |
 | DST-02 | merged manifest equals `tools/manifest-allowlist-2.0.txt` | CI | 2.0 | `tools/check-manifest.sh` in `tools/verify.sh` (every push); `verify-selftest.sh` case `stray-permission` proves it goes red | green |
 | DST-03 | every `.so` passes the 16 KB alignment check | CI | 2.0 | `tools/check-alignment.sh` in `tools/verify.sh` on the debug APK (every push); `verify-selftest.sh` case `misaligned-library` was seen failing before the stage existed; the release job runs the same script on the release artifacts once `release.yml` lands (M7) | open |
-| DST-04 | About shows version, licence, THIRD_PARTY and the privacy policy link | H | 2.0 | | open |
+| DST-04 | About shows version, licence, THIRD_PARTY and the privacy policy link | H | 2.0 |  | open |
 
 ### Entitlement seam
 

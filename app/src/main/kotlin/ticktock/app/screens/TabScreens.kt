@@ -38,8 +38,12 @@ fun TuneScreen() {
 }
 
 @Composable
-fun DroneMetronomeScreen() {
+fun DroneScreen() {
     EmptyPane(title = R.string.pane_drone, text = R.string.empty_drone, tag = "drone", state = R.string.pane_state_stopped)
+}
+
+@Composable
+fun MetronomeScreen() {
     EmptyPane(title = R.string.pane_metronome, text = R.string.empty_metronome, tag = "metronome", state = R.string.pane_state_stopped)
 }
 

@@ -59,10 +59,20 @@ class SourceGuardTest {
     fun `status bar strings are one or two words`() {
         val strings = File("src/main/res/values/strings.xml")
         assertTrue(strings.isFile)
-        val status = Regex("""<string name="(status_[a-z_]+)">([^<]*)</string>""").findAll(strings.readText())
-            .map { it.groupValues[1] to it.groupValues[2] }.toList()
-        assertTrue("no status strings found", status.isNotEmpty())
-        val long = status.filter { (_, text) -> text.trim().split(Regex("""\s+""")).size > 2 }
+        val status = statusStrings(strings.readText())
+        val long = status.filter { (_, text) -> words(text) > 2 }
         assertEquals("status segments longer than two words", emptyList<Pair<String, String>>(), long)
     }
+
+    @Test
+    fun `the status rule reads the shapes it is meant to`() {
+        val planted = """<string name="status_busy">Mic busy</string> <string name="status_long">Output open on Bluetooth</string>"""
+        assertEquals(listOf("status_busy" to "Mic busy", "status_long" to "Output open on Bluetooth"), statusStrings(planted))
+        assertEquals(listOf(2, 4), statusStrings(planted).map { words(it.second) })
+    }
+
+    private fun statusStrings(xml: String): List<Pair<String, String>> =
+        Regex("""<string name="(status_[a-z_]+)">([^<]*)</string>""").findAll(xml).map { it.groupValues[1] to it.groupValues[2] }.toList()
+
+    private fun words(text: String): Int = text.trim().split(Regex("""\s+""")).size
 }

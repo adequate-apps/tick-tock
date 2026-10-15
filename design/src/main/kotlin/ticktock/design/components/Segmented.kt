@@ -31,6 +31,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import ticktock.design.Bevel
 import ticktock.design.GridlineColors
 import ticktock.design.GridlineMetrics
 import ticktock.design.GridlineRelief
@@ -55,9 +56,9 @@ data class Segment(val label: String, val running: Boolean = false)
  * held down.
  *
  * Keys share the width equally while every label fits on one line with its
- * padding. When one does not (large font sizes, narrow screens) the keys wrap
- * into two columns, and into one column if even half the width is too narrow,
- * so every label stays whole and visible; nothing scrolls out of view.
+ * padding. When one does not (large font sizes, narrow screens) an even
+ * number of keys wraps into two columns, and otherwise into one, so every
+ * label stays whole and visible and the grid has no holes.
  */
 @Composable
 fun Segmented(
@@ -97,15 +98,20 @@ fun Segmented(
     }
 }
 
-/** Every key on one row if the widest label fits its share, then two columns, then one. */
+/**
+ * Every key on one row if the widest label fits its share; then two columns
+ * when the keys pair up evenly; then one. An odd count never goes to two
+ * columns, which would leave a hole where a key seems to be missing.
+ */
 internal fun columnsFor(count: Int, width: Dp, widestKey: Dp): Int {
     if (count <= 1) return 1
     if (widestKey <= width / count) return count
-    if (count > 2 && widestKey <= width / 2) return 2
+    if (count > 2 && count % 2 == 0 && widestKey <= width / 2) return 2
     return 1
 }
 
-private val KEY_PADDING = GridlineSpacing.sp3
+// The mockups' key padding and the label-fit minimum: four tabs share a 360 dp phone at font scale 1.0.
+private val KEY_PADDING = GridlineSpacing.sp2
 
 @Composable
 private fun SegmentKey(
@@ -118,7 +124,14 @@ private fun SegmentKey(
     val pressed by interaction.collectIsPressedAsState()
     val face = if (selected) GridlineColors.selectionBg else GridlineColors.controlFace
     val text = if (selected) GridlineColors.selectionFg else GridlineColors.textBody
-    val relief = if (selected || pressed) GridlineRelief.reliefPressed else GridlineRelief.reliefRaised
+    // A chosen key is a selection-coloured face, so its bevel and border come from
+    // the blue ramp like a primary button's; a gray ramp on blue reads as a second ring.
+    val relief = when {
+        selected -> Bevel(GridlineColors.blueDeep, GridlineColors.blueHover)
+        pressed -> GridlineRelief.reliefPressed
+        else -> GridlineRelief.reliefRaised
+    }
+    val border = if (selected) Line(GridlineMetrics.line, GridlineColors.blueDeep) else GridlineRelief.frame
     Row(
         modifier = modifier
             .defaultMinSize(minHeight = GridlineMetrics.touchTarget)
@@ -126,7 +139,7 @@ private fun SegmentKey(
             // A key is a rule-bordered face with the bevel inside the border, as in
             // the mockups; in Pit, where bevels are black, the border is its edge.
             // The tap target is the whole key, border included.
-            .frame(GridlineRelief.frame)
+            .frame(border)
             .then(if (selected) Modifier.selectionOutline() else Modifier)
             .selectable(
                 selected = selected,

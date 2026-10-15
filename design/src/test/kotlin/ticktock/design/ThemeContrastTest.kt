@@ -8,7 +8,8 @@ import org.junit.Test
 /**
  * Every text role against every surface it is drawn on, in every theme. A
  * pair under its threshold is a design defect: change the token, never the
- * threshold. The component zoo then checks the same rule on rendered pixels.
+ * threshold. `borderLight` is left out on purpose: it is the rule between
+ * rows of a list, a divider the row's own spacing already makes.
  */
 class ThemeContrastTest {
     private fun pairs(p: GridlinePalette): List<Triple<String, Pair<Color, Color>, Double>> {
@@ -30,6 +31,9 @@ class ThemeContrastTest {
             Triple("textBody on redBg", p.textBody to p.redBg, text),
             // Edges and marks that carry meaning without words beside them.
             Triple("borderStrong on surface", p.borderStrong to p.surface, ui),
+            // A key's edge: in Pit, where the bevels are black, it is the only sign of a key.
+            Triple("border on surface", p.border to p.surface, ui),
+            Triple("border on controlFace", p.border to p.controlFace, ui),
             Triple("selectionOutline on surface", p.selectionOutline to p.surface, ui),
             Triple("positive on field", p.positive to p.field, ui),
             Triple("attention on field", p.attention to p.field, ui),

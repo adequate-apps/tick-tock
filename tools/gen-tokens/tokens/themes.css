@@ -33,7 +33,7 @@
 .t-pit{
 --gl-blue:#5566DD;--gl-blue-deep:#000000;--gl-blue-hover:#000000;
 --gl-gray:#000000;--gl-gray-light:#0C0C0C;--gl-gray-lighter:#060606;--gl-white:#000000;
---gl-ink:#8E8E8E;--gl-rule:#3A3A3A;--gl-rule-light:#242424;
+--gl-ink:#8E8E8E;--gl-rule:#5C5C5C;--gl-rule-light:#3A3A3A;
 --gl-cyan:#2C8C99;--gl-green:#3F9A5F;--gl-yellow:#A87C24;--gl-yellow-bg:#140E03;--gl-red:#C8504A;--gl-red-bg:#170705;
 --text-secondary:#767676;--text-disabled:#484848;--text-on-blue:var(--gl-ink);
 --bevel-light:#000000;--bevel-mid:#000000;--bevel-dark:#000000;--bevel-darker:#000000;

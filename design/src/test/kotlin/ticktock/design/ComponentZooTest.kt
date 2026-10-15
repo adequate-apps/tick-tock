@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextAlign
@@ -124,6 +125,17 @@ class ComponentZooTest(private val theme: GridlinePalette, private val fontScale
             }
         }
 
+        // The title strip's state either keeps its 16 dp to the title and the action, or gives way.
+        val state = compose.onAllNodesWithTag("titlebar-state", useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
+        if (state != null) {
+            val action = compose.onNodeWithTag("zoo-settings").fetchSemanticsNode()
+            val gap = (action.boundsInRoot.left - state.boundsInRoot.right) / density
+            if (gap < STRIP_GAP_DP) problems += "the title strip's state sits ${"%.1f".format(gap)} dp from its action, under $STRIP_GAP_DP"
+            val title = compose.onNodeWithTag("titlebar-title", useUnmergedTree = true).fetchSemanticsNode()
+            val titleGap = (state.boundsInRoot.left - title.boundsInRoot.right) / density
+            if (titleGap < STRIP_GAP_DP) problems += "the title strip's state sits ${"%.1f".format(titleGap)} dp from its title, under $STRIP_GAP_DP"
+        }
+
         assertEquals("${theme.name} at font scale $fontScale, $widthDp dp wide", emptyList<String>(), problems)
         compose.onNodeWithTag(ZOO).captureRoboImage("src/test/screenshots/zoo-${theme.name.lowercase()}-w$widthDp-fs$fontScale.png")
     }
@@ -157,6 +169,7 @@ class ComponentZooTest(private val theme: GridlinePalette, private val fontScale
         private const val ZOO = "zoo"
         private const val TARGET_DP = 48f
         private const val PADDING_DP = 8f
+        private const val STRIP_GAP_DP = 16f
 
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0} fs{1} w{2}")
@@ -175,7 +188,7 @@ private fun Zoo() {
         TitleBarAction(label = "Settings", onClick = {}, tag = "zoo-settings")
     }
     Segmented(
-        segments = listOf(Segment("Tune"), Segment("Drone / Metronome", running = true), Segment("Table")),
+        segments = listOf(Segment("Tune"), Segment("Drone", running = true), Segment("Metronome"), Segment("Table")),
         selectedIndex = 0,
         onSelect = {},
         tag = "zoo-tabs",
@@ -201,11 +214,18 @@ private fun Zoo() {
         }
         Button(label = "Start metronome", onClick = {}, tone = ButtonTone.Primary, tag = "zoo-start")
         Caption("Drone")
-        SettingRow(label = "A4", value = "440 Hz", onClick = {}, tag = "zoo-a4")
-        SettingRow(label = "Noise floor", value = "-45 dB", tag = "zoo-floor")
-        Notice(text = "Bluetooth", kind = NoticeKind.Attention, tag = "zoo-bluetooth")
-        Notice(text = "Mic busy", kind = NoticeKind.Danger, tag = "zoo-busy")
-        Notice(text = "Copy kept", kind = NoticeKind.Plain, tag = "zoo-copy")
+        // Rows form one list inside a field, as on the Settings screen.
+        Column(Modifier.fillMaxWidth().frame()) {
+            SettingRow(label = "A4", value = "440 Hz", onClick = {}, tag = "zoo-a4")
+            SettingRow(label = "Noise floor", value = "-45 dB", tag = "zoo-floor")
+        }
+        Notice(text = "Held by another app", kind = NoticeKind.Danger, tag = "zoo-busy") {
+            Button(label = "Try again", onClick = {}, tag = "zoo-retry")
+        }
+        Notice(text = "Click lands late on Bluetooth", kind = NoticeKind.Attention, tag = "zoo-bluetooth") {
+            Button(label = "Measure", onClick = {}, tag = "zoo-measure")
+        }
+        Notice(text = "Copy of old settings kept", kind = NoticeKind.Plain, tag = "zoo-copy")
     }
     StatusBar(segments = listOf("Listening", "Bluetooth"))
 }

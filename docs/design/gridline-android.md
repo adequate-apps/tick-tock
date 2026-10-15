@@ -114,7 +114,8 @@ These run in `tools/verify.sh` on every change:
   every control is at least 48 dp each way and that every control has a label. Each case's golden is
   compared pixel by pixel (Roborazzi verify mode); the design owner signs off the goldens.
 - **Contrast** (`ThemeContrastTest`): every text role against every surface it sits on, 4.5:1, and
-  every meaningful mark and edge, 3:1, in all four themes. A failing pair is fixed in the tokens.
+  every meaningful mark and key edge, 3:1, in all four themes (the light rule between list rows is a
+  divider and is exempt). A failing pair is fixed in the tokens.
 - **Source guards** (`SourceGuardTest` in `:app`): no raw `clickable`, `selectable`, `toggleable` or
   `pointerInput`, no `dp` or `sp` literal, no raw `TextStyle` or font size in screen code; status
   strings of one or two words.

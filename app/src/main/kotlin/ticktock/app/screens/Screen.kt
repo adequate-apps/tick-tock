@@ -5,12 +5,13 @@ import androidx.annotation.StringRes
 import ticktock.app.R
 
 /**
- * The three tool tabs. The order here is the order on screen; the index is
+ * The four tool tabs. The order here is the order on screen; the index is
  * what navigation state and test tags use.
  */
 enum class Tab(@StringRes val label: Int, val tag: String) {
     Tune(R.string.tab_tune, "tune"),
-    DroneMetronome(R.string.tab_drone_metronome, "drone-metronome"),
+    Drone(R.string.tab_drone, "drone"),
+    Metronome(R.string.tab_metronome, "metronome"),
     Table(R.string.tab_table, "table"),
 }
 

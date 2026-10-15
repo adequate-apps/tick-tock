@@ -200,6 +200,8 @@ questions below.
   `expect`/`actual`; today that is one function, which reads the bundled range data.
 - The plugin is applied by id without a version. The Kotlin Gradle plugin is already on the build
   classpath, so the change resolves no new artifact.
+- `HopRing` and `HopAnalyser` lock with `@Synchronized`, which compiles to nothing on a native target.
+  The iOS target replaces it with an `expect`/`actual` lock before those classes run there.
 - The fakes and the KnownGap rule moved from `:core`'s test fixtures to a `:core-testing` module,
   because a multiplatform module cannot carry `java-test-fixtures`.
 - The C++ audio engine stays portable; only its AAudio layer is Android-specific.

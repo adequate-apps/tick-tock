@@ -33,7 +33,14 @@ fun StatusBar(
     segments: List<String>,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth().background(GridlineColors.surface).testTag("statusbar")) {
+    // The bar keeps its height when empty, so the frame does not jump when a fact appears.
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = GridlineSpacing.statusBarHeight)
+            .background(GridlineColors.surface)
+            .testTag("statusbar"),
+    ) {
         Box(Modifier.fillMaxWidth().height(GridlineMetrics.line).background(GridlineColors.rule))
         FlowRow(modifier = Modifier.fillMaxWidth()) {
             segments.forEachIndexed { index, segment ->

@@ -11,13 +11,12 @@
     <string name="action_settings">Settings</string>
     <string name="action_back">Back</string>
 
-    <!-- Status bar: one fact per segment, always a sentence or a plain fact. -->
-    <string name="status_microphone_closed">Mic off</string>
-    <string name="status_output_closed">Output closed</string>
+    <!-- Status bar: one or two words per segment, shown only while the fact is true. -->
 
     <!-- Tabs -->
     <string name="tab_tune">Tune</string>
-    <string name="tab_drone_metronome">Drone / Metronome</string>
+    <string name="tab_drone">Drone</string>
+    <string name="tab_metronome">Metronome</string>
     <string name="tab_table">Table</string>
 
     <!-- Panes -->
