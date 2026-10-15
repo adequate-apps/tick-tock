@@ -18,6 +18,34 @@ import java.util.concurrent.atomic.AtomicReference
 
 class CaptureBleedTest {
     @Test
+    fun `POL-28 a stalled worker cannot admit queued leakage before its duck takes effect`() {
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val requested = CountDownLatch(1)
+        val sink = FakeHistorySink()
+        val capture = LiveCapture(mode = ticktock.core.detect.ResponseMode.FAST,
+            promote = { entered.countDown(); check(release.await(5, TimeUnit.SECONDS)) },
+            history = sink, sounding = FakeSoundingNotes(69),
+            onDuck = { if (it < 1f) requested.countDown() })
+        val input = FakeAudioInput(sampleRate = RATE)
+        capture.start(input)
+        try {
+            assertTrue(entered.await(5, TimeUnit.SECONDS))
+            input.push(Sine(440.0, 0.2, RATE).next(16 * Hop.frames(RATE)))
+            release.countDown()
+            assertTrue(requested.await(5, TimeUnit.SECONDS))
+            val deadline = System.nanoTime() + 5_000_000_000L
+            while (capture.level.value.hop < 15 && System.nanoTime() < deadline) Thread.sleep(1)
+            assertEquals(15L, capture.level.value.hop)
+            assertTrue("pre-duck backlog must never reach history", sink.accepted.isEmpty())
+            assertEquals(null, capture.state.value.readout.midi)
+        } finally {
+            release.countDown()
+            capture.stop()
+        }
+    }
+
+    @Test
     fun `a disconnect wins over an in-flight duck command`() {
         val entered = CountDownLatch(1)
         val release = CountDownLatch(1)
