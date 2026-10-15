@@ -93,6 +93,37 @@ class TuneScreenTest {
     }
 
     @Test
+    fun `TLK-01 and TLK-02 settled announcements are opt in and never follow cents at hop rate`() {
+        val input = FakeAudioInput(sampleRate = rate)
+        launch(input)
+        val graph = TickTockApp.graph(ApplicationProvider.getApplicationContext())
+        play(input, 440.0, 18)
+        compose.waitUntil(TIMEOUT) { text("readout-cents") == "+0" }
+        assertEquals(null, text("settled-announcement"))
+        assertEquals("B 5, 0 cents", compose.onNodeWithTag("cents-scale").fetchSemanticsNode().config.getOrNull(SemanticsProperties.StateDescription))
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { graph.prefs.update { it.copy(announceSettledNotes = true) } }
+        compose.mainClock.advanceTimeByFrame()
+        compose.mainClock.advanceTimeBy(900)
+        assertEquals(null, text("settled-announcement"))
+        compose.mainClock.advanceTimeBy(150)
+        awaitFrames { text("settled-announcement") != null }
+        val announcement = text("settled-announcement")
+        assertEquals("B 5, 0 cents", announcement)
+        assertEquals(androidx.compose.ui.semantics.LiveRegionMode.Polite,
+            compose.onNodeWithTag("settled-announcement").fetchSemanticsNode().config.getOrNull(SemanticsProperties.LiveRegion))
+        play(input, Pitch.hzFromMidi(69.07, 440.0), 18)
+        awaitFrames { text("readout-cents") != "+0" }
+        compose.mainClock.advanceTimeBy(1_500)
+        assertEquals(announcement, text("settled-announcement"))
+        play(input, Pitch.hzFromMidi(70, 440.0), 18)
+        awaitFrames { text("settled-announcement")?.startsWith("C 6,") == true }
+        compose.runOnIdle { graph.prefs.update { it.copy(earsFirst = true) } }
+        compose.mainClock.advanceTimeByFrame()
+        assertEquals(null, text("settled-announcement"))
+    }
+
+    @Test
     fun `a plain launch with no microphone permission is the ghost readout with one key and Mic off`() {
         launch(null)
         compose.onNodeWithTag("gate-mic_not_asked").assertIsDisplayed()
