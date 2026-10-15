@@ -26,6 +26,8 @@ class ToolState {
     private val voices = TreeMap<Int, OutputCommand.VoiceOn>()
     private var a4: OutputCommand.SetA4? = null
     private var metro: MetroSetup? = null
+    /** A start the retained engine has not heard, including a new finite run after completion. */
+    private var pendingMetroStart = false
 
     /** The slots the engine has a voice in, and whether its generator runs: what a continued engine still holds. */
     private val engineSlots = sortedSetOf<Int>()
@@ -50,10 +52,14 @@ class ToolState {
             }
             is OutputCommand.VoiceGain -> voices[cmd.slot]?.let { voices[cmd.slot] = it.copy(gain = cmd.gain) }
             is OutputCommand.SetA4 -> a4 = cmd
-            is OutputCommand.MetroStart -> setMetro(cmd.setup, delivered)
+            is OutputCommand.MetroStart -> {
+                setMetro(cmd.setup, delivered)
+                pendingMetroStart = !delivered
+            }
             is OutputCommand.MetroUpdate -> setMetro(cmd.setup, delivered)
             OutputCommand.MetroStop -> {
                 metro = null
+                pendingMetroStart = false
                 if (delivered) engineMetro = false
             }
             is OutputCommand.Duck,
@@ -72,10 +78,10 @@ class ToolState {
     /**
      * The commands that bring a stream's engine to what the tools want, and
      * the record that it has them. A4 goes first, so the voices strike in
-     * tune. The metronome goes as MetroUpdate rather than MetroStart: an
-     * engine that kept running through a park keeps its beat count and bar
-     * and takes the setup as an edit (MET-09), and one that was not running
-     * starts from it.
+     * tune. Ordinary metronome replay is a MetroUpdate, so a retained engine
+     * keeps its beat count and bar (MET-09), and a completed finite run stays
+     * finished. An explicit start accepted while parked replays once as a
+     * MetroStart with the latest setup, preserving the request for a new run.
      *
      * With [continuing] the engine still holds what it was last sent, so
      * what was switched off meanwhile is switched off there first: the
@@ -88,11 +94,14 @@ class ToolState {
             if (continuing) (engineSlots - voices.keys).forEach { add(OutputCommand.VoiceOff(it)) }
             addAll(voices.values)
             val setup = metro
-            if (setup != null) add(OutputCommand.MetroUpdate(setup)) else if (continuing && engineMetro) add(OutputCommand.MetroStop)
+            if (setup != null) {
+                add(if (pendingMetroStart) OutputCommand.MetroStart(setup) else OutputCommand.MetroUpdate(setup))
+            } else if (continuing && engineMetro) add(OutputCommand.MetroStop)
         }
         engineSlots.clear()
         engineSlots += voices.keys
         engineMetro = metro != null
+        pendingMetroStart = false
         return commands
     }
 
@@ -108,6 +117,7 @@ class ToolState {
     fun clear() {
         voices.clear()
         metro = null
+        pendingMetroStart = false
         engineSlots.clear()
         engineMetro = false
     }

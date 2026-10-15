@@ -234,7 +234,9 @@ questions below.
   route's chosen offset once; it does not add the stream latency a second time.
 - A runtime beat limit bounds calibration inside the audio callback. Zero retains continuous
   playback. A completed finite run stays complete through setup replay and a route reopen;
-  an explicit start begins a new run. The final click retains its sample tail.
+  an explicit start begins a new run. A start accepted while parked survives later setup edits
+  and replays once as a start. Stop and clear cancel that pending request. The final click retains
+  its sample tail.
 - Beat limits and generations are runtime setup fields; persisted preferences contain the
   player's metronome choices. JNI ABI 3 carries both fields and four event integers for the
   64-bit bar, onset/silent-bar flags and generation. Native, Kotlin and fake round-trips pin

@@ -350,7 +350,7 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| BTC-01 | tap calibration on Bluetooth routes | H, D | 2.0 | Native bound: `Metronome.calibrationEndsAfterEightClicksWithoutAStopCommand`, `completedCalibrationStaysFinishedThroughReplayAndRestartsOnlyOnStart`, `finiteRunKeepsItsRemainingCountThroughRateAndTempoChanges`; route identity: `AudioControlThreadTest` equal output names; tap UI and device check pending | open |
+| BTC-01 | tap calibration on Bluetooth routes | H, D | 2.0 | Native bound: `Metronome.calibrationEndsAfterEightClicksWithoutAStopCommand`, `completedCalibrationStaysFinishedThroughReplayAndRestartsOnlyOnStart`, `finiteRunKeepsItsRemainingCountThroughRateAndTempoChanges`; route identity: `AudioControlThreadTest` equal output names; queued explicit restart: `ToolStateTest` and `AudioControlThreadTest` BTC-01 cases; tap UI and device check pending | open |
 | BTC-02 | one offset per route class | H | 2.0 | prefs fields `visualOffsetMs` for wired and speaker, `bluetoothVisualOffsetMs` for Bluetooth | open |
 
 ### TalkBack
