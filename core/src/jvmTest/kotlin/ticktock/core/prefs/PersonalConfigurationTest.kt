@@ -52,4 +52,24 @@ class PersonalConfigurationTest {
         assertEquals(Theme.PIT, result.result.prefs.theme)
         assertTrue(result.result.notes.any { it.startsWith("personalConfig:") })
     }
+    @Test fun `every accepted nested configuration fits its stored preferences envelope`() {
+        var accepted = 0
+        for (depth in listOf(1, 16, 32, 48) + (55..64)) {
+            var value: ticktock.core.json.JsonValue = Json.num(1)
+            repeat(depth) { value = Json.arr(listOf(value)) }
+            val document = PersonalConfigCodec.write(PersonalConfig(unknownFields = mapOf("nested" to value)))
+            when (val parsed = PersonalConfigCodec.parse(document)) {
+                is ParseResult.Failed -> Unit
+                is ParseResult.Ok -> {
+                    accepted++
+                    val imported = PersonalConfiguration.apply(Prefs(a4Hz = 442.0), parsed.config)
+                    val restored = PrefsSchema.read(PrefsSchema.write(imported))
+                    assertTrue("accepted depth $depth survives restart", restored is ReadResult.Ok)
+                    assertEquals(imported, (restored as ReadResult.Ok).result.prefs)
+                }
+            }
+        }
+        assertTrue("ordinary nested fields remain supported", accepted >= 3)
+    }
+
 }
