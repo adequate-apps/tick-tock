@@ -15,7 +15,10 @@ import org.junit.runner.RunWith
 /** Tabs, Settings and the back gesture: the frame's whole navigation model. */
 @RunWith(AndroidJUnit4::class)
 class FrameNavigationTest {
-    @get:Rule
+    @get:Rule(order = 0)
+    val firstRunDone = SkipFirstRunRule()
+
+    @get:Rule(order = 1)
     val compose = createAndroidComposeRule<MainActivity>()
 
     @Test

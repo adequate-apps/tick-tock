@@ -7,7 +7,6 @@
     <string name="brand_name">Adequate Metronome</string>
 
     <!-- Title strip -->
-    <string name="state_idle">Idle</string>
     <string name="action_settings">Settings</string>
     <string name="action_back">Back</string>
 
@@ -32,7 +31,38 @@
     <string name="pane_table">Intonation table</string>
     <string name="pane_settings">Settings</string>
     <string name="pane_theme">Theme</string>
+    <string name="pane_tuning">Tuning</string>
+    <string name="pane_all_instruments">All instruments</string>
+    <string name="pane_instrument">Instrument</string>
+    <string name="setting_instrument">Instrument</string>
+    <string name="setting_spelling">Spelling</string>
+    <string name="setting_response">Response</string>
+    <string name="setting_keep_awake">Keep screen on</string>
+    <string name="spelling_auto">Auto</string>
+    <string name="spelling_sharps">Sharps</string>
+    <string name="spelling_flats">Flats</string>
+    <string name="response_fast">Fast</string>
+    <string name="response_normal">Normal</string>
+    <string name="response_slow">Slow</string>
+    <string name="keep_awake_on">Listening</string>
+    <string name="keep_awake_off">Never</string>
     <string name="pane_state_stopped">Stopped</string>
+
+    <!-- First run: the privacy line is the only sentence, on the one step the player must act on. -->
+    <string name="first_run_microphone">Microphone</string>
+    <string name="first_run_step">%1$d of %2$d</string>
+    <string name="first_run_privacy">Everything stays on this phone unless you share it.</string>
+    <string name="first_run_later">Later</string>
+    <string name="first_run_start">Start tuning</string>
+
+    <!-- Notices: one line each, only when the player must act or would be surprised. -->
+    <string name="notice_crash">Closed unexpectedly last time</string>
+    <string name="notice_share_log">Share log</string>
+    <string name="notice_dismiss">Dismiss</string>
+    <string name="notice_prefs_reset">Settings reset, old copy kept</string>
+    <string name="notice_prefs_unreadable">Settings unreadable</string>
+    <string name="notice_prefs_saving">Settings not saving</string>
+    <string name="notice_history">History not saving</string>
 
     <!-- Tune -->
     <string name="tune_level">Level</string>

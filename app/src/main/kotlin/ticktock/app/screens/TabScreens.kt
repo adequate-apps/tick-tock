@@ -50,20 +50,6 @@ fun TableScreen() {
 }
 
 @Composable
-fun SettingsScreen() {
-    val graph = TickTockApp.graph(LocalContext.current)
-    val theme by graph.theme.collectAsStateWithLifecycle()
-    Pane(title = stringResource(R.string.pane_theme), modifier = Modifier.fillMaxWidth(), tag = "theme-pane") {
-        Segmented(
-            segments = Theme.entries.map { Segment(paletteOf(it).name) },
-            selectedIndex = theme.ordinal,
-            onSelect = { index -> graph.prefs.update { it.copy(theme = Theme.entries[index]) } },
-            tag = "theme",
-        )
-    }
-}
-
-@Composable
 private fun GhostPane(title: Int, icon: GlIcon, tag: String, state: Int? = null) {
     Pane(
         title = stringResource(title),

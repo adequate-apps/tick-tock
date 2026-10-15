@@ -55,6 +55,7 @@ class TuneScreenTest {
         InputSeam.override = input
         val intent = Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java)
         a4?.let { intent.putExtra(InputSeam.EXTRA_A4_HZ, it) }
+        skipFirstRun()
         scenario = ActivityScenario.launch(intent)
     }
 
@@ -185,6 +186,29 @@ class TuneScreenTest {
             compose.mainClock.advanceTimeBy(40)
         }
         compose.waitUntil(TIMEOUT) { compose.onAllNodes(hasTestTag("readout-cents") and hasText("+0"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    fun `choosing alto sax in Settings makes a concert A4 read written G flat 5 in a wind player's flats, and Sharps spells it F sharp`() {
+        val input = FakeAudioInput(sampleRate = rate)
+        launch(input)
+        compose.waitUntil(TIMEOUT) { input.isOpen }
+        compose.onNodeWithTag("open-settings").performClick()
+        compose.onNodeWithTag("setting-instrument").performScrollTo().performClick()
+        compose.onNodeWithTag("titlebar-title", useUnmergedTree = true).assertTextEquals("Instrument")
+        compose.onNodeWithTag("instrument-eb_alto").performScrollTo().performClick()
+        compose.onNodeWithTag("setting-instrument-value", useUnmergedTree = true).assertTextEquals("Alto saxophone in Eb")
+        compose.onNodeWithTag("back").performClick()
+
+        play(input, Pitch.hzFromMidi(69, 440.0))
+        compose.waitUntil(TIMEOUT) { text("readout-letter") == "G♭" }
+        assertEquals("5", text("readout-octave"))
+
+        compose.onNodeWithTag("open-settings").performClick()
+        compose.onNodeWithTag("spelling-1").performScrollTo().performClick()
+        compose.onNodeWithTag("back").performClick()
+        play(input, Pitch.hzFromMidi(69, 440.0), hops = 4)
+        compose.waitUntil(TIMEOUT) { text("readout-letter") == "F♯" }
     }
 
     @Test

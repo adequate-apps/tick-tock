@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import ticktock.design.Bevel
@@ -54,6 +55,7 @@ fun Button(
     tag: String = "button",
     /** The label's side padding; a square symbol key (−, +) uses the 8 dp minimum so it can stay 48 dp wide. */
     labelPadding: Dp = GridlineSpacing.sp4,
+    labelStyle: TextStyle = GridlineType.uiStrong,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -96,6 +98,6 @@ fun Button(
             .testTag(tag),
         contentAlignment = Alignment.Center,
     ) {
-        GlText(text = label, style = GridlineType.uiStrong.copy(textAlign = TextAlign.Center), color = text)
+        GlText(text = label, style = labelStyle.copy(textAlign = TextAlign.Center), color = text)
     }
 }

@@ -48,6 +48,7 @@ fun Stepper(
             modifier = Modifier.defaultMinSize(minWidth = GridlineMetrics.touchTarget).fillMaxHeight().semantics { contentDescription = lowerLabel },
             tag = "$tag-lower",
             labelPadding = GridlineSpacing.sp2,
+            labelStyle = GridlineType.stepper,
         )
         Box(
             Modifier
@@ -70,6 +71,7 @@ fun Stepper(
             modifier = Modifier.defaultMinSize(minWidth = GridlineMetrics.touchTarget).fillMaxHeight().semantics { contentDescription = raiseLabel },
             tag = "$tag-raise",
             labelPadding = GridlineSpacing.sp2,
+            labelStyle = GridlineType.stepper,
         )
     }
 }

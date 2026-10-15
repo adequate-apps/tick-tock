@@ -52,6 +52,8 @@ fun SettingRow(
                 color = GridlineColors.textSecondary,
                 modifier = Modifier.testTag("$tag-value"),
             )
+            // A row that opens something says so with a chevron, the same on every list.
+            if (onClick != null) Icon(GlIcon.CHEVRON)
         }
         Box(Modifier.fillMaxWidth().height(GridlineMetrics.line).background(GridlineColors.borderLight))
     }

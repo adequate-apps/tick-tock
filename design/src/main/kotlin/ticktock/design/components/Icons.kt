@@ -63,6 +63,7 @@ enum class GlIcon(val marks: List<IconMark>) {
         ),
     ),
     CHECK(listOf(IconMark.Line("M4 13l5 5L20 7"))),
+    CHEVRON(listOf(IconMark.Line("M9 5l7 7-7 7"))),
     EYE_SLASH(
         listOf(
             IconMark.Line("M2 12l10-7 10 7-10 7z"),

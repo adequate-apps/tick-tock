@@ -57,6 +57,7 @@ class DebugOutputTest {
         val intent = Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java)
         droneMidi?.let { intent.putExtra(OutputSeam.EXTRA_DRONE_MIDI, it) }
         metroBpm?.let { intent.putExtra(OutputSeam.EXTRA_METRO_BPM, it) }
+        skipFirstRun()
         scenario = ActivityScenario.launch(intent)
         openDrone()
     }
@@ -73,6 +74,7 @@ class DebugOutputTest {
 
     @Test
     fun `a plain launch shows no output pane`() {
+        skipFirstRun()
         scenario = ActivityScenario.launch(MainActivity::class.java)
         openDrone()
         compose.onNodeWithTag("drone-empty", useUnmergedTree = true).assertExists()
@@ -129,6 +131,7 @@ class DebugOutputTest {
         val intent = Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java)
             .putExtra(OutputSeam.EXTRA_DRONE_MIDI, 69)
             .putExtra(InputSeam.EXTRA_A4_HZ, 442f)
+        skipFirstRun()
         scenario = ActivityScenario.launch(intent)
         openDrone()
         compose.waitUntil(TIMEOUT) { port.sent.size >= 3 }
@@ -170,6 +173,7 @@ class DebugOutputTest {
         OutputSeam.override = strict
         val intent = Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java)
             .putExtra(OutputSeam.EXTRA_DRONE_MIDI, 69)
+        skipFirstRun()
         scenario = ActivityScenario.launch(intent)
         openDrone()
         compose.waitUntil(TIMEOUT) { strict.sent.size >= 2 }

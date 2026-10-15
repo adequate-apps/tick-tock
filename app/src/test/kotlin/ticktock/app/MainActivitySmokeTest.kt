@@ -15,7 +15,10 @@ import ticktock.design.GridlineSpacing
 /** The empty app boots to a Gridline frame: title strip, tabs, one pane, status bar. */
 @RunWith(AndroidJUnit4::class)
 class MainActivitySmokeTest {
-    @get:Rule
+    @get:Rule(order = 0)
+    val firstRunDone = SkipFirstRunRule()
+
+    @get:Rule(order = 1)
     val compose = createAndroidComposeRule<MainActivity>()
 
     @Test

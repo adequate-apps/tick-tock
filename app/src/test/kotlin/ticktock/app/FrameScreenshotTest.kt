@@ -47,6 +47,7 @@ class FrameScreenshotTest {
     /** The font scale must be in place before the activity inflates. */
     private fun launch(fontScale: Float) {
         RuntimeEnvironment.setFontScale(fontScale)
+        skipFirstRun()
         scenario = ActivityScenario.launch(MainActivity::class.java)
     }
 
