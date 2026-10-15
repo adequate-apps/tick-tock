@@ -9,6 +9,18 @@ import ticktock.core.metro.ClickSound
 
 class DelayMeasurementTest {
     @Test
+    fun `BTC-01 original contact time retains its click after the next beat arrives`() {
+        val measurement = DelayMeasurement(21)
+        assertTrue(measurement.beat(beat(0)))
+        repeat(8) { index ->
+            if (index < 7) assertTrue(measurement.beat(beat(index + 1)))
+            assertTrue("contact for click $index", measurement.tap(beat(index).nanos + 200_000_000L))
+        }
+        assertEquals(8, measurement.tapsReceived)
+        assertEquals(200, measurement.medianMs())
+    }
+
+    @Test
     fun `BTC-01 calibration has eight uniform 100 bpm clicks and an even-count median`() {
         val measurement = DelayMeasurement(21)
         val setup = measurement.setup()

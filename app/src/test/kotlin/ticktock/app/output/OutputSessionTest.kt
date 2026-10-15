@@ -30,6 +30,23 @@ class OutputSessionTest {
     }
 
     @Test
+    fun `TON-04 five lower steps reach exact silence and ten raises reach full gain`() = runTest {
+        val r = Rig(backgroundScope, Prefs(droneMidi = 69))
+        r.session.startDrone()
+        testScheduler.runCurrent()
+        repeat(5) { r.session.droneVolume(-0.1f) }
+        testScheduler.runCurrent()
+        assertEquals(0f, r.prefs.droneGain, 0f)
+        assertTrue(r.session.current().isEmpty())
+        assertFalse(r.session.state.value.droneSounding)
+        assertTrue(r.session.state.value.droneWanted)
+        repeat(10) { r.session.droneVolume(0.1f) }
+        testScheduler.runCurrent()
+        assertEquals(1f, r.prefs.droneGain, 0f)
+        assertEquals(1, r.link.sent.count { it is OutputCommand.VoiceOn })
+    }
+
+    @Test
     fun `TON-01 output is lazy and saved A4 precedes the first voice on a nonreplaying port`() = runTest {
         val r = Rig(backgroundScope, Prefs(a4Hz = 442.0, droneMidi = 69))
         assertEquals(0, r.made)

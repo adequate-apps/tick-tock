@@ -18,6 +18,42 @@ import java.util.concurrent.atomic.AtomicReference
 
 class CaptureBleedTest {
     @Test
+    fun `POL-28 resume publishes its reset together with enabled duck control`() {
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val restores = java.util.concurrent.atomic.AtomicInteger()
+        val capture = LiveCapture(promote = { entered.countDown(); check(release.await(5, TimeUnit.SECONDS)) },
+            onDuck = { value, settled -> if (value == 1f) restores.incrementAndGet(); settled() })
+        val input = FakeAudioInput(sampleRate = RATE)
+        capture.start(input)
+        val info = capture.state.value.info!!
+        val apply = LiveCapture::class.java.getDeclaredMethod("applyRequests").apply { isAccessible = true }
+        val lock = LiveCapture::class.java.getDeclaredField("duckLock").apply { isAccessible = true }.get(capture)
+        val resumed = Thread { capture.onResumed(info) }
+        try {
+            assertTrue(entered.await(5, TimeUnit.SECONDS))
+            capture.onStopped(InputFailure.Disconnected("USB microphone"))
+            apply.invoke(capture)
+            val before = restores.get()
+            synchronized(lock) {
+                resumed.start()
+                val deadline = System.nanoTime() + 5_000_000_000L
+                while (resumed.state != Thread.State.BLOCKED && System.nanoTime() < deadline) Thread.sleep(1)
+                assertEquals(Thread.State.BLOCKED, resumed.state)
+                apply.invoke(capture)
+            }
+            resumed.join(5_000)
+            assertTrue(!resumed.isAlive)
+            apply.invoke(capture)
+            assertEquals("resumed capture requests a fresh full-gain baseline", before + 1, restores.get())
+        } finally {
+            release.countDown()
+            resumed.join(5_000)
+            capture.stop()
+        }
+    }
+
+    @Test
     fun `POL-28 a queued burst cannot advance unison before the floor request dispatches`() {
         val baselineReady = CountDownLatch(1)
         val releaseBatch = CountDownLatch(1)

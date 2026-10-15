@@ -12,6 +12,15 @@ import ticktock.core.prefs.Prefs
 @OptIn(ExperimentalCoroutinesApi::class)
 class MetroControlsTest {
     @Test
+    fun `tap tempo accepts the slow endpoint and clamps small timing variation`() {
+        val tap = TapTempo()
+        assertNull(tap.tap(0))
+        assertEquals(30, tap.tap(2_000_000_000))
+        assertEquals(30, tap.tap(4_050_000_000))
+        assertEquals(30, tap.tap(6_050_000_000))
+    }
+
+    @Test
     fun `tap tempo averages four intervals and resets at two seconds`() {
         val tap = TapTempo()
         assertNull(tap.tap(0))
