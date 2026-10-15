@@ -258,4 +258,4 @@ internal fun tableRegister(note: NoteSummary, prefs: Prefs): Int {
     return ((written - range.low) * 3 / (range.high - range.low + 1)).coerceIn(0, 2)
 }
 
-private const val MIN_TABLE_READINGS = 5
+internal const val MIN_TABLE_READINGS = 5

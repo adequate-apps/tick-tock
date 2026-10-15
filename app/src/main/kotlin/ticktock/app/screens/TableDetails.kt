@@ -38,7 +38,7 @@ internal fun TableNoteDetail(note: NoteSummary, history: List<NoteSummary>, pref
             val instrument = Catalogue.find(note.label.instrumentKey) ?: Catalogue.get(Catalogue.DEFAULT_KEY)
             val concert = musicalName(NoteSpelling.name(note.midiSounding, NoteSpelling.resolve(instrument, prefs.spelling.accidentals)))
             if (note.label.transposition != 0) GlText(stringResource(R.string.table_concert, concert), style = GridlineType.small)
-            TableSeriesLegend(scopeLabel, previous != null, note.n < 5)
+            TableSeriesLegend(scopeLabel, previous != null, note.n < MIN_TABLE_READINGS)
             if (allHistory || previous != null) GlText(stringResource(R.string.table_history_context,
                 stringResource(if (prefs.includeDroneRuns) R.string.table_drone_included else R.string.table_drone_excluded)), style = GridlineType.small)
             GlText(stringResource(R.string.table_detail_extent), style = GridlineType.small)

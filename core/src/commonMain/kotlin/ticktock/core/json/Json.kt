@@ -42,8 +42,9 @@ sealed class JsonValue {
 class JsonParseException(message: String) : RuntimeException(message)
 
 object Json {
-    fun parse(text: String): JsonValue {
-        val parser = Parser(text)
+    fun parse(text: String, maxDepth: Int = 64): JsonValue {
+        require(maxDepth in 1..64)
+        val parser = Parser(text, maxDepth)
         val value = parser.readValue()
         parser.skipWhitespace()
         if (!parser.atEnd()) throw parser.error("unexpected text after the document")
@@ -130,7 +131,7 @@ object Json {
         out.append('"')
     }
 
-    private class Parser(private val text: String) {
+    private class Parser(private val text: String, private val maxDepth: Int) {
         private var pos = 0
 
         fun atEnd() = pos >= text.length
@@ -142,7 +143,7 @@ object Json {
         }
 
         fun readValue(depth: Int = 0): JsonValue {
-            if (depth > 64) throw error("nesting exceeds the document limit")
+            if (depth > maxDepth) throw error("nesting exceeds the document limit")
             skipWhitespace()
             if (atEnd()) throw error("unexpected end of document")
             return when (val ch = text[pos]) {
