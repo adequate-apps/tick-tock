@@ -44,7 +44,11 @@ class DroneScreenTest {
     @After
     fun close() { scenario?.close(); RuntimeEnvironment.setFontScale(1f) }
 
-    private fun tap(tag: String) = compose.onNodeWithTag(tag).performScrollTo().performClick()
+    private fun tap(tag: String) {
+        val node = compose.onNodeWithTag(tag)
+        if (tag != "drone-toggle" || !graph.output.state.value.droneWanted) node.performScrollTo()
+        node.performClick()
+    }
     private fun latestVoice(): OutputCommand.VoiceOn = link.sent.filterIsInstance<OutputCommand.VoiceOn>().last()
 
     @Test
@@ -52,7 +56,7 @@ class DroneScreenTest {
         launch()
         tap("drone-toggle")
         compose.runOnIdle { link.park(ticktock.core.contracts.ParkReason.HEADPHONES_DISCONNECTED) }
-        compose.onNodeWithTag("drone-toggle").performScrollTo().assertTextEquals("Cancel resume")
+        compose.onNodeWithTag("drone-toggle").assertTextEquals("Cancel resume")
             .assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "Paused"))
         tap("drone-toggle")
         compose.runOnIdle { link.replug() }
@@ -60,7 +64,7 @@ class DroneScreenTest {
         tap("drone-toggle")
         compose.runOnIdle { link.controlDiagnostics.value = link.controlDiagnostics.value.copy(
             muteSources = setOf(ticktock.engine.output.MuteSource.CALL_RINGING)) }
-        compose.onNodeWithTag("drone-toggle").performScrollTo().assertTextEquals("Cancel resume")
+        compose.onNodeWithTag("drone-toggle").assertTextEquals("Cancel resume")
             .assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "Muted"))
         tap("drone-toggle")
         assertFalse(graph.output.state.value.droneWanted)
@@ -83,9 +87,9 @@ class DroneScreenTest {
         launch(2f)
         tap("drone-ensemble-0")
         compose.onAllNodesWithText("Stop").assertCountEquals(1)
-        compose.onNodeWithTag("drone-quick-toggle").assertIsDisplayed().assertTextEquals("Stop").performClick()
+        compose.onNodeWithTag("drone-toggle").assertIsDisplayed().assertTextEquals("Stop").performClick()
         assertFalse(graph.output.state.value.droneWanted)
-        compose.onNodeWithTag("drone-quick-toggle").assertDoesNotExist()
+        compose.onNodeWithTag("drone-toggle").assertTextEquals("Start")
     }
 
     @Test

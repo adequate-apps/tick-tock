@@ -144,7 +144,7 @@ fun AppFrame() {
                 settings == SettingsPage.INSTRUMENT -> InstrumentPicker(graph) { settings = SettingsPage.MAIN }
                 settingsOpen -> SettingsScreen(graph) { settings = SettingsPage.INSTRUMENT }
                 tab == Tab.Tune -> TuneScreen(graph, mic)
-                tab == Tab.Drone -> DroneScreen()
+                tab == Tab.Drone -> DroneScreen(showAction = !output.droneWanted)
                 tab == Tab.Metronome -> MetronomeScreen()
                 tab == Tab.Table -> TableScreen()
             }
@@ -152,7 +152,7 @@ fun AppFrame() {
 
         if (!firstRun && !settingsOpen && tab == Tab.Drone && output.droneWanted) {
             OutputAction(output, output.droneWanted, output.droneSounding, graph.output::toggleDrone,
-                Modifier.fillMaxWidth().padding(GridlineSpacing.sp2), tag = "drone-quick-toggle")
+                Modifier.fillMaxWidth().padding(GridlineSpacing.sp2), tag = "drone-toggle")
         }
 
         // An idle microphone and a closed output show nothing: the bar carries a

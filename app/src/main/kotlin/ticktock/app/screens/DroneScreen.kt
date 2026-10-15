@@ -43,7 +43,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 @Composable
-fun DroneScreen() {
+fun DroneScreen(showAction: Boolean = true) {
     val graph = TickTockApp.graph(LocalContext.current)
     val prefs by graph.prefs.prefs.collectAsStateWithLifecycle()
     val state by graph.output.state.collectAsStateWithLifecycle()
@@ -137,7 +137,7 @@ fun DroneScreen() {
         Segmented(listOf(R.string.drone_sine, R.string.drone_warm, R.string.drone_fifth).map { Segment(stringResource(it)) },
             voices.indexOf(prefs.droneVoice), { graph.output.voice(voices[it]) }, tag = "drone-voice")
         Button(stringResource(R.string.drone_next_check), { graph.output.nextCheck(); graph.output.startDrone() }, Modifier.fillMaxWidth(), tag = "drone-next")
-        OutputAction(state, state.droneWanted, state.droneSounding, graph.output::toggleDrone, Modifier.fillMaxWidth(), tag = "drone-toggle")
+        if (showAction) OutputAction(state, state.droneWanted, state.droneSounding, graph.output::toggleDrone, Modifier.fillMaxWidth(), tag = "drone-toggle")
     }
 }
 
