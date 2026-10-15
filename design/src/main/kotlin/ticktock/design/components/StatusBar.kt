@@ -23,8 +23,8 @@ import ticktock.design.GridlineSpacing
 import ticktock.design.GridlineType
 
 /**
- * The always-visible status bar. Each [segments] entry is a whole sentence or
- * fact in mono type with a rule after it. The bar never hides and never shows
+ * The always-visible status bar. Each [segments] entry is a one- or two-word
+ * fact ("Mic off", "Bluetooth") in mono type with a rule after it. The bar never hides and never shows
  * a symbol without words beside it. At large font sizes the segments wrap
  * onto further lines rather than clip, so every fact stays readable.
  */

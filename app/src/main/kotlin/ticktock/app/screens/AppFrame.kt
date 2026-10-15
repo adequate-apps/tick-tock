@@ -52,7 +52,7 @@ fun AppFrame() {
     }
 
     Column(Modifier.fillMaxSize().testTag("frame")) {
-        Column(Modifier.fillMaxWidth().background(GridlineColors.active).windowInsetsPadding(WindowInsets.statusBars)) {
+        Column(Modifier.fillMaxWidth().background(GridlineColors.titleBg).windowInsetsPadding(WindowInsets.statusBars)) {
             if (settingsOpen) {
                 TitleBar(title = stringResource(R.string.pane_settings)) {
                     TitleBarAction(label = stringResource(R.string.action_back), onClick = { settingsOpen = false }, tag = "back")

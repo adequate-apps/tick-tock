@@ -24,7 +24,7 @@ class MainActivitySmokeTest {
     @Test
     fun `the status bar states what the microphone and output are doing`() {
         compose.onNodeWithTag("statusbar").assertIsDisplayed()
-        compose.onNodeWithTag("statusbar-0", useUnmergedTree = true).assertTextEquals("Microphone closed")
+        compose.onNodeWithTag("statusbar-0", useUnmergedTree = true).assertTextEquals("Mic off")
         compose.onNodeWithTag("statusbar-1", useUnmergedTree = true).assertTextEquals("Output closed")
     }
 

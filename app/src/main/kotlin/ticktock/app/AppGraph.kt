@@ -2,15 +2,20 @@
 package ticktock.app
 
 import android.content.Context
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ticktock.core.catalogue.Catalogue
 import ticktock.core.prefs.Prefs
+import ticktock.core.prefs.Theme
 import ticktock.data.Storage
 import ticktock.data.StorageThread
 import ticktock.data.crash.CrashLog
@@ -20,7 +25,6 @@ import ticktock.data.history.RunContext
 import ticktock.data.prefs.AtomicPrefsFile
 import ticktock.data.prefs.PrefsLoad
 import ticktock.data.prefs.PrefsStore
-import java.io.File
 
 /**
  * The app-wide objects, built once per process. Prefs load before the history
@@ -37,6 +41,9 @@ class AppGraph(context: Context, filesDir: File = context.filesDir, databaseName
     val prefsLoad: PrefsLoad = prefs.load()
     private val database = HistoryDatabase(context, databaseName)
     val history = HistoryStore(database, storage, runContextOf(prefs.prefs.value))
+
+    /** The screen theme, as its own flow so the root recomposes on a theme change and on nothing else in prefs. */
+    val theme: StateFlow<Theme> = prefs.prefs.map { it.theme }.stateIn(scope, SharingStarted.Eagerly, prefs.prefs.value.theme)
 
     init {
         crashLog.install { prefs.prefs.value.hornNickname }

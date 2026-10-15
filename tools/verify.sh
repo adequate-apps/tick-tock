@@ -262,8 +262,11 @@ if ! (cd tools/robolectric-deps && sha256sum -c --quiet MANIFEST.sha256) 2>/dev/
     red "H tier" "the Robolectric jar in tools/robolectric-deps is missing or does not match MANIFEST.sha256"
 fi
 for m in engine data design app; do rm -rf "$m/build/test-results"; done
+# :design and :app run their unit tests in Roborazzi's verify mode, so every
+# screenshot is compared with its golden and any pixel change is red; a plain
+# test run skips the captures.
 run_gradle h-tier --continue \
-    :engine:testDebugUnitTest :data:testDebugUnitTest :design:testDebugUnitTest :app:testDebugUnitTest \
+    :engine:testDebugUnitTest :data:testDebugUnitTest :design:verifyRoborazziDebug :app:verifyRoborazziDebug \
     :app:lintDebug :app:assembleDebug \
     || red "H tier" "a Robolectric test, lint or assembleDebug failed"
 for m in engine data design app; do

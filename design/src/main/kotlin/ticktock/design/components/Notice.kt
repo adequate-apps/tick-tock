@@ -33,9 +33,9 @@ enum class NoticeKind {
 }
 
 /**
- * A full-width strip with a thick rule on its left edge and one or two
- * sentences. The first sentence states the fact; the second says what the
- * player can do about it. It sits inside the pane it concerns.
+ * A full-width strip with a thick rule on its left edge and one short line
+ * saying what the player can do. It appears only when the player must act,
+ * inside the pane it concerns.
  */
 @Composable
 fun Notice(

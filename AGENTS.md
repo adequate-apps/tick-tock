@@ -74,7 +74,8 @@ Gridline design system, built from Compose Foundation only:
   with ink `#101010` borders; Active Blue `#0000A8` title strips and active states;
 - green, amber and cyan only for their meanings (in tune, close, live);
 - IBM Plex Sans and Mono, bundled;
-- a visible status bar that states facts in whole sentences;
+- a visible status bar of one- or two-word facts ("Mic off", "Bluetooth");
+- show, don't tell: no prose about the interface; empty and gated states are dimmed ghost layouts with an icon;
 - no Material components, gradients, shadows, pills, ripples or emoji. The `:design` module exposes
   no API for any of these, so drift is a compile error or a screenshot diff.
 

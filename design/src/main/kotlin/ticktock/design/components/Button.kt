@@ -23,6 +23,7 @@ import ticktock.design.GridlineRelief
 import ticktock.design.GridlineSpacing
 import ticktock.design.GridlineType
 import ticktock.design.bevel
+import ticktock.design.frame
 import ticktock.design.selectionOutline
 
 /**
@@ -73,7 +74,10 @@ fun Button(
         modifier = modifier
             .defaultMinSize(minWidth = GridlineMetrics.touchTarget, minHeight = GridlineMetrics.touchTarget)
             .background(face)
-            .bevel(relief)
+            // A key is a rule-bordered face with the bevel inside the border, as in
+            // the mockups; in Pit, where bevels are black, the border is its edge.
+            // The tap target is the whole key, border included.
+            .frame(GridlineRelief.frame)
             .then(if (tone == ButtonTone.Primary) Modifier.selectionOutline() else Modifier)
             .clickable(
                 interactionSource = interaction,
@@ -82,6 +86,8 @@ fun Button(
                 role = Role.Button,
                 onClick = onClick,
             )
+            .padding(GridlineMetrics.line)
+            .bevel(relief)
             .padding(horizontal = GridlineSpacing.sp4, vertical = GridlineSpacing.sp2)
             .testTag(tag),
         contentAlignment = Alignment.Center,

@@ -41,7 +41,7 @@ class FrameNavigationTest {
         compose.onNodeWithTag("tabs-2").performClick()
         compose.onNodeWithTag("open-settings").performClick()
         compose.onNodeWithTag("titlebar-title", useUnmergedTree = true).assertTextEquals("Settings")
-        compose.onNodeWithTag("settings-empty", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("theme-3").assertIsDisplayed()
         compose.onNodeWithTag("back").performClick()
         // The tab that was open is still open underneath.
         compose.onNodeWithTag("tabs-2").assertIsSelected()
