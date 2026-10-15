@@ -32,6 +32,32 @@ class HopAnalyserTest {
         HopAnalyser(Detector(ResponseMode.NORMAL), estimator, ringHops)
 
     @Test
+    fun `POL-28 a restored gain must present before fresh audio establishes the probe baseline`() {
+        val detector = Detector(ResponseMode.FAST,
+            sounding = ticktock.core.contracts.fakes.FakeSoundingNotes(69))
+        val analyser = HopAnalyser(detector, ZeroCrossingEstimator())
+        val input = FakeAudioInput(sampleRate = rate)
+        analyser.attach(input).getOrThrow()
+        val restored = analyser.deferBleedEvidence()
+        val oldLeak = Sine(440.0, 0.06, rate)
+        input.push(oldLeak.next(16 * hopFrames))
+        val queued = analyser.drain()
+        assertTrue("a ducked old stream supplies no fresh baseline", queued.all { it.duck == null })
+        assertTrue(queued.all { it.saved == null && it.display == null })
+        restored()
+        val fullLeak = Sine(440.0, 0.2, rate)
+        input.push(fullLeak.next(4 * hopFrames))
+        var probe: (() -> Unit)? = null
+        val fresh = analyser.drain { if (it.duck == BleedPolicy.DUCK_FLOOR) probe = analyser.deferBleedEvidence() }
+        assertEquals(listOf(BleedPolicy.DUCK_FLOOR), fresh.mapNotNull { it.duck })
+        assertTrue(detector.bleedState.preDuckLevel > 0.13)
+        probe!!.invoke()
+        input.push(oldLeak.next(16 * hopFrames))
+        assertTrue(analyser.drain().all { it.saved == null && it.display == null })
+        analyser.detach()
+    }
+
+    @Test
     fun `POL-28 queued and upstream buffered audio cannot prove unison before a settled duck`() {
         val detector = Detector(ResponseMode.FAST,
             sounding = ticktock.core.contracts.fakes.FakeSoundingNotes(69))
