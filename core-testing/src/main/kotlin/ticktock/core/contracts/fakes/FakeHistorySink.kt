@@ -7,6 +7,8 @@ import ticktock.core.detect.Reading
 /**
  * A [HistorySink] that keeps accepted readings in a list and applies the SES-05
  * validation rule, so detector tests can assert what would have reached storage.
+ * [accept] holds the sink's monitor, so a test that reads the lists while the
+ * analysis thread writes them synchronises on the sink.
  */
 class FakeHistorySink : HistorySink {
     val accepted = mutableListOf<Reading>()
@@ -17,6 +19,7 @@ class FakeHistorySink : HistorySink {
     override var rejected: Int = 0
         private set
 
+    @Synchronized
     override fun accept(reading: Reading, firstSettled: Boolean) {
         if (HistorySink.storable(reading)) {
             accepted += reading
