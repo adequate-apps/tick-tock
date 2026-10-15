@@ -41,6 +41,17 @@ class BluetoothDelayScreenTest {
     }
     private fun tap(tag: String) = compose.onNodeWithTag(tag).performScrollTo().performClick()
 
+    @Test fun `BTC-01 a physical contact is measured before release and release adds no second tap`() {
+        launch()
+        tap("bluetooth-measure")
+        val generation = link.sent.filterIsInstance<OutputCommand.MetroStart>().last().setup.generation
+        compose.runOnIdle { link.events.tryEmit(OutputEvent.Beat(0, 0, 0, System.nanoTime(), generation = generation)) }
+        compose.onNodeWithTag("delay-tap").performScrollTo().performTouchInput { down(center) }
+        compose.runOnIdle { assertEquals(1, graph.output.calibration.value?.taps) }
+        compose.onNodeWithTag("delay-tap").performTouchInput { advanceEventTime(200); up() }
+        compose.runOnIdle { assertEquals(1, graph.output.calibration.value?.taps) }
+    }
+
     @Test fun `BTC-01 eight taps save the measured Bluetooth offset and restore both tools`() {
         launch()
         tap("bluetooth-measure")

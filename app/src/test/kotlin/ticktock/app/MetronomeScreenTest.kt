@@ -41,6 +41,24 @@ class MetronomeScreenTest {
     @After fun close() { scenario?.close(); RuntimeEnvironment.setFontScale(1f) }
     private fun tap(tag: String) = compose.onNodeWithTag(tag).performScrollTo().performClick()
 
+    @Test fun `OUT-02 parked and muted metronome actions preserve cancellation without claiming running`() {
+        launch()
+        tap("metro-toggle")
+        compose.runOnIdle { link.park(ticktock.core.contracts.ParkReason.HEADPHONES_DISCONNECTED) }
+        compose.onNodeWithTag("metro-toggle").performScrollTo().assertTextEquals("Cancel resume")
+            .assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "Paused"))
+        tap("metro-toggle")
+        compose.runOnIdle { link.replug() }
+        assertFalse(graph.output.state.value.metroWanted)
+        tap("metro-toggle")
+        compose.runOnIdle { link.controlDiagnostics.value = link.controlDiagnostics.value.copy(
+            muteSources = setOf(ticktock.engine.output.MuteSource.CALL_RINGING)) }
+        compose.onNodeWithTag("metro-toggle").assertTextEquals("Cancel resume")
+            .assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "Muted"))
+        tap("metro-toggle")
+        assertFalse(graph.output.state.value.metroWanted)
+    }
+
     @Test fun `MET-01 tempo entry steps drag and accessibility all change the same persisted value`() {
         launch()
         tap("metro-step-0"); assertEquals(95, graph.prefs.prefs.value.metroBpm)
@@ -104,11 +122,13 @@ class MetronomeScreenTest {
         val generation = link.sent.filterIsInstance<OutputCommand.MetroStart>().last().setup.generation
         compose.waitForIdle()
         val before = FrameCompositions.count
-        repeat(8) { index ->
-            compose.runOnIdle { link.events.tryEmit(OutputEvent.Beat(index = index.toLong(), frame = index * 24_000L, nanos = 0L, beatInBar = index % 4, bar = (index / 4).toLong(), silentBar = index >= 4, generation = generation, audible = index < 4)) }
+        repeat(12) { index ->
+            compose.runOnIdle { link.events.tryEmit(OutputEvent.Beat(index = index.toLong(), frame = index * 24_000L, nanos = 0L, beatInBar = index % 4, bar = (index / 4).toLong(), silentBar = index in 4..7, generation = generation, audible = index !in 4..7)) }
             compose.waitForIdle()
             assertEquals(index.toLong(), graph.output.beat.value?.index)
-            assertEquals(index >= 4, graph.output.beat.value?.silentBar)
+            assertEquals(index in 4..7, graph.output.beat.value?.silentBar)
+            compose.onNodeWithTag("metro-beats-0").assertIsSelected().assertContentDescriptionEquals("Beat 1, Accent")
+            assertFalse(compose.onNodeWithTag("metro-beats-0").fetchSemanticsNode().config.contains(androidx.compose.ui.semantics.SemanticsProperties.LiveRegion))
         }
         assertEquals(before, FrameCompositions.count)
         compose.onNodeWithTag("metro-beats-3").assertContentDescriptionEquals("Beat 4, Normal")

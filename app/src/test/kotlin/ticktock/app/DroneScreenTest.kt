@@ -48,6 +48,46 @@ class DroneScreenTest {
     private fun latestVoice(): OutputCommand.VoiceOn = link.sent.filterIsInstance<OutputCommand.VoiceOn>().last()
 
     @Test
+    fun `OUT-02 parked and muted drone actions describe the actual state and cancel resume`() {
+        launch()
+        tap("drone-toggle")
+        compose.runOnIdle { link.park(ticktock.core.contracts.ParkReason.HEADPHONES_DISCONNECTED) }
+        compose.onNodeWithTag("drone-toggle").performScrollTo().assertTextEquals("Cancel resume")
+            .assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "Paused"))
+        tap("drone-toggle")
+        compose.runOnIdle { link.replug() }
+        assertFalse(graph.output.state.value.droneWanted)
+        tap("drone-toggle")
+        compose.runOnIdle { link.controlDiagnostics.value = link.controlDiagnostics.value.copy(
+            muteSources = setOf(ticktock.engine.output.MuteSource.CALL_RINGING)) }
+        compose.onNodeWithTag("drone-toggle").performScrollTo().assertTextEquals("Cancel resume")
+            .assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "Muted"))
+        tap("drone-toggle")
+        assertFalse(graph.output.state.value.droneWanted)
+    }
+
+    @Test
+    fun `CHK-01 spoken pads include naming context secondary pitch and tuning marks`() {
+        launch()
+        compose.onNodeWithTag("drone-ensemble-0").assertContentDescriptionEquals("Concert B♭, written G4")
+        compose.onNodeWithTag("drone-ensemble-1").assertContentDescriptionEquals("Concert A, written F♯4")
+        compose.onNodeWithTag("drone-pads-6").assertContentDescriptionEquals("Written F♯4, concert A4, ensemble, check")
+        compose.onNodeWithTag("drone-pads-0").assertContentDescriptionEquals("Written C4, concert D♯4")
+        tap("drone-names-1")
+        compose.onNodeWithTag("drone-pads-9").assertContentDescriptionEquals("Concert A4, ensemble")
+        compose.onNodeWithTag("drone-ensemble-1").assertContentDescriptionEquals("Concert A")
+    }
+
+    @Test
+    fun `a sustained drone has an immediate visible stop even while scrolling at double text`() {
+        launch(2f)
+        tap("drone-ensemble-0")
+        compose.onNodeWithTag("drone-quick-toggle").assertIsDisplayed().assertTextEquals("Stop").performClick()
+        assertFalse(graph.output.state.value.droneWanted)
+        compose.onNodeWithTag("drone-quick-toggle").assertDoesNotExist()
+    }
+
+    @Test
     fun `TON-01 and TON-04 every drone control reaches the shared owner and navigation keeps it running`() {
         launch()
         assertTrue(link.sent.isEmpty())
