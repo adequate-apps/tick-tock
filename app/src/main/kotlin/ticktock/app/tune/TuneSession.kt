@@ -61,6 +61,7 @@ class TuneSession(
 
     val state: StateFlow<CaptureState> = capture.state
     val level: StateFlow<Level> = capture.level
+    val diagnostics: StateFlow<ticktock.app.audio.CaptureDiagnostics> = capture.diagnostics
     val trace: StateFlow<TraceSnapshot> = capture.trace
     val lastNote: StateFlow<ticktock.app.audio.LastNote?> = capture.lastNote
 
