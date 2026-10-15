@@ -23,6 +23,56 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 class OutputGraphTest {
     @Test
+    fun `CTX-02 and POL-24 a zero-volume drone leaves player attacks and persisted context free`() {
+        val context = RuntimeEnvironment.getApplication()
+        val dir = File(context.filesDir, "output-silent").apply { mkdirs() }
+        File(dir, Storage.PREFS_FILE).writeText(PrefsSchema.write(Prefs(droneMidi = 69, droneGain = 0f,
+            responseMode = ticktock.core.detect.ResponseMode.FAST)))
+        val link = TestOutputConnection()
+        val graph = AppGraph(context, dir, "output-silent.db") { link }
+        val input = FakeAudioInput(sampleRate = 48_000)
+        graph.tune.micAllowed = { true }
+        graph.tune.makeInput = { input }
+        try {
+            graph.output.startDrone()
+            assertTrue(graph.output.current().isEmpty())
+            assertFalse(graph.output.state.value.droneSounding)
+            graph.tune.resume()
+            val sine = Sine(440.0, 0.2, 48_000)
+            repeat(16) {
+                val before = graph.tune.trace.value
+                input.push(sine.next(Hop.frames(48_000)))
+                val deadline = System.nanoTime() + 5_000_000_000L
+                while (graph.tune.trace.value === before && System.nanoTime() < deadline) Thread.sleep(1)
+                assertTrue(graph.tune.trace.value !== before)
+            }
+            assertEquals(69, graph.tune.state.value.readout.midi)
+            assertTrue(link.sent.none { it is OutputCommand.Duck && it.gain < 1f })
+            graph.output.droneVolume(0.5f)
+            assertEquals(listOf(69), graph.output.current().toList())
+            graph.output.droneVolume(-0.5f)
+            assertTrue(graph.output.current().isEmpty())
+            assertFalse(graph.output.state.value.droneSounding)
+            assertTrue(graph.output.state.value.droneWanted)
+            graph.captureHistory.accept(Reading(20, 69, 440.0, 0.0, 440.0, 0))
+            assertTrue(graph.history.flushAndWait())
+            context.openOrCreateDatabase("output-silent.db", 0, null).use { db ->
+                db.rawQuery("SELECT runs.context, runs.drone_midi FROM readings JOIN runs ON readings.run_id = runs.id", null).use { rows ->
+                    assertTrue(rows.count > 1)
+                    while (rows.moveToNext()) {
+                        assertEquals("free", rows.getString(0))
+                        assertTrue(rows.isNull(1))
+                    }
+                }
+            }
+        } finally {
+            graph.close()
+            context.deleteDatabase("output-silent.db")
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
     fun `CTX-02 actual sounding roots label history across preferences retune park and stop`() {
         val context = RuntimeEnvironment.getApplication()
         val dir = File(context.filesDir, "output-graph").apply { mkdirs() }
