@@ -41,6 +41,34 @@ class BleedPolicyTest {
     }
 
     @Test
+    fun `POL-28 a new capture forgets an earlier unison admission and probes leakage again`() {
+        val (drive, _) = drive(d4)
+        admit(drive, d4)
+        drive.note(d4, 30)
+        assertTrue(drive.saved.isNotEmpty())
+        val saved = drive.saved.size
+        val ended = drive.detector.reset()
+        assertEquals(ReleaseCause.RESTART, ended?.cause)
+        val after = leak(drive, d4, 30)
+        assertEquals(saved, drive.saved.size)
+        assertTrue(after.all { it.hopClass == HopClass.SKIP && it.incumbent == null })
+        assertEquals(listOf(BleedPolicy.DUCK_FLOOR), after.mapNotNull { it.duck })
+        assertNull(drive.detector.bleedState.admitted)
+    }
+
+    @Test
+    fun `POL-26 a capture restarted during a duck requests a fresh duck`() {
+        val (drive, _) = drive(d4)
+        drive.note(d4, BleedPolicy.SUSPECT_HOPS)
+        assertTrue(drive.detector.bleedState.ducked)
+        drive.detector.reset()
+        val after = leak(drive, d4, 30)
+        assertEquals(listOf(BleedPolicy.DUCK_FLOOR), after.mapNotNull { it.duck })
+        assertTrue(after.all { it.saved == null && it.hopClass == HopClass.SKIP })
+        assertNull(drive.detector.bleedState.admitted)
+    }
+
+    @Test
     fun `POL-24 the drone alone saves nothing and shows no note`() {
         val (drive, _) = drive(d4)
         val decisions = leak(drive, d4, Hop.count(10.0))
