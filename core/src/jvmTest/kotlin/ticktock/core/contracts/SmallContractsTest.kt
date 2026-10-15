@@ -3,8 +3,11 @@ package ticktock.core.contracts
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import ticktock.core.contracts.HistorySink
 import ticktock.core.contracts.fakes.FakeClock
 import ticktock.core.contracts.fakes.FakeHistorySink
 import ticktock.core.contracts.fakes.FakeSoundingNotes
@@ -52,6 +55,22 @@ class SmallContractsTest {
 
         assertEquals(listOf(good), sink.accepted)
         assertEquals(3, sink.rejected)
+    }
+
+    @Test
+    fun `history sink carries the first-settled mark and states the storage rule once`() {
+        val sink = FakeHistorySink()
+        val reading = Reading(hop = 4, midiSounding = 62, hz = 293.7, cents = 1.5, a4Hz = 440.0, a4Generation = 0)
+        sink.accept(reading, firstSettled = true)
+        sink.accept(reading.copy(hop = 5))
+        assertEquals(listOf(true, false), sink.firstSettled)
+
+        assertTrue(HistorySink.storable(reading))
+        assertTrue(HistorySink.storable(reading.copy(cents = -50.0, hz = 1.0, midiSounding = 0)))
+        assertFalse(HistorySink.storable(reading.copy(cents = -50.01)))
+        assertFalse(HistorySink.storable(reading.copy(hz = 20_000.5)))
+        assertFalse(HistorySink.storable(reading.copy(a4Hz = Double.POSITIVE_INFINITY)))
+        assertFalse(HistorySink.storable(reading.copy(midiSounding = -1)))
     }
 
     @Test
