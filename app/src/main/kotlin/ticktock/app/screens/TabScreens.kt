@@ -51,7 +51,7 @@ fun TableScreen(graph: AppGraph = TickTockApp.graph(LocalContext.current)) {
     val csvLabel = stringResource(R.string.table_share_csv)
     var selected by remember { mutableStateOf<Pair<RunLabel, Int>?>(null) }
     var sessions by rememberSaveable { mutableStateOf(false) }
-    var saving by remember { mutableStateOf<SessionRow?>(null) }
+    var savingId by rememberSaveable { mutableStateOf<Long?>(null) }
     var deleting by remember { mutableStateOf<SessionRow?>(null) }
     var clearNote by remember { mutableStateOf<Triple<Scope, RunLabel, Int>?>(null) }
     var shareError by rememberSaveable { mutableStateOf(false) }
@@ -123,7 +123,7 @@ fun TableScreen(graph: AppGraph = TickTockApp.graph(LocalContext.current)) {
                 }
                 snapshot?.since?.let { GlText(stringResource(R.string.table_since, tableDate(it), pluralStringResource(R.plurals.table_session_total, snapshot.scopeSessions, snapshot.scopeSessions)), style = GridlineType.small) }
                 ButtonRow(listOf(
-                    ButtonAction(stringResource(R.string.table_save_session), { saving = viewed }, viewed != null && !state.busy && owner.namedSessions.allowed, primary = true, tag = "table-save"),
+                    ButtonAction(stringResource(R.string.table_save_session), { savingId = viewed?.id }, viewed != null && !state.busy && owner.namedSessions.allowed, primary = true, tag = "table-save"),
                     ButtonAction(stringResource(R.string.table_share_csv), {
                         jobs.launch {
                             val bytes = owner.csv() ?: return@launch
@@ -170,8 +170,8 @@ fun TableScreen(graph: AppGraph = TickTockApp.graph(LocalContext.current)) {
             if (shareError) GlText(stringResource(R.string.table_share_error), color = GridlineColors.danger)
         }
     }
-    saving?.let { session -> SaveSessionDialog(session, prefs.lastEquipment, state.busy, state.error, { saving = null }) { name, equipment, purpose, notes ->
-        jobs.launch { owner.save(session.id, name, equipment, purpose, notes).join(); if (owner.state.value.error == null) saving = null }
+    snapshot?.sessions?.find { it.id == savingId }?.let { session -> SaveSessionDialog(session, prefs.lastEquipment, state.busy, state.error, { savingId = null }) { name, equipment, purpose, notes ->
+        jobs.launch { owner.save(session.id, name, equipment, purpose, notes).join(); if (owner.state.value.error == null) savingId = null }
     } }
     deleting?.let { session -> TableConfirmation(stringResource(R.string.table_delete_session),
         session.name.ifBlank { stringResource(R.string.table_session) }, state.busy, state.error, { deleting = null }) {

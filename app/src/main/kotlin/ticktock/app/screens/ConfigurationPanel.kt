@@ -7,21 +7,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import ticktock.app.AppGraph
 import ticktock.app.R
-import ticktock.app.config.ConfigurationFiles
-import ticktock.core.config.ParseResult
-import ticktock.core.config.PersonalConfig
-import ticktock.core.config.PersonalConfigCodec
 import ticktock.core.config.PersonalConfigMerge
 import ticktock.core.prefs.PersonalConfiguration
 import ticktock.design.GridlineColors
@@ -31,37 +21,17 @@ import ticktock.design.components.*
 
 @Composable
 internal fun ConfigurationPanel(graph: AppGraph) {
-    val context = LocalContext.current
-    val jobs = rememberCoroutineScope()
+    val owner = graph.configuration
+    val state by owner.state.collectAsStateWithLifecycle()
     val prefs by graph.prefs.prefs.collectAsStateWithLifecycle()
-    var incoming by remember { mutableStateOf<PersonalConfig?>(null) }
-    var busy by remember { mutableStateOf(false) }
-    var message by rememberSaveable { mutableStateOf<Int?>(null) }
-    var failed by rememberSaveable { mutableStateOf(false) }
+    val busy = state.busy
+    val message = state.message
+    val failed = state.failed
     val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
-        if (uri != null) jobs.launch {
-            busy = true
-            try {
-                val bytes = PersonalConfigCodec.write(PersonalConfiguration.snapshot(graph.prefs.prefs.value)).toByteArray(Charsets.UTF_8)
-                withContext(Dispatchers.IO) { ConfigurationFiles.write(context, uri, bytes) }
-                failed = false; message = R.string.config_exported
-            } catch (cancelled: CancellationException) { throw cancelled }
-            catch (failure: Exception) { failed = true; message = R.string.config_write_error }
-            finally { busy = false }
-        }
+        if (uri != null) owner.export(uri)
     }
     val open = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) jobs.launch {
-            busy = true
-            try {
-                when (val parsed = withContext(Dispatchers.IO) { ConfigurationFiles.read(context, uri) }) {
-                    is ParseResult.Ok -> { incoming = parsed.config; message = null; failed = false }
-                    is ParseResult.Failed -> { failed = true; message = R.string.config_invalid }
-                }
-            } catch (cancelled: CancellationException) { throw cancelled }
-            catch (failure: Exception) { failed = true; message = R.string.config_read_error }
-            finally { busy = false }
-        }
+        if (uri != null) owner.open(uri)
     }
     Column(verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
         ButtonRow(listOf(
@@ -71,9 +41,9 @@ internal fun ConfigurationPanel(graph: AppGraph) {
             ButtonAction(stringResource(R.string.config_import), { open.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }, !busy, tag = "config-import")))
         message?.let { GlText(stringResource(it), style = GridlineType.small, color = if (failed) GridlineColors.danger else GridlineColors.textSecondary) }
     }
-    incoming?.let { config ->
+    state.incoming?.let { config ->
         val diff = PersonalConfigMerge.diff(PersonalConfiguration.snapshot(prefs), config)
-        SquareDialog(stringResource(R.string.config_preview), { if (!busy) incoming = null }, tag = "config-preview") {
+        SquareDialog(stringResource(R.string.config_preview), { owner.cancel() }, tag = "config-preview") {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
                 if (diff.isEmpty) GlText(stringResource(R.string.config_no_changes))
                 diff.changes.forEach { change ->
@@ -83,18 +53,9 @@ internal fun ConfigurationPanel(graph: AppGraph) {
                     }
                 }
                 if (failed) message?.let { GlText(stringResource(it), color = GridlineColors.danger) }
-                ButtonRow(listOf(ButtonAction(stringResource(R.string.action_cancel), { incoming = null }, !busy, tag = "config-cancel"),
+                ButtonRow(listOf(ButtonAction(stringResource(R.string.action_cancel), { owner.cancel() }, !busy, tag = "config-cancel"),
                     ButtonAction(stringResource(R.string.config_apply), {
-                        jobs.launch {
-                            busy = true
-                            try {
-                                graph.prefs.update { PersonalConfiguration.apply(it, config) }
-                                withContext(Dispatchers.IO) { graph.prefs.flushAndWait().getOrThrow() }
-                                incoming = null; failed = false; message = R.string.config_applied
-                            } catch (cancelled: CancellationException) { throw cancelled }
-                            catch (failure: Exception) { failed = true; message = R.string.config_apply_error }
-                            finally { busy = false }
-                        }
+                        owner.apply()
                     }, !busy, true, "config-apply")))
             }
         }

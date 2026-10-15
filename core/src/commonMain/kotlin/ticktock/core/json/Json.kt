@@ -141,12 +141,13 @@ object Json {
             while (pos < text.length && text[pos].let { it == ' ' || it == '\n' || it == '\r' || it == '\t' }) pos++
         }
 
-        fun readValue(): JsonValue {
+        fun readValue(depth: Int = 0): JsonValue {
+            if (depth > 64) throw error("nesting exceeds the document limit")
             skipWhitespace()
             if (atEnd()) throw error("unexpected end of document")
             return when (val ch = text[pos]) {
-                '{' -> readObject()
-                '[' -> readArray()
+                '{' -> readObject(depth + 1)
+                '[' -> readArray(depth + 1)
                 '"' -> JsonValue.JsonString(readString())
                 't' -> literal("true", JsonValue.JsonBool(true))
                 'f' -> literal("false", JsonValue.JsonBool(false))
@@ -161,7 +162,7 @@ object Json {
             return value
         }
 
-        private fun readObject(): JsonValue.JsonObject {
+        private fun readObject(depth: Int): JsonValue.JsonObject {
             pos++ // {
             val fields = LinkedHashMap<String, JsonValue>()
             skipWhitespace()
@@ -176,7 +177,7 @@ object Json {
                 skipWhitespace()
                 if (peek() != ':') throw error("expected ':' after key \"$key\"")
                 pos++
-                val value = readValue()
+                val value = readValue(depth)
                 if (fields.containsKey(key)) throw error("duplicate key \"$key\"")
                 fields[key] = value
                 skipWhitespace()
@@ -191,7 +192,7 @@ object Json {
             }
         }
 
-        private fun readArray(): JsonValue.JsonArray {
+        private fun readArray(depth: Int): JsonValue.JsonArray {
             pos++ // [
             val items = ArrayList<JsonValue>()
             skipWhitespace()
@@ -200,7 +201,7 @@ object Json {
                 return JsonValue.JsonArray(items)
             }
             while (true) {
-                items.add(readValue())
+                items.add(readValue(depth))
                 skipWhitespace()
                 when (peek()) {
                     ',' -> pos++

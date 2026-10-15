@@ -81,7 +81,7 @@ class TableSession(
             if (gated) { mutableState.update { it.copy(loading = false) }; return@launch }
             mutableState.update { it.copy(loading = true) }
             try {
-                val snapshot = store.snapshot(selected, readPrefs().includeDroneRuns)
+                val snapshot = store.snapshot(selected, readPrefs().includeDroneRuns, includeHistory = allHistory.allowed)
                 mutableState.update { it.copy(snapshot = snapshot, loading = false) }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) { mutableState.update { it.copy(loading = false, error = "Phone storage refused table read") } }

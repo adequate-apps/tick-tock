@@ -144,9 +144,9 @@ fun InstrumentPicker(graph: AppGraph, onPicked: () -> Unit) {
                     ListRow(
                         title = instrument.displayName,
                         detail = "${keyOf(instrument)} · ${Transposition.describe(instrument.transposition)}",
-                        selected = instrument.key == prefs.instrumentKey,
+                        selected = instrument.key == prefs.instrumentKey && prefs.hornNickname.isEmpty(),
                         onClick = {
-                            graph.prefs.update { it.copy(instrumentKey = instrument.key) }
+                            graph.prefs.update { it.copy(instrumentKey = instrument.key, hornNickname = "") }
                             onPicked()
                         },
                         tag = "instrument-${instrument.key}",

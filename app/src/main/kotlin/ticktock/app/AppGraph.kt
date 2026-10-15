@@ -50,6 +50,7 @@ class AppGraph(
     val crashLog = CrashLog(filesDir)
     val prefs = PrefsStore(AtomicPrefsFile(File(filesDir, Storage.PREFS_FILE)), storage)
     val prefsLoad: PrefsLoad = prefs.load()
+    internal val configuration = ticktock.app.config.ConfigurationSession(context, prefs)
     private val database = HistoryDatabase(context, databaseName)
     val history = HistoryStore(database, storage, runContextOf(prefs.prefs.value))
     val table = TableSession(history, { prefs.prefs.value }, prefs::update)
@@ -106,6 +107,7 @@ class AppGraph(
 
     /** Tests only: a process never closes its graph. */
     fun close() {
+        configuration.close()
         table.close()
         tune.close()
         output.close()

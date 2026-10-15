@@ -496,12 +496,12 @@ class HistoryStore(
     }
 
     /** Every table fact comes from one storage turn, between scheduled flushes. */
-    suspend fun snapshot(scope: Scope, includeDroneRuns: Boolean): HistorySnapshot = withContext(storage.dispatcher) {
+    suspend fun snapshot(scope: Scope, includeDroneRuns: Boolean, includeHistory: Boolean = true): HistorySnapshot = withContext(storage.dispatcher) {
         val (where, args) = selection(scope)
         val totals = database.readableDatabase.rawQuery(
             "SELECT COUNT(DISTINCT r.session_id), MIN(r.started_at) FROM runs r JOIN note_hist h ON h.run_id = r.id WHERE $where", args,
         ).use { c -> c.moveToFirst(); c.getInt(0) to if (c.isNull(1)) null else c.getLong(1) }
-        HistorySnapshot(summaries(scope), summaries(Scope.AllHistory(includeDroneRuns)), sessions(), sessionId, totals.first, totals.second)
+        HistorySnapshot(summaries(scope), if (includeHistory) summaries(Scope.AllHistory(includeDroneRuns)) else emptyList(), sessions(), sessionId, totals.first, totals.second)
     }
 
     /** Clears a confirmed note in the displayed scope, including raw rows and cached aggregates. */
