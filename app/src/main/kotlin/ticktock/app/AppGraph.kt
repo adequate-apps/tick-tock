@@ -9,10 +9,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import ticktock.core.catalogue.Catalogue
 import ticktock.core.prefs.Prefs
 import ticktock.core.prefs.Theme
@@ -48,9 +46,8 @@ class AppGraph(context: Context, filesDir: File = context.filesDir, databaseName
     init {
         crashLog.install { prefs.prefs.value.hornNickname }
         history.start()
-        scope.launch {
-            prefs.prefs.map(::runContextOf).distinctUntilChanged().collect(history::setContext)
-        }
+        // On the changing thread, so no reading after a label change carries the old label.
+        prefs.addListener { history.setContext(runContextOf(it)) }
     }
 
     /** The app went to the background: write what is pending now (SES-06, PLAN 3.4). */
