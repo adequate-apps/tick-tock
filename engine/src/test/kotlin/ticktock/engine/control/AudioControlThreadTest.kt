@@ -104,6 +104,21 @@ class AudioControlThreadTest {
         start()
     }
 
+    @Test
+    fun `POL-24 the sounding snapshot follows gain through zero without closing the stream`() {
+        start()
+        register(OutputTool.DRONE)
+        send(drone.copy(voice = Voice.ROOT_FIFTH, gain = 0f))
+        assertArrayEquals(intArrayOf(), control.soundingNotes.current())
+        send(OutputCommand.VoiceGain(drone.slot, 0.7f))
+        assertArrayEquals(intArrayOf(62, 69), control.soundingNotes.current())
+        send(OutputCommand.VoiceGain(drone.slot, 0f))
+        assertArrayEquals(intArrayOf(), control.soundingNotes.current())
+        assertEquals(1, backend.opened.size)
+        assertNotNull(control.info.value)
+        assertFalse(backend.current!!.closed)
+    }
+
     // --- OUT-01, BGH-01, SHM-01, OUT-14 ---------------------------------------------
 
     @Test

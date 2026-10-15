@@ -124,6 +124,20 @@ class ToolStateTest {
     }
 
     @Test
+    fun `POL-24 zero gain voices keep their intent but contribute no sounding notes`() {
+        val state = ToolState()
+        val fifth = sine.copy(voice = Voice.ROOT_FIFTH, gain = 0f)
+        state.sent(warm, fifth)
+        assertArrayEquals(intArrayOf(62), state.soundingMidi())
+        assertTrue(state.replay(continuing = true).contains(fifth))
+        state.sent(OutputCommand.VoiceGain(fifth.slot, 0.5f))
+        assertArrayEquals(intArrayOf(62, 69, 76), state.soundingMidi())
+        state.sent(OutputCommand.VoiceGain(fifth.slot, 0f), OutputCommand.VoiceGain(warm.slot, 0f))
+        assertArrayEquals(intArrayOf(), state.soundingMidi())
+        assertEquals(2, state.replay(continuing = true).filterIsInstance<OutputCommand.VoiceOn>().size)
+    }
+
+    @Test
     fun `POL-24 the output's sounding notes are a copy, empty until written and empty after clear`() {
         val notes = OutputSoundingNotes()
         assertArrayEquals(intArrayOf(), notes.current())
