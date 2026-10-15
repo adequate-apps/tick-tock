@@ -36,7 +36,7 @@ class CalibrationSessionTest {
                 beatInBar = index % 4, bar = (index / 4).toLong(), silentBar = false, generation = generation, audible = true))
             scope.testScheduler.runCurrent()
         }
-        fun complete(offset: Long = 200) {
+        fun complete(offset: Long = 200, awaitTail: Boolean = true) {
             repeat(8) { index ->
                 beat(index)
                 scope.testScheduler.advanceTimeBy(offset)
@@ -44,6 +44,7 @@ class CalibrationSessionTest {
                 scope.testScheduler.runCurrent()
                 if (index < 7) scope.testScheduler.advanceTimeBy(600 - offset)
             }
+            if (awaitTail) { scope.testScheduler.advanceTimeBy(30); scope.testScheduler.runCurrent() }
         }
     }
 
@@ -118,10 +119,29 @@ class CalibrationSessionTest {
     }
 
     @Test
+    fun `BTC-01 a positive measured delay keeps the final audible click tail before Use`() = runTest {
+        val r = Rig(this)
+        r.start()
+        r.complete(200, awaitTail = false)
+        assertEquals(false, r.output.calibration.value?.complete)
+        r.output.useCalibration()
+        assertNotNull(r.output.calibration.value)
+        testScheduler.advanceTimeBy(29)
+        testScheduler.runCurrent()
+        assertEquals(false, r.output.calibration.value?.complete)
+        testScheduler.advanceTimeBy(1)
+        testScheduler.runCurrent()
+        assertEquals(200, r.output.calibration.value?.offsetMs)
+        r.output.useCalibration()
+        testScheduler.runCurrent()
+        assertNull(r.output.calibration.value)
+    }
+
+    @Test
     fun `BTC-01 result waits for the final click tail and same-name route changes cancel it`() = runTest {
         val r = Rig(this)
         r.start()
-        r.complete(0)
+        r.complete(0, awaitTail = false)
         assertEquals(false, r.output.calibration.value?.complete)
         r.output.useCalibration()
         assertNotNull(r.output.calibration.value)
