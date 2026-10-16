@@ -232,7 +232,7 @@ ledgered under their own prefixes below.
 | ERR-04 | corrupt prefs | H | 2.0 | PrefsStoreTest `ERR-04 a corrupt blob is copied before the first write and the player is told once` and `ERR-04 when the corrupt blob cannot be copied, nothing overwrites it and the player is not told it was kept`; AppNoticesTest `ERR-04 a corrupt settings file says so once, keeps the player out of first run, and Dismiss clears it` | green |
 | ERR-05 | unreadable prefs | H | 2.0 | PrefsStoreTest `ERR-05` (two tests: never a first run, and a change made while unreadable is replayed onto the saved prefs once they can be read, never written over them) | green |
 | ERR-06 | prefs save failure | H | 2.0 | PrefsStoreTest `ERR-06` | green |
-| ERR-07 | analysis errors | H | 2.0 |  | open |
+| ERR-07 | analysis errors | H | 2.0 | AnalysisThreadTest `ERR-07 an estimator exception skips one hop and later real pitch readings recover`: real estimator throws once, then later hops save correct pitch without reopening input; mutation stopping the worker after the error timed out at hop 3, restored test passed | green |
 
 ## Accessibility (font scale)
 

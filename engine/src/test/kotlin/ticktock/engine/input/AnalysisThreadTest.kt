@@ -88,6 +88,36 @@ class AnalysisThreadTest {
     }
 
     @Test
+    fun `ERR-07 an estimator exception skips one hop and later real pitch readings recover`() {
+        val estimator = YinEstimator(Detector(ResponseMode.NORMAL))
+        var calls = 0
+        val input = FakeAudioInput(sampleRate = rate)
+        val worker = worker(estimator = PitchEstimator { samples, frames, sampleRate ->
+            calls++
+            if (calls == 3) throw IllegalStateException("one failed analysis hop")
+            estimator.estimate(samples, frames, sampleRate)
+        })
+        worker.start(input).getOrThrow()
+        val sine = Sine(440.0, 0.1, rate)
+        repeat(12) { index ->
+            assertTrue(input.push(sine.next(hopFrames)))
+            awaitUntil("hop $index counted") {
+                worker.counters.hopsAnalysed + worker.counters.analysisErrors >= index + 1
+            }
+        }
+        awaitUntil("good reading after the failed hop") { worker.latest.value?.hop == 11L }
+        assertEquals((0L..11L).filter { it != 2L }, decisions.map { it.hop })
+        assertEquals(1L, worker.counters.analysisErrors)
+        assertEquals(11L, worker.counters.hopsAnalysed)
+        assertEquals(0L, worker.counters.droppedHops)
+        assertTrue(worker.counters.lastAnalysisError.orEmpty().contains("one failed analysis hop"))
+        assertEquals(69, worker.latest.value?.saved?.midiSounding)
+        assertEquals(440.0, worker.latest.value?.saved?.hz ?: 0.0, 0.5)
+        assertTrue(worker.isRunning)
+        assertEquals(1, input.openCount)
+    }
+
+    @Test
     fun `stop joins the thread, closes the input and clears the latest decision`() {
         val input = FakeAudioInput(sampleRate = rate)
         val worker = worker(estimator = PitchEstimator { _, _, _ -> HopEstimate(440.0, 0.01, 0.1) })
