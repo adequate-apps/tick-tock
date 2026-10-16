@@ -133,8 +133,7 @@ fun AppFrame() {
         Column(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth()
-                .padding(GridlineSpacing.sp2),
+                .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2),
         ) {
             val screenId = when {

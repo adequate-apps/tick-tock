@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -58,7 +59,7 @@ internal fun RecoverableScreen(screen: String, failures: ScreenFailures,
     if (entry == null) {
         key(screen, generation) {
             GuardedContent("screen-$screen", { failures.record(screen, it) }, Modifier.fillMaxWidth()) {
-                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(GridlineSpacing.sp2),
                     verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
                     header()
                     ScreenRenderProbe.before(screen)
@@ -70,7 +71,7 @@ internal fun RecoverableScreen(screen: String, failures: ScreenFailures,
     }
     val context = LocalContext.current
     var shareFailed by remember(screen) { mutableStateOf(false) }
-    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(GridlineSpacing.sp2),
         verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
         header()
         Notice(stringResource(R.string.screen_failed), kind = NoticeKind.Danger, tag = "screen-failure-$screen") {

@@ -7,6 +7,8 @@ import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Recomposer
+import androidx.compose.runtime.MonotonicFrameClock
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -29,6 +31,9 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.SupervisorJob
+import kotlin.coroutines.ContinuationInterceptor
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 import ticktock.design.GridlineTheme
 import ticktock.design.LocalGridlinePalette
 
@@ -44,10 +49,13 @@ fun GuardedContent(
     content: @Composable () -> Unit,
 ) {
     val palette = LocalGridlinePalette.current
+    val parentContext = rememberCoroutineScope().coroutineContext
+    val frameContext = (parentContext[ContinuationInterceptor] ?: EmptyCoroutineContext) +
+        (parentContext[MonotonicFrameClock] ?: EmptyCoroutineContext)
     val parentRegistry = LocalSaveableStateRegistry.current
     val savedState = rememberSaveable(identity, saver = PaneSavedState.Saver) { PaneSavedState() }
     AndroidView(
-        factory = { GuardedContentView(it, identity, savedState, { value -> parentRegistry?.canBeSaved(value) == true }, onFailure) },
+        factory = { GuardedContentView(it, identity, frameContext, savedState, { value -> parentRegistry?.canBeSaved(value) == true }, onFailure) },
         modifier = modifier,
         update = { host ->
             host.onFailure = onFailure
@@ -97,6 +105,7 @@ private class PaneLifecycle : LifecycleOwner {
 private class GuardedContentView(
     context: Context,
     private val identity: String,
+    private val frameContext: CoroutineContext,
     private val savedState: PaneSavedState,
     private val canBeSaved: (Any) -> Boolean,
     var onFailure: (Throwable) -> Unit,
@@ -144,7 +153,8 @@ private class GuardedContentView(
             childOwner.registry.currentState = parent.currentState
             val handler = CoroutineExceptionHandler { _, failure -> fail(failure) }
             supervisor = SupervisorJob()
-            val nextRecomposer = createLifecycleAwareWindowRecomposer(supervisor + handler, childOwner.lifecycle)
+            // Share the owner's UI time while keeping failures on an independent job.
+            val nextRecomposer = createLifecycleAwareWindowRecomposer(frameContext + supervisor + handler, childOwner.lifecycle)
             recomposer = nextRecomposer
             registry = savedState.open(canBeSaved)
             val child = PaneComposition(context).also {
