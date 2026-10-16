@@ -24,7 +24,17 @@ elif mode in ('test-compile', 'production-compile'):
     print(f"e: file://{Path.cwd() / source}:4:9 Unresolved reference 'newBehavior'.")
 else:
     name = 'sample.OtherTest' if mode == 'unrelated' else 'sample.ExampleTest'
-    kind = 'java.lang.NoClassDefFoundError' if mode == 'classpath' else 'java.lang.AssertionError'
+    kinds = {
+        'classpath': 'java.lang.NoClassDefFoundError',
+        'setup-argument': 'java.lang.IllegalArgumentException',
+        'setup-state': 'java.lang.IllegalStateException',
+        'setup-null': 'java.lang.NullPointerException',
+        'setup-io': 'java.io.IOException',
+        'unknown-failure': 'sample.CustomFailure',
+        'comparison': 'org.junit.ComparisonFailure',
+        'legacy-assertion': 'junit.framework.AssertionFailedError',
+    }
+    kind = kinds.get(mode, 'java.lang.AssertionError')
     report = Path('core/build/test-results/jvmTest/TEST-example.xml')
     report.parent.mkdir(parents=True)
     report.write_text(f'<testsuite tests="1" failures="1"><testcase classname="{name}" name="new behavior"><failure type="{kind}" message="expected behavior"/></testcase></testsuite>')
@@ -68,8 +78,17 @@ class RedProofTest(unittest.TestCase):
             return result.returncode, result.stdout + result.stderr
 
     def test_accepts_failure_in_changed_test(self):
-        code, output = self.run_proof('assertion')
-        self.assertEqual(0, code, output)
+        for mode in ('assertion', 'comparison', 'legacy-assertion'):
+            with self.subTest(mode=mode):
+                code, output = self.run_proof(mode)
+                self.assertEqual(0, code, output)
+
+    def test_rejects_changed_test_setup_exceptions(self):
+        for mode in ('setup-argument', 'setup-state', 'setup-null', 'setup-io', 'unknown-failure'):
+            with self.subTest(mode=mode):
+                code, output = self.run_proof(mode)
+                self.assertNotEqual(0, code, output)
+                self.assertIn('REFUSED', output)
 
     def test_accepts_missing_new_api_in_changed_test(self):
         code, output = self.run_proof('test-compile')
