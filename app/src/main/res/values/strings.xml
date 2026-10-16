@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <resources>
+    <string name="screen_failed">Screen unavailable</string>
+    <string name="screen_retry">Retry</string>
+    <string name="screen_share_failed">Phone refused log sharing</string>
     <!-- Launcher label and in-app title: the short name. The brand (splash, About, store) is
          brand_name. Each lives here and in AppIdentity, nowhere else. -->
     <string name="app_name">Metronome</string>

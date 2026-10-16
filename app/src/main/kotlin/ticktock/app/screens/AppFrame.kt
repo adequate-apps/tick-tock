@@ -75,6 +75,7 @@ fun AppFrame() {
     // Both survive rotation and process death: the enum saves as a Serializable.
     var tab by rememberSaveable { mutableStateOf(Tab.Tune) }
     var settings by rememberSaveable { mutableStateOf<SettingsPage?>(null) }
+    val screenFailures = rememberScreenFailures()
     val settingsOpen = settings != null
 
     val firstRun by remember { derivedStateOf { !prefs.value.firstRunComplete } }
@@ -133,26 +134,28 @@ fun AppFrame() {
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
                 .padding(GridlineSpacing.sp2),
             verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2),
         ) {
-            AppNotices(graph)
-            BluetoothNotice(graph.output)
-            ScreenRenderProbe.before(when {
+            val screenId = when {
                 firstRun -> "setup"
                 settings == SettingsPage.INSTRUMENT -> "instrument"
                 settingsOpen -> "settings"
                 else -> tab.tag
-            })
-            when {
-                firstRun -> FirstRun(graph, mic, firstStep) { firstStep = it }
-                settings == SettingsPage.INSTRUMENT -> InstrumentPicker(graph) { settings = SettingsPage.MAIN }
-                settingsOpen -> SettingsScreen(graph) { settings = SettingsPage.INSTRUMENT }
-                tab == Tab.Tune -> TuneScreen(graph, mic)
-                tab == Tab.Drone -> DroneScreen(showAction = !output.droneWanted)
-                tab == Tab.Metronome -> MetronomeScreen()
-                tab == Tab.Table -> TableScreen()
+            }
+            RecoverableScreen(screenId, screenFailures, header = {
+                AppNotices(graph)
+                BluetoothNotice(graph.output)
+            }) {
+                when {
+                    firstRun -> FirstRun(graph, mic, firstStep) { firstStep = it }
+                    settings == SettingsPage.INSTRUMENT -> InstrumentPicker(graph) { settings = SettingsPage.MAIN }
+                    settingsOpen -> SettingsScreen(graph) { settings = SettingsPage.INSTRUMENT }
+                    tab == Tab.Tune -> TuneScreen(graph, mic)
+                    tab == Tab.Drone -> DroneScreen(showAction = !output.droneWanted)
+                    tab == Tab.Metronome -> MetronomeScreen()
+                    tab == Tab.Table -> TableScreen()
+                }
             }
         }
 
