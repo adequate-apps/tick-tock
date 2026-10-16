@@ -16,6 +16,7 @@ import ticktock.app.audio.CaptureState
 import ticktock.app.audio.Level
 import ticktock.app.audio.LiveCapture
 import ticktock.app.audio.RangeHint
+import ticktock.app.audio.RangeHintProfile
 import ticktock.app.audio.TraceSnapshot
 import ticktock.core.contracts.AudioInput
 import ticktock.core.contracts.HistorySink
@@ -107,7 +108,8 @@ class TuneSession(
         synchronized(settingsLock) {
             val old = acceptedPublication
             applySettings(PrefsPublication(prefs, old.revision + 1,
-                old.instrumentRevision + if (prefs.instrumentKey == old.prefs.instrumentKey) 0 else 1))
+                old.instrumentRevision + if (prefs.instrumentKey == old.prefs.instrumentKey) 0 else 1,
+                old.rangeRevision + if (RangeHintProfile.from(prefs).range == RangeHintProfile.from(old.prefs).range) 0 else 1))
         }
         capture.invalidateRangeHint()
     }

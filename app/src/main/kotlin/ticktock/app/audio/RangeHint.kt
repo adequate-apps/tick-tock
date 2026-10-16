@@ -22,10 +22,12 @@ data class RangeHint(
     val instrumentRevision: Long,
     val range: EffectiveRange,
     val direction: RangeHintDirection,
+    val rangeRevision: Long = 0,
 ) {
     /** Hide old evidence even when the source publication's listener has not reached analysis yet. */
     fun matches(publication: PrefsPublication): Boolean {
-        if (instrumentRevision != publication.instrumentRevision || instrumentKey != publication.prefs.instrumentKey) return false
+        if (instrumentRevision != publication.instrumentRevision || rangeRevision != publication.rangeRevision ||
+            instrumentKey != publication.prefs.instrumentKey) return false
         val instrument = Catalogue.find(instrumentKey) ?: return false
         return !instrument.catchAll && range == effectiveRange(instrument, publication.prefs)
     }

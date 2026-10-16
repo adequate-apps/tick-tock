@@ -211,6 +211,7 @@ class LiveCapture(
         val profile: RangeHintProfile?,
         val hintGeneration: Long,
         val publicationRevision: Long,
+        val rangeRevision: Long,
     )
     private val instrumentRequestLock = Any()
     private val requestedInstrument = AtomicReference(InstrumentRequest(
@@ -219,6 +220,7 @@ class LiveCapture(
         profile = initialPublication?.let { RangeHintProfile.from(it.prefs) },
         hintGeneration = 0,
         publicationRevision = initialPublication?.revision ?: -1,
+        rangeRevision = initialPublication?.rangeRevision ?: 0,
     ))
     @Volatile private var activeInstrument = requestedInstrument.get().epoch
     // Only analysis mutates the counter and its profile generation after construction.
@@ -242,11 +244,12 @@ class LiveCapture(
         val profile = RangeHintProfile.from(publication.prefs)
         synchronized(instrumentRequestLock) {
             val previous = requestedInstrument.get()
-            if (publication.revision <= previous.publicationRevision || publication.instrumentRevision < previous.epoch.serial) return
+            if (publication.revision <= previous.publicationRevision || publication.instrumentRevision < previous.epoch.serial ||
+                publication.rangeRevision < previous.rangeRevision) return
             val epoch = InstrumentEpoch(publication.instrumentRevision, publication.prefs.instrumentKey)
-            val changed = epoch != previous.epoch || profile != previous.profile
+            val changed = epoch != previous.epoch || profile != previous.profile || publication.rangeRevision != previous.rangeRevision
             requestedInstrument.set(InstrumentRequest(epoch, profile,
-                previous.hintGeneration + if (changed) 1 else 0, publication.revision))
+                previous.hintGeneration + if (changed) 1 else 0, publication.revision, publication.rangeRevision))
             if (epoch != previous.epoch) analyser.discardPendingInput()
         }
     }
@@ -454,7 +457,7 @@ class LiveCapture(
                 written.all { it > profile.range.extendedHigh.midi } -> RangeHintDirection.ABOVE
                 else -> RangeHintDirection.OUTSIDE
             }
-            RangeHint(request.epoch.key, request.epoch.serial, profile.range, direction)
+            RangeHint(request.epoch.key, request.epoch.serial, profile.range, direction, request.rangeRevision)
         }
         rangeHintFlow.publish(request.hintGeneration, hint)
     }
