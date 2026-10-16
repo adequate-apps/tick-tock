@@ -163,12 +163,19 @@ fun TableScreen(graph: AppGraph = TickTockApp.graph(LocalContext.current)) {
                             }
                             val name = tableNoteName(note, prefs)
                             val mean = Cents.shown(note.meanCents)
-                            val description = stringResource(R.string.table_row_spoken, spokenNote(name), spokenCents(mean),
+                            val outsideKeyed = !tableInRange(note, prefs, extended = false)
+                            val rangeFact = when {
+                                !tableInRange(note, prefs, extended = true) -> stringResource(R.string.table_outside_extended)
+                                outsideKeyed -> stringResource(R.string.table_outside_keyed)
+                                else -> null
+                            }
+                            val summary = stringResource(R.string.table_row_spoken, spokenNote(name), spokenCents(mean),
                                 Cents.shown(note.spreadCents) ?: 0,
                                 pluralStringResource(R.plurals.table_attack_total, note.attacks.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), note.attacks),
                                 pluralStringResource(R.plurals.table_reading_total, note.n.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), note.n))
+                            val description = rangeFact?.let { "$summary, $it" } ?: summary
                             HistoryRow(name, "${pluralStringResource(R.plurals.table_attack_total, note.attacks.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), note.attacks)}\n${pluralStringResource(R.plurals.table_reading_total, note.n.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), note.n)}", description, note.n < MIN_TABLE_READINGS,
-                                { selected = note.label to note.midiSounding }, tag = "table-note-${note.midiSounding}", outsideKeyedRange = !tableInRange(note, prefs, extended = false),
+                                { selected = note.label to note.midiSounding }, tag = "table-note-${note.midiSounding}", outsideKeyedRange = outsideKeyed,
                                 mean = { TableMean(mean, note.n < MIN_TABLE_READINGS) }, chart = {
                                     TableHistogram(note, comparison, true, scopeLabel, prefs)
                                 })

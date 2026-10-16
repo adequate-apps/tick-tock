@@ -308,3 +308,23 @@ questions below.
   with the platform unavailable result. A generation at its numeric limit permanently
   retires its slot. Host tests cover capacity, reuse and delayed entry in normal and
   sanitizer builds; actual API 37 framework/device validation remains separate.
+
+## 24. Instrument boundaries follow preference publications
+
+- Each immutable preference publication carries an overall revision and an instrument
+  revision. A published change away and back advances the instrument revision twice,
+  even when listener callbacks overtake one another. These counters are process-local
+  and do not change the saved preference schema. Load and recovery publish the same
+  coherent identity; recovery compares the final merged visible preferences.
+- Listeners run outside preference locks and receive captured publications. Capture
+  rejects stale overall revisions for every detector setting. History admission reads
+  preferences and instrument revision from one current publication, so an old analysis
+  epoch cannot acquire a newly published instrument label before its callback arrives.
+- The analysis owner clears current statistics and detector votes after an instrument
+  change. Already delivered PCM and overlapping windows are excluded while preserving
+  level and hop time. The microphone remains open; saved history retains its original
+  labels. Upstream audio not yet delivered has no acquisition timestamp in this interface.
+- The retained table shows all played rows in labeled groups. Keyed range controls the
+  row outline; extended range controls chart and matching series-legend ink. Low sample
+  count remains independent. Exceptional rows also expose a spoken range fact; the
+  ordinary row summary and layout remain unchanged.

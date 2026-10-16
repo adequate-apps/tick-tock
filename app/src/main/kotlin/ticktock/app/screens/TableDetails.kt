@@ -32,19 +32,20 @@ import ticktock.design.components.*
 @Composable
 internal fun TableNoteDetail(note: NoteSummary, history: List<NoteSummary>, prefs: Prefs, since: Long?, scopeLabel: String, allHistory: Boolean) {
     val previous = history.find { it.label == note.label && it.midiSounding == note.midiSounding }
+    val outsideExtended = !tableInRange(note, prefs, extended = true)
     Field(Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
             GlText(tableNoteName(note, prefs), style = GridlineType.note)
             val instrument = Catalogue.find(note.label.instrumentKey) ?: Catalogue.get(Catalogue.DEFAULT_KEY)
             val concert = musicalName(NoteSpelling.name(note.midiSounding, NoteSpelling.resolve(instrument, prefs.spelling.accidentals)))
             if (note.label.transposition != 0) GlText(stringResource(R.string.table_concert, concert), style = GridlineType.small)
-            TableSeriesLegend(scopeLabel, previous != null, note.n < MIN_TABLE_READINGS)
+            TableSeriesLegend(scopeLabel, previous != null, note.n < MIN_TABLE_READINGS || outsideExtended)
             if (allHistory || previous != null) GlText(stringResource(R.string.table_history_context,
                 stringResource(if (prefs.includeDroneRuns) R.string.table_drone_included else R.string.table_drone_excluded)), style = GridlineType.small)
             GlText(stringResource(R.string.table_detail_extent), style = GridlineType.small)
             TableHistogram(note, history, false, scopeLabel, prefs)
             TableBandLegend()
-            GlText(stringResource(R.string.table_dimmed), style = GridlineType.small)
+            GlText(stringResource(if (outsideExtended) R.string.table_outside_extended else R.string.table_dimmed), style = GridlineType.small)
             SummaryStats(note, scopeLabel, "table-stats-selected")
             previous?.let { SummaryStats(it, stringResource(R.string.table_all_history), "table-stats-history") }
             since?.let { GlText("${stringResource(R.string.table_first)} ${tableDate(it)}", style = GridlineType.small) }

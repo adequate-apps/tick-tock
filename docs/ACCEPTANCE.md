@@ -93,7 +93,7 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | RNG-01 | two tiers per key | U | 2.0 | RangeGoldenTest `RNG-01` | green |
-| RNG-02 | what each tier drives | U | 2.0 |  | open |
+| RNG-02 | what each tier drives | U, H | 2.0 | RangeResolverTest and RangeScreenTest cover extended judgment; RangeTableAcceptanceTest separates keyed outlines from extended chart/legend ink and preserves low-count dimming. Retained played rows replace guide/matrix clauses; editor remains deferred. Wrong-instrument hint integration is still missing (HNT rows). | open (app) |
 | RNG-03 | data source | U | 2.0 | RangeLayerDataTest (source hashes) + `tools/gen-ranges/check.sh` (byte-for-byte reproduction where the inputs are present) | green |
 | RNG-04 | golden file | U | 2.0 | RangeGoldenTest `RNG-04` | green |
 | RNG-05 | policy test | U | 2.0 | RangeGoldenTest `RNG-05`; the twenty decisions were drafted during M0 and await the owner's confirmation (see `tools/gen-ranges/README.md`) | green |
@@ -103,7 +103,7 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 | RNG-09 | mappings | U | 2.0 | CatalogueTest `RNG-09` | green |
 | RNG-10 | catch-all keys | U | 2.0 | RangeResolverTest `RNG-10` | green |
 | RNG-11 | always show cents | U | 2.0 | RangeScreenTest `RNG-11 out of range note keeps its cents and Hz dimmed and an imported widening restores ink` drives real analysis and checks retained values and foreground pixels. | green |
-| RNG-12 | played out-of-range notes in the table | U | 2.0 |  | open |
+| RNG-12 | played out-of-range notes in the table | H | 2.0 | RangeTableAcceptanceTest: keyed/extended endpoints, retained low-count and outside rows, historical instrument plus imported overrides, keyed outline, matching detail chart/legend, truthful detail fact and spoken range distinction. Played rows and counts remain available with their original labels; no unplayed guide cells or range filter. | green |
 | RNG-13 | narrowing a range | U | v1.1 |  | deferred |
 | RNG-14 | instrument switch | U, H | 2.0 | InstrumentSwitchAcceptanceTest (actual picker and PCM: current statistics reset, held notes reconfirm, historical labels/transposition and explicit running tools retained); HopAnalyserTest `RNG-14` (queued/overlapping delivered PCM excluded without lost hop time); InstrumentBoundaryTest (rapid round trip); PrefsInstrumentBoundaryTest (actual store, delayed/reordered publications, PCM and SQLite); PrefsStoreTest publication/load/recovery cases. Earlier labeled groups remain in the selected session; a switch resets live analysis without deleting history. | green |
 | RNG-15 | an override can only widen | U | v1.1 | RangeResolverTest `RNG-15` (the resolver rule landed with the layers; the editor ships in v1.1) | green |
@@ -123,14 +123,14 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| HNT-01 | three different notes | U | 2.0 | StrayCounterTest `HNT-01` | green |
-| HNT-02 | the window is playing time | U | 2.0 | StrayCounterTest `HNT-02` | green |
-| HNT-03 | single-note cases never trigger it | U | 2.0 | StrayCounterTest `HNT-03` | green |
-| HNT-04 | spread-out strays never trigger it | U | 2.0 | StrayCounterTest `HNT-04` | green |
+| HNT-01 | three different notes | U | 2.0 |StrayCounterTest `HNT-01` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
+| HNT-02 | the window is playing time | U | 2.0 |StrayCounterTest `HNT-02` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
+| HNT-03 | single-note cases never trigger it | U | 2.0 |StrayCounterTest `HNT-03` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
+| HNT-04 | spread-out strays never trigger it | U | 2.0 |StrayCounterTest `HNT-04` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
 | HNT-05 | it offers the fix | U | v1.1 |  | deferred |
 | HNT-06 | editing forgets covered strays | U | v1.1 |  | deferred |
-| HNT-07 | scope | U | 2.0 | StrayCounterTest `HNT-07` | green |
-| HNT-08 | cents keep showing | U | 2.0 | StrayCounterTest `HNT-08` | green |
+| HNT-07 | scope | U | 2.0 |StrayCounterTest `HNT-07` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
+| HNT-08 | cents keep showing | U | 2.0 |StrayCounterTest `HNT-08` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
 
 ## Sessions and runs, history bounds and storage
 
@@ -359,7 +359,7 @@ revision document; the IDs are claimed here like any other.
 |---|---|---|---|---|---|
 | TLK-01 | needle state description, read on focus only | H | 2.0 | NeedleAccessibilityTest `focus reads the latest note while held-focus changes emit no accessibility events` checks actual focus events and on-demand node state; TuneScreenTest `TLK-01 needle semantics stay stable while its visual cents change` proves the visual updates leave Compose descriptions unchanged. Physical TalkBack speech remains a device check. | green |
 | TLK-02 | opt-in settled-note live region | H | 2.0 | TuneScreenTest `TLK-01 and TLK-02 settled announcements are opt in and never follow cents at hop rate` proves default silence, one-second settling, frozen held-note speech, note changes and ears-first suppression. | green |
-| TLK-03 | table rows read as sentences | H | 2.0 | HistoryControlsTest `history rows expose one full spoken action and fields retain multiline drafts`; TableScreenTest `SES-03` checks the complete note, mean and spread with cents units, attacks and readings sentence. TableScreenTest `histograms label scope units density and both comparison statistics` also exposes separately labelled historical facts. | green |
+| TLK-03 | table rows read as sentences | H | 2.0 | HistoryControlsTest `history rows expose one full spoken action and fields retain multiline drafts`; TableScreenTest `SES-03` checks the complete note, mean and spread with cents units, attacks and readings sentence. TableScreenTest `histograms label scope units density and both comparison statistics` also exposes separately labelled historical facts. RangeTableAcceptanceTest `RNG-12 TLK-03` adds historical keyed/extended range facts while preserving the ordinary summary. | green |
 | TLK-04 | beats never announced; stepper actions | H | 2.0 |  | open |
 
 ### Colour and shape
