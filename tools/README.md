@@ -79,3 +79,5 @@ Release tooling (JDK 21 and the pinned Android SDK must already be staged):
 - `check-apk-metadata.py APK` rejects the randomized SDK inventory block in the APK signature area.
   The AAB retains the stable dependency inventory for Play. Full signed-byte comparison remains
   the reproducibility proof.
+
+`test-release-dependencies.sh` compares the resolved Activity versions in the app and design release graphs. Release lint must use the same approved versions as the app, so CI can reuse its debug dependency cache for offline signing fixtures. The workflow uses explicit Bash so a failed fixture producer stops the log pipeline before validation.

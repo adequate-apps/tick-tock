@@ -34,6 +34,11 @@ android {
 }
 
 dependencies {
+    // Release lint resolves this module separately from the app's runtime graph.
+    constraints {
+        implementation("androidx.activity:activity:${libs.versions.activityCompose.get()}")
+        implementation("androidx.activity:activity-ktx:${libs.versions.activityCompose.get()}")
+    }
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.foundation)
     implementation(libs.compose.ui)
