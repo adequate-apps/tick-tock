@@ -194,6 +194,97 @@ class PrefsStoreTest {
         assertNull(store.notice.value)
     }
 
+    @Test
+    fun `RNG-14 loaded publication and immediate listener share instrument identity`() {
+        val saved = ticktock.core.prefs.Prefs(instrumentKey = "eb_alto", a4Hz = 442.0, hornNickname = "Horn B")
+        path.writeText(PrefsSchema.write(saved))
+        val store = publicationStore()
+        assertTrue(store.load() is PrefsLoad.Loaded)
+        val loaded = store.publication.value
+        assertEquals(saved, loaded.prefs)
+        assertEquals(store.prefs.value, loaded.prefs)
+        val events = mutableListOf<PrefsPublication>()
+        store.addPublicationListener { events += it }
+        assertEquals(listOf(loaded), events)
+        store.update { it.copy(metroBpm = 137) }
+        val changed = store.publication.value
+        assertTrue(changed.revision > loaded.revision)
+        assertEquals("unrelated settings are not instrument changes", loaded.instrumentRevision, changed.instrumentRevision)
+        assertEquals(changed, events.last())
+        assertEquals(137, changed.prefs.metroBpm)
+        assertEquals("eb_alto", changed.prefs.instrumentKey)
+    }
+
+    @Test
+    fun `RNG-14 publication counts both instrument changes when final prefs match the start`() {
+        path.writeText(PrefsSchema.write(ticktock.core.prefs.Prefs(instrumentKey = "eb_alto")))
+        val store = publicationStore().also { it.load() }
+        val original = store.publication.value
+        val events = mutableListOf<PrefsPublication>()
+        store.addPublicationListener { events += it }
+        store.update { it.copy(instrumentKey = "flute_c") }
+        val away = store.publication.value
+        store.update { it.copy(instrumentKey = "eb_alto") }
+        val returned = store.publication.value
+        assertEquals(original.prefs, returned.prefs)
+        assertTrue(away.revision > original.revision)
+        assertTrue(returned.revision > away.revision)
+        assertEquals(original.instrumentRevision + 1, away.instrumentRevision)
+        assertEquals(original.instrumentRevision + 2, returned.instrumentRevision)
+        assertEquals(listOf(original, away, returned), events)
+        store.update { it }
+        assertEquals("no-op publication cannot invent another instrument epoch", returned.instrumentRevision,
+            store.publication.value.instrumentRevision)
+    }
+
+    @Test
+    fun `ERR-05 recovered publication carries replayed edits and a restored instrument epoch`() {
+        path.writeText(PrefsSchema.write(ticktock.core.prefs.Prefs(instrumentKey = "eb_alto", hornNickname = "Horn B")))
+        disk.failReads = true
+        val store = publicationStore()
+        assertTrue(store.load() is PrefsLoad.Unreadable)
+        assertEquals(store.prefs.value, store.publication.value.prefs)
+        val events = mutableListOf<PrefsPublication>()
+        store.addPublicationListener { events += it }
+        store.update { it.copy(a4Hz = 442.0) }
+        val visible = store.publication.value
+        assertFalse(visible.prefs.instrumentKey == "eb_alto")
+        assertTrue(store.flushAndWait().isFailure)
+        disk.failReads = false
+        assertTrue(store.flushAndWait().isSuccess)
+        val recovered = store.publication.value
+        assertTrue(recovered.revision > visible.revision)
+        assertEquals(visible.instrumentRevision + 1, recovered.instrumentRevision)
+        assertEquals("eb_alto", recovered.prefs.instrumentKey)
+        assertEquals(442.0, recovered.prefs.a4Hz, 0.0)
+        assertEquals("Horn B", recovered.prefs.hornNickname)
+        assertEquals(store.prefs.value, recovered.prefs)
+        assertEquals(recovered, events.last())
+    }
+
+    @Test
+    fun `ERR-05 recovered base cannot invent a switch when replay preserves the visible instrument`() {
+        path.writeText(PrefsSchema.write(ticktock.core.prefs.Prefs(instrumentKey = "eb_alto", hornNickname = "Horn B")))
+        disk.failReads = true
+        val store = publicationStore()
+        assertTrue(store.load() is PrefsLoad.Unreadable)
+        store.update { it.copy(instrumentKey = "flute_c", a4Hz = 442.0) }
+        val visible = store.publication.value
+        assertTrue(store.flushAndWait().isFailure)
+        disk.failReads = false
+        assertTrue(store.flushAndWait().isSuccess)
+        val recovered = store.publication.value
+        assertTrue(recovered.revision > visible.revision)
+        assertEquals(visible.instrumentRevision, recovered.instrumentRevision)
+        assertEquals("flute_c", recovered.prefs.instrumentKey)
+        assertEquals("Horn B", recovered.prefs.hornNickname)
+        assertEquals(442.0, recovered.prefs.a4Hz, 0.0)
+        assertEquals(store.prefs.value, recovered.prefs)
+    }
+
+    /** Explicit flushes control recovery; scheduled retries cannot choose the interleaving. */
+    private fun publicationStore() = PrefsStore(disk, storage, retryMillis = 60_000, writeDelayMillis = 60_000)
+
     /** A prefs file whose reads and writes can be made to fail. */
     private class FaultyFile(private val real: PrefsFile, private val dir: File) : PrefsFile {
         @Volatile var failReads = false
