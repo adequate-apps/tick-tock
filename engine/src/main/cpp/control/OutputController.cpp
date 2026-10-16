@@ -6,6 +6,8 @@
 
 namespace ticktock::control {
 
+static_assert(std::atomic<std::uint32_t>::is_always_lock_free, "routing revision must be lock-free");
+
 namespace {
 
 using render::Command;
@@ -23,7 +25,9 @@ std::int64_t nowNanos() {
 
 OutputController::OutputController(OutputDevice& device) : device_(device) {}
 
-OutputController::~OutputController() {
+OutputController::~OutputController() { shutdown(); }
+
+void OutputController::shutdown() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (streamOpen_) closeStream();
 }
@@ -94,6 +98,7 @@ bool OutputController::duck(float gain, std::int32_t generation) {
     cmd.kind = CommandKind::Duck;
     cmd.gain = gain;
     cmd.generation = generation;
+    cmd.routeRevision = routeRevision_.load(std::memory_order_acquire);
     return engine_.send(cmd);
 }
 
@@ -198,6 +203,12 @@ void OutputController::closeStream() {
     device_.stop();
     device_.close();
     streamOpen_ = false;
+    // close has joined callbacks: the final revision invalidates old queued
+    // completions and any ramp that survives until the next stream starts.
+    const auto revision = routeRevision_.fetch_add(1, std::memory_order_acq_rel) + 1;
+    reportedRouteRevision_.store(revision, std::memory_order_release);
+    render::DuckEvent obsolete;
+    while (engine_.ducks().tryPop(obsolete)) {}
 }
 
 // --- device threads -------------------------------------------------------------
@@ -226,6 +237,10 @@ void OutputController::onRender(float* interleaved, std::int32_t frames) {
 void OutputController::onError(std::int32_t errorCode) {
     // Only remembered here; drain() closes the stream on the control thread.
     pendingError_.store(errorCode == 0 ? -1 : errorCode, std::memory_order_release);
+}
+
+void OutputController::onRoutingChanged() {
+    routeRevision_.fetch_add(1, std::memory_order_acq_rel);
 }
 
 // --- events ---------------------------------------------------------------------
@@ -277,11 +292,30 @@ bool OutputController::hasEvents() {
     std::lock_guard<std::mutex> lock(mutex_);
     std::int64_t position = 0, nanos = 0;
     const bool duckReady = streamOpen_ && engine_.ducks().size() > 0 && device_.timestamp(position, nanos);
-    return eventCount_ > 0 || engine_.beats().size() > 0 || duckReady || pendingError_.load(std::memory_order_acquire) != 0;
+    return eventCount_ > 0 || engine_.beats().size() > 0 || duckReady || pendingError_.load(std::memory_order_acquire) != 0 || hasPendingRoutingChange();
 }
 
 std::int32_t OutputController::drain(ControlEvent* out, std::int32_t max) {
     std::lock_guard<std::mutex> lock(mutex_);
+
+    const std::int32_t error = pendingError_.exchange(0, std::memory_order_acq_rel);
+    const bool parkedByError = error != 0 && streamOpen_;
+    if (parkedByError) {
+        closeStream();
+        parked_ = true;
+    }
+    const auto revision = routeRevision_.load(std::memory_order_acquire);
+    if (revision != reportedRouteRevision_.load(std::memory_order_acquire)) {
+        reportedRouteRevision_.store(revision, std::memory_order_release);
+        if (streamOpen_) {
+            deviceId_ = device_.routedDeviceId();
+            ControlEvent routed;
+            routed.kind = EventKind::RoutingChanged;
+            routed.c = deviceId_;
+            routed.d = latencyLocked();
+            push(routed);
+        }
+    }
 
     render::DuckEvent duck;
     std::int64_t position = 0, nanos = 0;
@@ -289,7 +323,9 @@ std::int32_t OutputController::drain(ControlEvent* out, std::int32_t max) {
     // A buffer estimate cannot establish when the speaker presents a frame.
     // Keep acknowledgements queued until the device supplies a timestamp.
     while (timestampKnown && eventCount_ < kEventCapacity - kEventsReserved && engine_.ducks().tryPop(duck)) {
+        if (duck.routeRevision != revision) continue;
         ControlEvent event;
+        event.routeRevision = duck.routeRevision;
         event.kind = EventKind::DuckSettled;
         event.a = duck.generation;
         event.c = duck.frame;
@@ -316,13 +352,7 @@ std::int32_t OutputController::drain(ControlEvent* out, std::int32_t max) {
         push(event);
     }
 
-    // The beats above sounded before the stream died, so they go out first.
-    const std::int32_t error = pendingError_.exchange(0, std::memory_order_acq_rel);
-    if (error != 0 && streamOpen_) {
-        // The AAudio guide: stop and close on any error, from another thread.
-        // A disconnect is a route loss; anything else is the output failing.
-        closeStream();
-        parked_ = true;
+    if (parkedByError) {
         ControlEvent parked;
         parked.kind = EventKind::Parked;
         parked.a = static_cast<std::int64_t>(error == kErrorDisconnected ? ParkReason::HeadphonesDisconnected
@@ -345,7 +375,11 @@ std::int32_t OutputController::drain(ControlEvent* out, std::int32_t max) {
 
     std::int32_t n = 0;
     while (n < max && eventCount_ > 0) {
-        out[n++] = events_[eventHead_];
+        const auto& event = events_[eventHead_];
+        const bool staleDuck = event.kind == EventKind::DuckSettled &&
+            (!streamOpen_ || event.routeRevision != routeRevision_.load(std::memory_order_acquire));
+        const bool staleRoute = event.kind == EventKind::RoutingChanged && !streamOpen_;
+        if (!staleDuck && !staleRoute) out[n++] = event;
         eventHead_ = (eventHead_ + 1) % kEventCapacity;
         --eventCount_;
     }

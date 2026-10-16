@@ -49,6 +49,11 @@ interface StreamListener {
     /** API 37: the route moved without a disconnect; the routed device and latency are to be read again (SHM-03). */
     fun onRoutingChanged(stream: OpenStream)
 
+    /** One ordered snapshot from native drain; later route changes cannot replace these facts while the handler waits. */
+    fun onRoutingChanged(stream: OpenStream, device: RoutedDevice?, latencyMillis: Int) {
+        onRoutingChanged(stream)
+    }
+
     /** Facts from the render side: beats and counters. */
     fun onEvent(stream: OpenStream, event: OutputEvent)
 }

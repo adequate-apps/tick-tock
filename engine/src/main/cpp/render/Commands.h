@@ -87,6 +87,8 @@ struct Command {
     float gain = 0.0f;
     double a4 = 440.0;
     std::int32_t generation = 0;
+    // Internal route revision; not part of the public command ABI.
+    std::uint32_t routeRevision = 0;
     MuteReason muteReason = MuteReason::RecordingOnSpeaker;
     bool active = false;
     MetroParams metro{};
@@ -95,6 +97,7 @@ struct Command {
 struct DuckEvent {
     std::int32_t generation = 0;
     std::int64_t frame = 0;
+    std::uint32_t routeRevision = 0;
 };
 
 // What the callback reports: one struct per beat onset, in stream frames.

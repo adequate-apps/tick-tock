@@ -7,7 +7,7 @@
 # that produced it. A control run on the unmodified tree must be green first,
 # otherwise a red proves nothing.
 #
-# The eleven planted failures:
+# The thirteen planted failures:
 #   1. missing tier output     the U tier task is disabled, so it writes no XML
 #   2. zero tests found        the U tier runs with a filter that matches nothing
 #   3. a passing known gap     a @KnownGap test whose body passes
@@ -19,6 +19,8 @@
 #   9. a stray permission      a <uses-permission> the allowlist does not name
 #  10. a misaligned library    a prebuilt 64-bit .so linked for 4 KB pages
 #  11. missing native suite    the required native CMake entry point is absent
+#  12. device route allocation   a heap allocation inside AAudioDevice::onRoutingChanged
+#  13. controller route allocation   a heap allocation inside OutputController::onRoutingChanged
 #
 # The denylisted string is read from the denylist at run time, written into
 # the scratch tree only and never printed. The misaligned library is compiled
@@ -26,7 +28,7 @@
 #
 #   tools/verify-selftest.sh [--only NAME ...]
 #
-# --only runs the control case plus the named cases; the default is all eleven.
+# --only runs the control case plus the named cases; the default is all thirteen.
 set -uo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -162,6 +164,31 @@ plant_callback_alloc() {
         || { echo "verify-selftest: could not plant the callback allocation" >&2; exit 2; }
 }
 
+
+plant_route_alloc() {
+    python3 - "$scratch/$1" "$2" <<'PYTHON' || exit 2
+from pathlib import Path
+import re
+import sys
+path = Path(sys.argv[1])
+source = path.read_text()
+pattern = re.escape(sys.argv[2]) + r"\([^{}]*\)\s*\{"
+matches = list(re.finditer(pattern, source))
+if len(matches) != 1:
+    raise SystemExit("verify-selftest: routing callback definition was not unique")
+end = matches[0].end()
+path.write_text(source[:end] + "\n    float* planted = new float[64];\n    delete[] planted;" + source[end:])
+PYTHON
+}
+
+plant_device_route_alloc() {
+    plant_route_alloc engine/src/main/cpp/AAudioDevice.cpp AAudioDevice::onRoutingChanged
+}
+
+plant_controller_route_alloc() {
+    plant_route_alloc engine/src/main/cpp/control/OutputController.cpp OutputController::onRoutingChanged
+}
+
 plant_threshold() {
     mkdir -p "$scratch/core/src/commonMain/kotlin/ticktock/core"
     cat > "$scratch/core/src/commonMain/kotlin/ticktock/core/Planted.kt" <<'EOF'
@@ -221,6 +248,8 @@ run_case zero-tests RED "zero tests found" plant_zero_tests
 run_case passing-known-gap RED "SELFTEST-01 (a gap that quietly closed) passed" plant_passing_gap
 run_case render-allocation RED "allocation, locking or logging on the render path" plant_render_alloc
 run_case callback-allocation RED "allocation, locking or logging on the render path" plant_callback_alloc
+run_case device-route-allocation RED "allocation, locking or logging on the render path" plant_device_route_alloc
+run_case controller-route-allocation RED "allocation, locking or logging on the render path" plant_controller_route_alloc
 run_case threshold-outside-band RED "a cents threshold outside" plant_threshold
 run_case denylisted-string RED "denylist rule" plant_denylisted
 run_case wrong-commit-author RED "rule commit-identity matched" plant_wrong_author

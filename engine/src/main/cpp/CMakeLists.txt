@@ -24,4 +24,4 @@ target_compile_options(ticktock_engine PRIVATE
     "-ffile-prefix-map=${repository_root}=."
     "-fdebug-compilation-dir=."
 )
-target_link_libraries(ticktock_engine PRIVATE aaudio)
+target_link_libraries(ticktock_engine PRIVATE aaudio dl)

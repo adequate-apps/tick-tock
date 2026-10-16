@@ -42,13 +42,16 @@ struct Bridge {
     OutputController controller;
 
     Bridge() : device(&Bridge::onWake, this), controller(device) { sem_init(&wake, 0, 0); }
-    ~Bridge() { sem_destroy(&wake); }
+    ~Bridge() {
+        controller.shutdown();
+        sem_destroy(&wake);
+    }
 
     static void onWake(void* context) {
         auto* self = static_cast<Bridge*>(context);
         // Only when there is something to drain; the post is a futex wake,
         // never a wait, so the audio thread cannot block here.
-        if (self->controller.engine().beats().size() > 0 || self->controller.engine().ducks().size() > 0 || self->controller.hasPendingError()) sem_post(&self->wake);
+        if (self->controller.engine().beats().size() > 0 || self->controller.engine().ducks().size() > 0 || self->controller.hasPendingError() || self->controller.hasPendingRoutingChange()) sem_post(&self->wake);
     }
 
     void signal() { sem_post(&wake); }

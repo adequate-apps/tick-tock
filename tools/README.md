@@ -42,12 +42,12 @@ jar staged under `robolectric-deps/`.
   `band-literal-allowlist.txt` with its reason. The BND-04 test in `:core`
   applies the same rule and reads the same allowlist.
 - **Render path.** Files under `engine/src/main/cpp/render/` run inside the
-  audio callback, and so do three functions in files that otherwise belong to
-  the control thread: `OutputController::onRender`, `AAudioDevice::onData` and
-  the bridge's `onWake`. Heap allocation, standard containers, locks and
-  logging are refused in all of them by a source lint, which fails if one of
-  the three functions goes missing; the host-tests allocation counter adds the
-  runtime check for the controller's callback.
+  audio callback. The guarded bodies outside that directory are
+  `OutputController::onRender`, `AAudioDevice::onData`, both classes'
+  `onRoutingChanged` callbacks and the bridge's `onWake`. Heap allocation,
+  standard containers, locks and logging are refused in all of them by a
+  source lint, which fails if any guarded function goes missing. Host allocation
+  counters also exercise the controller and actual platform routing callback.
 
 Every test tier must leave JUnit XML with at least one test case and no
 skipped case; a tier that produced nothing is as red as one that failed.

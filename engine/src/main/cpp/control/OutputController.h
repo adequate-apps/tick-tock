@@ -5,7 +5,7 @@
 // route and call policies drive, the buffer tuning on xruns, and the event
 // drain that turns render-side beats and device errors into OutputEvents.
 // Every public method runs on the Kotlin control thread under one mutex;
-// onRender and onError run on the device's threads and take no lock.
+// DeviceListener callbacks run on the device's threads and take no lock.
 #pragma once
 
 #include <atomic>
@@ -18,7 +18,7 @@
 namespace ticktock::control {
 
 // ticktock.core.contracts.OutputEvent, in declaration order.
-enum class EventKind : std::int32_t { Opened = 0, Closed = 1, Beat = 2, Parked = 3, Resumed = 4, Failed = 5, Counters = 6, DuckSettled = 7 };
+enum class EventKind : std::int32_t { Opened = 0, Closed = 1, Beat = 2, Parked = 3, Resumed = 4, Failed = 5, Counters = 6, DuckSettled = 7, RoutingChanged = 8 };
 
 // ticktock.core.contracts.ParkReason, in declaration order.
 enum class ParkReason : std::int32_t { HeadphonesDisconnected = 0, IncomingCall = 1, OutputFailed = 2, Background = 3 };
@@ -33,6 +33,7 @@ enum class ParkReason : std::int32_t { HeadphonesDisconnected = 0, IncomingCall 
 //   Failed           a = deviceId, ints = the refused rates
 //   Counters         a = lateBeatsDropped, b = underruns
 //   DuckSettled      a = generation, c = frame, d = nanos
+//   RoutingChanged   c = deviceId, d = latencyMillis
 struct ControlEvent {
     EventKind kind = EventKind::Closed;
     std::int64_t a = 0;
@@ -42,6 +43,8 @@ struct ControlEvent {
     std::uint32_t tools = 0;
     std::int32_t intCount = 0;
     std::int32_t ints[4] = {};
+    // Internal only: stale presentation events never cross JNI.
+    std::uint32_t routeRevision = 0;
 };
 
 struct Diagnostics {
@@ -98,6 +101,12 @@ public:
     // Audio-thread safe: whether an error waits for drain().
     bool hasPendingError() const { return pendingError_.load(std::memory_order_acquire) != 0; }
 
+    bool hasPendingRoutingChange() const {
+        return routeRevision_.load(std::memory_order_acquire) != reportedRouteRevision_.load(std::memory_order_acquire);
+    }
+    // Quiesces the platform while the bridge wake semaphore is still alive.
+    void shutdown();
+
     Diagnostics diagnostics();
     // Output latency from the device timestamp, or the buffer length until
     // the timestamp is valid.
@@ -106,6 +115,7 @@ public:
     // --- DeviceListener (device threads) -----------------------------------
     void onRender(float* interleaved, std::int32_t frames) override;
     void onError(std::int32_t errorCode) override;
+    void onRoutingChanged() override;
 
     render::RenderEngine& engine() { return engine_; }
 
@@ -132,6 +142,8 @@ private:
     std::atomic<std::int32_t> growthSteps_{0};
     std::atomic<std::int32_t> lastXruns_{0};
     std::atomic<std::int32_t> pendingError_{0};
+    std::atomic<std::uint32_t> routeRevision_{0};
+    std::atomic<std::uint32_t> reportedRouteRevision_{0};
 
     std::int32_t reportedLate_ = 0;
     std::int32_t reportedUnderruns_ = 0;

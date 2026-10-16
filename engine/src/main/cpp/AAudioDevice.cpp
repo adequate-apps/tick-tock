@@ -2,8 +2,19 @@
 #include "AAudioDevice.h"
 
 #include <time.h>
+#include <android/api-level.h>
+#include <dlfcn.h>
 
 namespace ticktock {
+
+static_assert(std::atomic<AAudioStream*>::is_always_lock_free, "callback identity must be lock-free");
+
+RoutingSymbols RoutingSymbols::system() {
+    return resolve(android_get_device_api_level(), [](const char* name) {
+        // libaaudio is already a required link dependency; no library is loaded here.
+        return dlsym(RTLD_DEFAULT, name);
+    });
+}
 
 static_assert(AAUDIO_ERROR_DISCONNECTED == control::kErrorDisconnected,
               "the controller's disconnect code must match AAudio's");
@@ -33,6 +44,8 @@ control::DeviceOpen AAudioDevice::open(const control::DeviceRequest& request, co
     AAudioStreamBuilder_setDataCallback(builder, &AAudioDevice::onData, this);
     AAudioStreamBuilder_setErrorCallback(builder, &AAudioDevice::onError, this);
 
+    if (routing_.setCallback != nullptr) routing_.setCallback(builder, &AAudioDevice::onRoutingChanged, this);
+
     listener_ = &listener;
     rc = AAudioStreamBuilder_openStream(builder, &stream_);
     AAudioStreamBuilder_delete(builder);
@@ -43,6 +56,7 @@ control::DeviceOpen AAudioDevice::open(const control::DeviceRequest& request, co
         return result;
     }
 
+    activeStream_.store(stream_, std::memory_order_release);
     framesPerBurst_ = AAudioStream_getFramesPerBurst(stream_);
     result.ok = true;
     result.sampleRate = AAudioStream_getSampleRate(stream_);
@@ -65,6 +79,9 @@ void AAudioDevice::stop() {
 
 void AAudioDevice::close() {
     if (stream_ == nullptr) return;
+    // Reject callbacks before close joins them; their listener and wake context
+    // stay alive until the platform has quiesced the stream.
+    activeStream_.store(nullptr, std::memory_order_release);
     // Always from the control thread, never from the error callback.
     AAudioStream_close(stream_);
     stream_ = nullptr;
@@ -97,16 +114,31 @@ std::int64_t AAudioDevice::framesWritten() {
     return stream_ == nullptr ? 0 : AAudioStream_getFramesWritten(stream_);
 }
 
-aaudio_data_callback_result_t AAudioDevice::onData(AAudioStream*, void* userData, void* audioData, int32_t numFrames) {
+std::int32_t AAudioDevice::routedDeviceId() {
+    return stream_ == nullptr ? 0 : AAudioStream_getDeviceId(stream_);
+}
+
+aaudio_data_callback_result_t AAudioDevice::onData(AAudioStream* stream, void* userData, void* audioData, int32_t numFrames) {
     auto* self = static_cast<AAudioDevice*>(userData);
+    if (self->activeStream_.load(std::memory_order_acquire) != stream) return AAUDIO_CALLBACK_RESULT_CONTINUE;
     if (self->listener_ != nullptr) self->listener_->onRender(static_cast<float*>(audioData), numFrames);
     if (self->wake_ != nullptr) self->wake_(self->context_);
     return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }
 
-void AAudioDevice::onError(AAudioStream*, void* userData, aaudio_result_t error) {
+void AAudioDevice::onError(AAudioStream* stream, void* userData, aaudio_result_t error) {
     auto* self = static_cast<AAudioDevice*>(userData);
+    if (!self->activeStream_.compare_exchange_strong(stream, nullptr, std::memory_order_acq_rel)) return;
     if (self->listener_ != nullptr) self->listener_->onError(error);
+    if (self->wake_ != nullptr) self->wake_(self->context_);
+}
+
+void AAudioDevice::onRoutingChanged(AAudioStream* stream, void* userData, const int32_t*, int32_t) {
+    auto* self = static_cast<AAudioDevice*>(userData);
+    if (self->activeStream_.load(std::memory_order_acquire) != stream) return;
+    // The framework owns the temporary device list. Read current facts on
+    // the control thread; here only invalidate presentation and wake it.
+    if (self->listener_ != nullptr) self->listener_->onRoutingChanged();
     if (self->wake_ != nullptr) self->wake_(self->context_);
 }
 
