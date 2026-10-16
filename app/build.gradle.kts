@@ -125,6 +125,12 @@ android {
             all { it.systemProperties(robolectricOffline(rootProject)) }
         }
     }
+
+    // The device runner stages checksummed native PCM here; release assets never include it.
+    sourceSets.getByName("androidTest").assets.srcDir(
+        providers.gradleProperty("ticktock.audioAssetsDir")
+            .orElse(layout.buildDirectory.dir("generated/audio-fixtures").map { it.asFile.absolutePath }).get(),
+    )
 }
 
 // The screenshot goldens are compared inside the unit tests, so a changed
