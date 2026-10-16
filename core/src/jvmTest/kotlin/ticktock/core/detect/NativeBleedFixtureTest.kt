@@ -6,6 +6,10 @@ import java.io.BufferedOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.security.DigestOutputStream
+import java.security.MessageDigest
 import java.util.Timer
 import java.util.TimerTask
 import java.util.concurrent.TimeUnit
@@ -21,6 +25,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import ticktock.core.contracts.fakes.FakeAudioInput
 import ticktock.core.contracts.fakes.FakeSoundingNotes
+import ticktock.core.json.Json
+import ticktock.core.json.JsonValue
 
 /** Native ramp/voice samples cross the process boundary before the production estimator sees them. */
 class NativeBleedFixtureTest {
@@ -97,7 +103,7 @@ class NativeBleedFixtureTest {
 
     private class Rig(
         val rate: Int,
-        voice: Int,
+        private val voice: Int,
         private val playerAmplitude: Double = 0.0,
         private val playerMidi: Int = MIDI,
         private val acknowledgementDelayHops: Int = 0,
@@ -110,12 +116,14 @@ class NativeBleedFixtureTest {
         val detector = Detector(a4 = A4Generation(A4.toDouble()), sounding = sounding)
         private val analyser = HopAnalyser(detector, YinEstimator(detector))
         private val input = FakeAudioInput(rate, bufferFrames = inputBufferHops * hopFrames)
+        private val export = FixtureExport.create()
         private val native = NativeDriver(rate, voice)
         private var generation = 0
         private var samplePosition = 0L
         private var hop = 0
         private val acknowledgements = mutableMapOf<Int, () -> Unit>()
-        private val due = mutableListOf<Pair<Int, () -> Unit>>()
+        private val due = mutableListOf<PendingAcknowledgement>()
+        private var validated = false
         val decisions = mutableListOf<Decision>()
         val requestedGains = mutableListOf<Float>()
         val completions = mutableListOf<Completion>()
@@ -135,6 +143,7 @@ class NativeBleedFixtureTest {
                     (rendered.samples[i] + player).toFloat().also { require(abs(it) < 1f) }
                 }
                 samplePosition += hopFrames
+                export?.samples?.add(mixed)
                 assertTrue(input.push(mixed))
                 val batch = analyser.drain()
                 decisions += batch
@@ -143,19 +152,31 @@ class NativeBleedFixtureTest {
                     generation++
                     acknowledgements[generation] = analyser.deferBleedEvidence()
                     native.duck(gain, generation)
+                    export?.commands?.add(Json.obj(
+                        "deliveryIndex" to Json.num(hop), "decisionHop" to Json.num(decision.hop.toDouble()),
+                        "generation" to Json.num(generation), "gainBits" to Json.num(gain.toRawBits()),
+                        "gain" to Json.num(gain.toDouble()),
+                    ))
                 }
                 for (completed in rendered.completions) {
                     val acknowledge = acknowledgements.remove(completed.generation)
                         ?: error("$label: unexpected native generation ${completed.generation}")
-                    due += (hop + acknowledgementDelayHops) to acknowledge
+                    due += PendingAcknowledgement(hop + acknowledgementDelayHops, completed.generation, acknowledge)
+                    export?.completions?.add(Json.obj(
+                        "deliveryIndex" to Json.num(hop), "generation" to Json.num(completed.generation),
+                        "renderedFrame" to Json.num(completed.frame.toDouble()),
+                    ))
                 }
                 // Simulated zero output latency: delivery occurs at the rendered block boundary.
                 // HopAnalyser additionally excludes upstream capture buffering and overlapping windows.
-                val ready = due.filter { it.first <= hop }
+                val ready = due.filter { it.afterDeliveryIndex <= hop }
                 due.removeAll(ready.toSet())
-                for ((_, acknowledge) in ready) {
-                    acknowledge()
+                for (pending in ready) {
+                    pending.acknowledge()
                     firstAcknowledgedHop = minOf(firstAcknowledgedHop, hop.toLong())
+                    export?.acknowledgements?.add(Json.obj(
+                        "afterDeliveryIndex" to Json.num(hop), "generation" to Json.num(pending.generation),
+                    ))
                 }
                 hop++
             }
@@ -165,6 +186,7 @@ class NativeBleedFixtureTest {
             assertEquals(label, 0L, analyser.counters.droppedHops)
             assertEquals(label, 0L, analyser.counters.analysisErrors)
             assertFalse(label, decisions.isEmpty())
+            validated = true
         }
 
         fun assertNoPlayer() {
@@ -178,6 +200,92 @@ class NativeBleedFixtureTest {
         override fun close() {
             analyser.detach()
             native.close()
+            if (validated) export?.write(manifest())
+        }
+
+        private fun manifest(): JsonValue.JsonObject {
+            val player = playerAmplitude > 0.0
+            val criterion = if (player) "POL-27" else if (acknowledgementDelayHops > 0) "POL-28" else "POL-24"
+            val casePrefix = if (player) {
+                if (playerMidi == MIDI) "pol27-root" else "pol27-lower"
+            } else if (acknowledgementDelayHops > 0) "pol28-delayed" else "pol24-leak"
+            return Json.obj(
+                "schemaVersion" to Json.num(1), "caseId" to Json.str("$casePrefix-r$rate-v$voice"),
+                "status" to Json.str("passed"),
+                "audio" to Json.obj(
+                    "file" to Json.str("input.f32le"), "sampleRate" to Json.num(rate), "channels" to Json.num(1),
+                    "sampleCount" to Json.num(samplePosition.toDouble()), "hopFrames" to Json.num(hopFrames),
+                ),
+                "scenario" to Json.obj(
+                    "criterion" to Json.str(criterion), "voice" to Json.num(voice), "rootMidi" to Json.num(MIDI),
+                    "soundingMidi" to Json.arr(sounding.current().map(Json::num)), "a4Hz" to Json.num(A4),
+                    "playerMidi" to if (player) Json.num(playerMidi) else JsonValue.JsonNull,
+                    "playerAmplitude" to Json.num(playerAmplitude), "inputBufferFrames" to Json.num(input.bufferFrames),
+                    "acknowledgementDelayHops" to Json.num(acknowledgementDelayHops),
+                    "outputLatencyModel" to Json.str("zero-at-rendered-block-boundary"),
+                ),
+                "expected" to Json.obj(
+                    "savedMidi" to if (player) Json.num(playerMidi) else JsonValue.JsonNull,
+                    "targetHz" to if (player) Json.num(A4 * 2.0.pow((playerMidi - 69) / 12.0)) else JsonValue.JsonNull,
+                    "maxAbsCents" to Json.num(1.0), "minSavedReadings" to Json.num(if (player) 10 else 0),
+                    "maxSavedReadings" to if (player) JsonValue.JsonNull else Json.num(0),
+                    "noDisplayedNote" to Json.bool(!player),
+                ),
+                "observed" to Json.obj(
+                    "savedReadings" to Json.num(decisions.count { it.saved != null }),
+                    "firstAcknowledgedHop" to if (firstAcknowledgedHop == Long.MAX_VALUE) JsonValue.JsonNull else Json.num(firstAcknowledgedHop.toDouble()),
+                    "droppedHops" to Json.num(analyser.counters.droppedHops.toDouble()),
+                    "analysisErrors" to Json.num(analyser.counters.analysisErrors.toDouble()),
+                ),
+            )
+        }
+    }
+
+    private data class PendingAcknowledgement(val afterDeliveryIndex: Int, val generation: Int, val acknowledge: () -> Unit)
+
+    /** Optional test artifact; only a fully checked case may publish its directory. */
+    private class FixtureExport(private val directory: File, private val commit: String, private val snapshot: String) {
+        val samples = mutableListOf<FloatArray>()
+        val commands = mutableListOf<JsonValue>()
+        val completions = mutableListOf<JsonValue>()
+        val acknowledgements = mutableListOf<JsonValue>()
+
+        fun write(manifest: JsonValue.JsonObject) {
+            val caseId = requireNotNull(manifest["caseId"]?.string)
+            val root = directory.toPath()
+            Files.createDirectories(root)
+            val target = root.resolve(caseId)
+            check(!Files.exists(target)) { "fixture case already exists; use a fresh output directory: $caseId" }
+            val temporary = Files.createTempDirectory(root, ".$caseId-")
+            try {
+                val digest = MessageDigest.getInstance("SHA-256")
+                DataOutputStream(BufferedOutputStream(DigestOutputStream(Files.newOutputStream(temporary.resolve("input.f32le")), digest))).use { output ->
+                    for (block in samples) for (sample in block) output.writeInt(Integer.reverseBytes(sample.toRawBits()))
+                }
+                val audio = requireNotNull(manifest["audio"]?.obj)
+                check(samples.sumOf { it.size.toLong() }.toDouble() == audio["sampleCount"]?.number)
+                audio["sha256"] = Json.str(digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) })
+                manifest["source"] = Json.obj("commit" to Json.str(commit), "snapshotSha256" to Json.str(snapshot))
+                manifest["duckCommands"] = Json.arr(commands)
+                manifest["nativeCompletions"] = Json.arr(completions)
+                manifest["acknowledgements"] = Json.arr(acknowledgements)
+                temporary.resolve("manifest.json").toFile().writeText(Json.write(manifest))
+                Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE)
+            } finally {
+                if (Files.exists(temporary)) temporary.toFile().deleteRecursively()
+            }
+        }
+
+        companion object {
+            fun create(): FixtureExport? {
+                val output = System.getProperty("ticktock.audioFixtureOutputDir") ?: return null
+                require(output.isNotBlank()) { "fixture output directory is empty" }
+                val commit = requireNotNull(System.getProperty("ticktock.sourceCommit")) { "fixture source commit missing" }
+                val snapshot = requireNotNull(System.getProperty("ticktock.sourceSnapshotSha256")) { "fixture source snapshot missing" }
+                require(commit.matches(Regex("[0-9a-f]{40}"))) { "invalid fixture source commit" }
+                require(snapshot.matches(Regex("[0-9a-f]{64}"))) { "invalid fixture source snapshot SHA-256" }
+                return FixtureExport(File(output), commit, snapshot)
+            }
         }
     }
 
