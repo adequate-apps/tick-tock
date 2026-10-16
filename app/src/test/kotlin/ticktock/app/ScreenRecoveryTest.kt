@@ -1,7 +1,24 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package ticktock.app
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.view.View
+import android.view.ViewGroup
 import androidx.compose.ui.test.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.node.RootForTest
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.test.core.app.ActivityScenario
 import org.junit.After
@@ -16,6 +33,8 @@ import org.robolectric.annotation.GraphicsMode
 import ticktock.app.output.TestOutputConnection
 import ticktock.app.screens.ScreenRenderProbe
 import ticktock.core.contracts.OutputTool
+import ticktock.design.GridlineSpacing
+import ticktock.design.components.SquareDialog
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -26,6 +45,7 @@ class ScreenRecoveryTest {
 
     @After fun close() {
         ScreenRenderProbe.beforeRender = null
+        ScreenRenderProbe.content = null
         scenario?.close()
     }
 
@@ -65,5 +85,143 @@ class ScreenRecoveryTest {
         assertEquals(137, graph.prefs.prefs.value.metroBpm)
         assertEquals(57, graph.prefs.prefs.value.droneMidi)
         assertEquals(commandsBefore, link.sent)
+    }
+
+    private fun launchSounding(): Pair<AppGraph, TestOutputConnection> {
+        val graph = TickTockApp.graph(RuntimeEnvironment.getApplication())
+        val link = TestOutputConnection()
+        graph.tune.micAllowed = { false }
+        graph.output.makeConnection = { link }
+        graph.prefs.update { it.copy(firstRunComplete = true, metroBpm = 137, droneMidi = 57) }
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.runOnIdle { graph.output.startDrone(); graph.output.startMetro() }
+        return graph to link
+    }
+
+    private fun assertSurvived(graph: AppGraph, link: TestOutputConnection) {
+        compose.onNodeWithTag("screen-failure-metronome").assertIsDisplayed()
+        compose.onNodeWithTag("screen-share-log").assertHasClickAction()
+        assertEquals(setOf(OutputTool.DRONE, OutputTool.METRONOME), link.registered)
+        assertTrue(graph.output.state.value.droneSounding && graph.output.state.value.metroSounding)
+        compose.onNodeWithTag("tabs-1").performClick()
+        compose.onNodeWithTag("drone-toggle").assertIsDisplayed().assertTextEquals("Stop")
+    }
+
+    @Test fun `ERR-01 a later recomposition failure is isolated and Retry uses a fresh composition`() {
+        val (graph, link) = launchSounding()
+        val poison = mutableStateOf(false)
+        var attempts = 0
+        ScreenRenderProbe.beforeRender = { screen ->
+            if (screen == "metronome" && poison.value) {
+                attempts++
+                throw IllegalStateException("Planted later render failure")
+            }
+        }
+        compose.onNodeWithTag("tabs-2").performClick()
+        compose.onNodeWithTag("metro-bpm").assertExists()
+        compose.runOnIdle { poison.value = true }
+        assertSurvived(graph, link)
+        compose.onNodeWithTag("tabs-2").performClick()
+        assertEquals(1, attempts)
+        compose.runOnIdle { poison.value = false }
+        compose.onNodeWithTag("screen-retry").performClick()
+        compose.onNodeWithTag("metro-bpm").assertExists()
+        compose.onNodeWithTag("screen-failure-metronome").assertDoesNotExist()
+    }
+
+    @Test fun `ERR-01 a failed pane survives recreation without repeating its render fault`() {
+        val (graph, link) = launchSounding()
+        var attempts = 0
+        ScreenRenderProbe.beforeRender = { screen -> if (screen == "metronome") {
+            attempts++
+            throw IllegalStateException("Planted recreation render failure")
+        } }
+        compose.onNodeWithTag("tabs-2").performClick()
+        compose.onNodeWithTag("screen-failure-metronome").assertIsDisplayed()
+        scenario!!.recreate()
+        assertSurvived(graph, link)
+        assertEquals(1, attempts)
+    }
+
+    @Test fun `ERR-01 measurement failure stays inside the screen`() = assertPhase("measure")
+    @Test fun `ERR-01 placement failure stays inside the screen`() = assertPhase("place")
+    @Test fun `ERR-01 drawing failure stays inside the screen`() = assertPhase("draw")
+    @Test fun `ERR-01 apply side effect failure stays inside the screen`() = assertPhase("side-effect")
+    @Test fun `ERR-01 coroutine effect failure stays inside the screen`() = assertPhase("effect")
+    @Test fun `ERR-01 dialog composition failure closes only its screen`() = assertPhase("dialog-compose")
+    @Test fun `ERR-01 dialog measurement failure closes only its screen`() = assertPhase("dialog-measure")
+    @Test fun `ERR-01 dialog drawing failure closes only its screen`() = assertPhase("dialog-draw")
+
+    private fun assertPhase(phase: String) {
+        val (graph, link) = launchSounding()
+        val commandsBefore = link.sent.toList()
+        val poison = mutableStateOf(false)
+        var traversalRoot: View? = null
+        var injected = 0
+        val fault = { injected++; throw IllegalStateException("Planted $phase failure") }
+        ScreenRenderProbe.content = { screen -> if (screen == "metronome") {
+            when (phase) {
+                "measure", "place", "draw" -> TraversalFault(phase, poison, fault) { traversalRoot = it }
+                "side-effect" -> SideEffect { fault() }
+                "effect" -> LaunchedEffect(Unit) { fault() }
+                else -> SquareDialog("Fault probe", {}, tag = "fault-dialog") {
+                    when (phase) {
+                        "dialog-compose" -> fault()
+                        "dialog-measure", "dialog-draw" -> TraversalFault(phase.removePrefix("dialog-"), poison, fault) { traversalRoot = it }
+                    }
+                }
+            }
+        } }
+        compose.onNodeWithTag("tabs-2").performClick()
+        if (phase in listOf("measure", "place", "draw", "dialog-measure", "dialog-draw")) {
+            compose.waitForIdle()
+            scenario!!.onActivity {
+                val root = checkNotNull(traversalRoot)
+                poison.value = true
+                Snapshot.sendApplyNotifications()
+                fun force(view: View) {
+                    view.forceLayout()
+                    if (view is ViewGroup) repeat(view.childCount) { force(view.getChildAt(it)) }
+                }
+                force(root)
+                val width = root.width.coerceAtLeast(1)
+                val height = root.height.coerceAtLeast(1)
+                root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+                root.layout(root.left, root.top, root.left + width, root.top + height)
+                val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                try { root.draw(Canvas(bitmap)) } finally { bitmap.recycle() }
+            }
+        }
+        assertSurvived(graph, link)
+        assertTrue("the actual $phase fault ran", injected > 0)
+        assertEquals(commandsBefore, link.sent)
+        compose.onNodeWithTag("fault-dialog").assertDoesNotExist()
+    }
+
+    @OptIn(androidx.compose.ui.InternalComposeUiApi::class)
+    @Composable
+    private fun TraversalFault(phase: String, poison: State<Boolean>, fault: () -> Nothing, root: (View) -> Unit) {
+        val view = LocalView.current
+        SideEffect {
+            // The test harness normally intercepts layout errors inside AndroidComposeView,
+            // before an enclosing ViewGroup can catch them. Restore production propagation
+            // for this poisoned root only, then exercise the real View traversal below.
+            (view as RootForTest).setUncaughtExceptionHandler(null)
+            root(view.rootView)
+        }
+        val modifier = when (phase) {
+            "measure" -> Modifier.layout { measurable, constraints ->
+                if (poison.value) fault()
+                val child = measurable.measure(constraints)
+                layout(child.width, child.height) { child.place(0, 0) }
+            }
+            "place" -> Modifier.layout { measurable, constraints ->
+                val child = measurable.measure(constraints)
+                layout(child.width, child.height) { if (poison.value) fault(); child.place(0, 0) }
+            }
+            else -> Modifier.drawBehind { if (poison.value) fault() }
+        }
+        Box(Modifier.size(GridlineSpacing.sp3).then(modifier))
     }
 }
