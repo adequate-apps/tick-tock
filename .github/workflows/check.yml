@@ -154,6 +154,7 @@ jobs:
         shell: bash
         run: |
           tools/test-release-dependencies.sh
+          tools/test-release-metadata.sh
           python3 tools/test-stage-signing.py
           python3 tools/test-release-source.py
           tools/test-signing-gate.sh
