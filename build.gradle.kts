@@ -10,15 +10,13 @@ plugins {
     alias(libs.plugins.roborazzi) apply false
 }
 
-// Activity requests this legacy module before graph conflict resolution finishes.
-// Select the approved version before Gradle looks up repository metadata.
+// Activity requests legacy Lifecycle modules before graph conflict resolution finishes.
+// Align the family before older metadata can introduce unapproved transitive requests.
 val approvedLifecycleVersion = libs.versions.lifecycle.get()
 subprojects {
     configurations.configureEach {
         resolutionStrategy.eachDependency {
-            if (requested.group == "androidx.lifecycle" &&
-                requested.name == "lifecycle-viewmodel-savedstate"
-            ) {
+            if (requested.group == "androidx.lifecycle") {
                 useVersion(approvedLifecycleVersion)
                 because("Select approved Lifecycle metadata before repository lookup")
             }
