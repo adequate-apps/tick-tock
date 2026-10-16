@@ -29,6 +29,11 @@ def evidence(root, changed, log):
         r'NoClassDefFoundError|ClassNotFoundException|UnsatisfiedLinkError|'
         r'ExceptionInInitializerError|InitializationError|OutOfMemoryError|'
         r'TestSuiteExecutionException')
+    assertion_types = {
+        'java.lang.AssertionError', 'junit.framework.AssertionFailedError',
+        'junit.framework.ComparisonFailure', 'org.junit.ComparisonFailure',
+        'org.opentest4j.AssertionFailedError', 'org.opentest4j.MultipleFailuresError',
+    }
     reports = list(root.glob('*/build/test-results/*/TEST-*.xml'))
     reports += list(root.glob('host-tests/build/results/*.xml'))
     for report in sorted(reports):
@@ -46,7 +51,8 @@ def evidence(root, changed, log):
             if infrastructure.search(details) or name in ('initializationError', 'executionError'):
                 continue
             if any(classname == item or classname.startswith(item + '$') for item in classes):
-                return f'failed changed test {classname}.{name}'
+                if all(f.get('type') in assertion_types for f in failures):
+                    return f'failed changed test {classname}.{name}'
             output = case.findtext('system-out', '')
             if any(re.search(r'(?:^|\.)' + re.escape(item) + r'(?:/|$)', name) for item in native):
                 if re.search(r'\.(?:cpp|cc):\d+: Failure', output):
