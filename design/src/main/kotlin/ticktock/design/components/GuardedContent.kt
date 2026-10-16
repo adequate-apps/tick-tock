@@ -4,6 +4,7 @@ package ticktock.design.components
 import android.content.Context
 import android.graphics.Canvas
 import android.widget.FrameLayout
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Recomposer
@@ -34,7 +35,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlin.coroutines.ContinuationInterceptor
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
-import ticktock.design.GridlineTheme
 import ticktock.design.LocalGridlinePalette
 
 /** Dialogs report to the same owner as their screen, even though they have a separate window. */
@@ -49,6 +49,7 @@ fun GuardedContent(
     content: @Composable () -> Unit,
 ) {
     val palette = LocalGridlinePalette.current
+    val indication = LocalIndication.current
     val parentContext = rememberCoroutineScope().coroutineContext
     val frameContext = (parentContext[ContinuationInterceptor] ?: EmptyCoroutineContext) +
         (parentContext[MonotonicFrameClock] ?: EmptyCoroutineContext)
@@ -60,9 +61,13 @@ fun GuardedContent(
         update = { host ->
             host.onFailure = onFailure
             host.content = {
-                GridlineTheme(palette) {
-                    CompositionLocalProvider(LocalRenderFailureHandler provides onFailure, content = content)
-                }
+                // Inherit theme values without adding the screen theme's full-size layout.
+                CompositionLocalProvider(
+                    LocalGridlinePalette provides palette,
+                    LocalIndication provides indication,
+                    LocalRenderFailureHandler provides onFailure,
+                    content = content,
+                )
             }
         },
         onRelease = { it.release() },
