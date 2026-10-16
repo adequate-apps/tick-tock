@@ -46,6 +46,8 @@ val buildNativeFixtures by tasks.registering(Exec::class) {
     dependsOn(configureNativeFixtures)
     inputs.file(rootProject.file("host-tests/AudioFixtureDriver.cpp"))
     inputs.dir(rootProject.file("engine/src/main/cpp/render"))
+    inputs.dir(rootProject.file("engine/src/main/cpp/control"))
+    inputs.dir(rootProject.file("host-tests/support"))
     outputs.file(nativeFixtureDirectory.map { it.file("audio_fixture_driver") })
     commandLine("cmake", "--build", nativeFixtureDirectory.get().asFile.absolutePath,
         "--target", "audio_fixture_driver")

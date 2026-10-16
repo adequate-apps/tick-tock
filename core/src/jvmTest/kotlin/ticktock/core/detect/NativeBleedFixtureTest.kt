@@ -23,6 +23,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ticktock.core.contracts.OutputTool
 import ticktock.core.contracts.fakes.FakeAudioInput
 import ticktock.core.contracts.fakes.FakeSoundingNotes
 import ticktock.core.json.Json
@@ -31,8 +32,10 @@ import ticktock.core.json.JsonValue
 /** Native ramp/voice samples cross the process boundary before the production estimator sees them. */
 class NativeBleedFixtureTest {
     @Test(timeout = 120_000)
-    fun `POL-24 native drone alone saves and displays nothing for ten seconds`() = variants { rate, voice ->
-        Rig(rate, voice).use { rig ->
+    fun `POL-24 native drone alone saves and displays nothing for ten seconds`() = checkLeak(OutputTool.DRONE)
+
+    private fun checkLeak(tool: OutputTool) = variants { rate, voice ->
+        Rig(rate, voice, tool = tool).use { rig ->
             rig.run(ceil(10.0 * rate / rig.hopFrames).toInt())
             assertTrue(rig.label, rig.decisions.isNotEmpty())
             rig.assertNoPlayer()
@@ -43,8 +46,58 @@ class NativeBleedFixtureTest {
     }
 
     @Test(timeout = 120_000)
-    fun `POL-27 a real player in native drone unison reaches history only after ramp evidence`() = variants { rate, voice ->
-        Rig(rate, voice, playerAmplitude = 0.5).use { rig ->
+    fun `POL-25 native bleed preserves the held player and pending readings`() = checkHeld(OutputTool.DRONE)
+
+    private fun checkHeld(tool: OutputTool) {
+        for (rate in RATES) Rig(rate, 0, playerAmplitude = 0.7, playerMidi = 65,
+            playerAbsentHops = 30..35, tool = tool).use { rig ->
+            rig.run(66)
+            val before = rig.decisions.take(30)
+            assertTrue("${rig.label}: F4 must settle before the interruption", before.any { it.saved != null })
+            assertEquals(rig.label, 65, before.last().incumbent)
+            // Hop 30 includes the last player block. Hops 31..35 contain native output only.
+            val bleed = rig.decisions.slice(31..35)
+            val pending = rig.pendingCounts[30]
+            assertTrue("${rig.label}: the preservation check needs pending readings", pending > 0)
+            for (decision in bleed) {
+                assertEquals("${rig.label}: $decision", HopClass.SKIP, decision.hopClass)
+                assertEquals(rig.label, SkipReason.BLEED, decision.skip)
+                assertEquals(rig.label, 65, decision.incumbent)
+                assertNull(rig.label, decision.saved)
+                assertEquals(rig.label, pending, rig.pendingCounts[decision.hop.toInt()])
+            }
+            assertEquals(rig.label, 1, rig.decisions.count { it.attack != null })
+            assertTrue(rig.label, rig.decisions.all { it.release == null })
+            assertTrue(rig.label, rig.decisions.drop(38).count { it.saved != null } >= 10)
+            // This interference scenario proves note preservation, not sub-cent pitch precision.
+            assertTrue(rig.label, rig.decisions.mapNotNull { it.saved }.all { it.midiSounding == 65 })
+            assertEquals(rig.label, 65, rig.detector.shownNote)
+            rig.assertHealthy()
+        }
+    }
+
+    @Test(timeout = 120_000)
+    fun `POL-29 native PCM cannot establish unison when the source cannot duck`() = checkNoDuck(OutputTool.DRONE)
+
+    private fun checkNoDuck(tool: OutputTool) = variants { rate, voice ->
+        for (amplitude in listOf(0.0, 0.5)) Rig(rate, voice, playerAmplitude = amplitude, duckable = false, tool = tool).use { rig ->
+            rig.run(ceil(10.0 * rate / rig.hopFrames).toInt())
+            rig.assertNoPlayer()
+            assertTrue(rig.label, rig.requestedGains.isEmpty())
+            assertTrue(rig.label, rig.completions.isEmpty())
+            assertEquals(rig.label, Long.MAX_VALUE, rig.firstAcknowledgedHop)
+            assertNull(rig.label, rig.detector.bleedState.admitted)
+            assertFalse(rig.label, rig.detector.bleedState.ducked)
+            assertTrue(rig.label, rig.decisions.takeLast(10).all { it.skip == SkipReason.BLEED })
+            rig.assertHealthy()
+        }
+    }
+
+    @Test(timeout = 120_000)
+    fun `POL-27 a real player in native drone unison reaches history only after ramp evidence`() = checkUnison(OutputTool.DRONE)
+
+    private fun checkUnison(tool: OutputTool) = variants { rate, voice ->
+        Rig(rate, voice, playerAmplitude = 0.5, tool = tool).use { rig ->
             rig.run(60)
             val readings = rig.decisions.mapNotNull { it.saved }
             assertTrue("${rig.label}: the player must reach history", readings.size >= 10)
@@ -57,8 +110,10 @@ class NativeBleedFixtureTest {
     }
 
     @Test(timeout = 120_000)
-    fun `POL-27 a player below the native root and fifth earns admission through the duck`() {
-        for (rate in RATES) Rig(rate, 2, playerAmplitude = 0.5, playerMidi = MIDI - 12).use { rig ->
+    fun `POL-27 a player below the native root and fifth earns admission through the duck`() = checkLower(OutputTool.DRONE)
+
+    private fun checkLower(tool: OutputTool) {
+        for (rate in RATES) Rig(rate, 2, playerAmplitude = 0.5, playerMidi = MIDI - 12, tool = tool).use { rig ->
             rig.run(60)
             assertEquals(rig.label, listOf(0.30f), rig.requestedGains)
             assertTrue(rig.label, rig.firstAcknowledgedHop != Long.MAX_VALUE)
@@ -71,8 +126,10 @@ class NativeBleedFixtureTest {
     }
 
     @Test(timeout = 120_000)
-    fun `POL-28 delayed native completion and buffered leakage never establish a player`() = variants { rate, voice ->
-        Rig(rate, voice, acknowledgementDelayHops = 8, inputBufferHops = 2).use { rig ->
+    fun `POL-28 delayed native completion and buffered leakage never establish a player`() = checkDelayed(OutputTool.DRONE)
+
+    private fun checkDelayed(tool: OutputTool) = variants { rate, voice ->
+        Rig(rate, voice, acknowledgementDelayHops = 8, inputBufferHops = 2, tool = tool).use { rig ->
             rig.run(80)
             assertTrue(rig.label, rig.firstAcknowledgedHop >= 8)
             rig.assertNoPlayer()
@@ -83,8 +140,10 @@ class NativeBleedFixtureTest {
     }
 
     @Test(timeout = 120_000)
-    fun `POL-26 native duck completion is about eighty milliseconds after the request`() {
-        for (rate in RATES) NativeDriver(rate, 0).use { driver ->
+    fun `POL-26 native duck completion is about eighty milliseconds after the request`() = checkRamp(OutputTool.DRONE)
+
+    private fun checkRamp(tool: OutputTool) {
+        for (rate in RATES) NativeDriver(rate, 0, tool).use { driver ->
             driver.render(rate / 10)
             val requestedFrame = driver.position
             driver.duck(0.30f, 1)
@@ -95,6 +154,17 @@ class NativeBleedFixtureTest {
             assertTrue("rate $rate: duck completed after $milliseconds ms, expected about 80 ms",
                 milliseconds in 75.0..85.0)
         }
+    }
+
+    @Test(timeout = 240_000)
+    fun `POL-30 registered native pitch pipes obey every drone bleed scenario`() {
+        checkLeak(OutputTool.PITCH_PIPE)
+        checkHeld(OutputTool.PITCH_PIPE)
+        checkNoDuck(OutputTool.PITCH_PIPE)
+        checkUnison(OutputTool.PITCH_PIPE)
+        checkLower(OutputTool.PITCH_PIPE)
+        checkDelayed(OutputTool.PITCH_PIPE)
+        checkRamp(OutputTool.PITCH_PIPE)
     }
 
     private fun variants(block: (Int, Int) -> Unit) {
@@ -108,16 +178,19 @@ class NativeBleedFixtureTest {
         private val playerMidi: Int = MIDI,
         private val acknowledgementDelayHops: Int = 0,
         inputBufferHops: Int = 0,
+        private val duckable: Boolean = true,
+        private val playerAbsentHops: IntRange? = null,
+        private val tool: OutputTool = OutputTool.DRONE,
     ) : AutoCloseable {
-        val label = "rate $rate voice $voice"
+        val label = "rate $rate voice $voice tool $tool"
         val hopFrames = Hop.frames(rate)
         // Match ToolState.soundingMidi: the root-and-fifth voice exposes both sounding notes.
         private val sounding = FakeSoundingNotes(*if (voice == 2) intArrayOf(MIDI, MIDI + 7) else intArrayOf(MIDI))
-        val detector = Detector(a4 = A4Generation(A4.toDouble()), sounding = sounding)
+        val detector = Detector(a4 = A4Generation(A4.toDouble()), sounding = sounding, duckable = duckable)
         private val analyser = HopAnalyser(detector, YinEstimator(detector))
         private val input = FakeAudioInput(rate, bufferFrames = inputBufferHops * hopFrames)
         private val export = FixtureExport.create()
-        private val native = NativeDriver(rate, voice)
+        private val native = NativeDriver(rate, voice, tool)
         private var generation = 0
         private var samplePosition = 0L
         private var hop = 0
@@ -125,6 +198,7 @@ class NativeBleedFixtureTest {
         private val due = mutableListOf<PendingAcknowledgement>()
         private var validated = false
         val decisions = mutableListOf<Decision>()
+        val pendingCounts = mutableListOf<Int>()
         val requestedGains = mutableListOf<Float>()
         val completions = mutableListOf<Completion>()
         var firstAcknowledgedHop = Long.MAX_VALUE
@@ -138,15 +212,18 @@ class NativeBleedFixtureTest {
                 completions += rendered.completions
                 // Independent score truth: a player at the target frequency, unaffected by output gain.
                 val hz = A4 * 2.0.pow((playerMidi - 69) / 12.0)
+                val amplitude = if (playerAbsentHops?.contains(hop) == true) 0.0 else playerAmplitude
                 val mixed = FloatArray(hopFrames) { i ->
-                    val player = playerAmplitude * sin(2.0 * PI * hz * (samplePosition + i) / rate)
+                    val player = amplitude * sin(2.0 * PI * hz * (samplePosition + i) / rate)
                     (rendered.samples[i] + player).toFloat().also { require(abs(it) < 1f) }
                 }
                 samplePosition += hopFrames
                 export?.samples?.add(mixed)
                 assertTrue(input.push(mixed))
                 val batch = analyser.drain()
+                assertEquals("$label: one decision per input hop", 1, batch.size)
                 decisions += batch
+                pendingCounts += detector.pendingCount
                 for (decision in batch) decision.duck?.let { gain ->
                     requestedGains += gain
                     generation++
@@ -190,7 +267,7 @@ class NativeBleedFixtureTest {
         }
 
         fun assertNoPlayer() {
-            val unwanted = decisions.filter { it.saved != null || it.incumbent != null }
+            val unwanted = decisions.filter { it.saved != null || it.incumbent != null || it.display != null }
             assertTrue("$label: native-only input admitted ${unwanted.take(4).joinToString { decision ->
                 "hop=${decision.hop} class=${decision.hopClass} incumbent=${decision.incumbent} " +
                     "display=${decision.display} saved=${decision.saved}"
@@ -205,31 +282,52 @@ class NativeBleedFixtureTest {
 
         private fun manifest(): JsonValue.JsonObject {
             val player = playerAmplitude > 0.0
-            val criterion = if (player) "POL-27" else if (acknowledgementDelayHops > 0) "POL-28" else "POL-24"
-            val casePrefix = if (player) {
+            val preserved = playerAbsentHops != null
+            val admittedPlayer = player && duckable
+            val criterion = if (preserved) "POL-25" else if (!duckable) "POL-29" else if (player) "POL-27" else if (acknowledgementDelayHops > 0) "POL-28" else "POL-24"
+            val casePrefix = if (preserved) "pol25-held" else if (!duckable) {
+                if (player) "pol29-no-duck-unison" else "pol29-no-duck-leak"
+            } else if (player) {
                 if (playerMidi == MIDI) "pol27-root" else "pol27-lower"
             } else if (acknowledgementDelayHops > 0) "pol28-delayed" else "pol24-leak"
             return Json.obj(
-                "schemaVersion" to Json.num(1), "caseId" to Json.str("$casePrefix-r$rate-v$voice"),
+                "schemaVersion" to Json.num(1),
+                "caseId" to Json.str("${if (tool == OutputTool.PITCH_PIPE) "pol30-pipe-" else ""}$casePrefix-r$rate-v$voice"),
                 "status" to Json.str("passed"),
                 "audio" to Json.obj(
                     "file" to Json.str("input.f32le"), "sampleRate" to Json.num(rate), "channels" to Json.num(1),
                     "sampleCount" to Json.num(samplePosition.toDouble()), "hopFrames" to Json.num(hopFrames),
                 ),
                 "scenario" to Json.obj(
-                    "criterion" to Json.str(criterion), "voice" to Json.num(voice), "rootMidi" to Json.num(MIDI),
+                    "criterion" to Json.str(if (tool == OutputTool.PITCH_PIPE) "POL-30" else criterion),
+                    "behaviorCriterion" to Json.str(criterion), "outputTool" to Json.str(tool.name),
+                    "voice" to Json.num(voice), "rootMidi" to Json.num(MIDI),
                     "soundingMidi" to Json.arr(sounding.current().map(Json::num)), "a4Hz" to Json.num(A4),
                     "playerMidi" to if (player) Json.num(playerMidi) else JsonValue.JsonNull,
                     "playerAmplitude" to Json.num(playerAmplitude), "inputBufferFrames" to Json.num(input.bufferFrames),
+                    "duckable" to Json.bool(duckable),
+                    "playerAbsentHops" to if (playerAbsentHops == null) JsonValue.JsonNull else Json.obj(
+                        "startDeliveryIndex" to Json.num(playerAbsentHops.first),
+                        "endDeliveryIndexExclusive" to Json.num(playerAbsentHops.last + 1),
+                    ),
                     "acknowledgementDelayHops" to Json.num(acknowledgementDelayHops),
                     "outputLatencyModel" to Json.str("zero-at-rendered-block-boundary"),
                 ),
                 "expected" to Json.obj(
-                    "savedMidi" to if (player) Json.num(playerMidi) else JsonValue.JsonNull,
-                    "targetHz" to if (player) Json.num(A4 * 2.0.pow((playerMidi - 69) / 12.0)) else JsonValue.JsonNull,
-                    "maxAbsCents" to Json.num(1.0), "minSavedReadings" to Json.num(if (player) 10 else 0),
-                    "maxSavedReadings" to if (player) JsonValue.JsonNull else Json.num(0),
-                    "noDisplayedNote" to Json.bool(!player),
+                    "savedMidi" to if (admittedPlayer) Json.num(playerMidi) else JsonValue.JsonNull,
+                    "targetHz" to if (admittedPlayer) Json.num(A4 * 2.0.pow((playerMidi - 69) / 12.0)) else JsonValue.JsonNull,
+                    "maxAbsCents" to Json.num(if (preserved) 50.0 else 1.0),
+                    "minSavedReadings" to Json.num(if (admittedPlayer) 10 else 0),
+                    "maxSavedReadings" to if (admittedPlayer) JsonValue.JsonNull else Json.num(0),
+                    "noDisplayedNote" to Json.bool(!admittedPlayer),
+                    "requiresDuckBeforeSave" to Json.bool(!preserved && admittedPlayer),
+                    "heldNote" to if (!preserved) JsonValue.JsonNull else Json.obj(
+                        "midi" to Json.num(65), "establishedBeforeDeliveryIndex" to Json.num(30),
+                        "bleedStartDeliveryIndex" to Json.num(31), "bleedEndDeliveryIndexExclusive" to Json.num(36),
+                        "pendingBaselineDeliveryIndex" to Json.num(30), "resumedFromDeliveryIndex" to Json.num(38),
+                        "minSavedReadingsAfterResume" to Json.num(10), "attackCount" to Json.num(1),
+                        "releaseCount" to Json.num(0),
+                    ),
                 ),
                 "observed" to Json.obj(
                     "savedReadings" to Json.num(decisions.count { it.saved != null }),
@@ -292,11 +390,11 @@ class NativeBleedFixtureTest {
     private data class Completion(val generation: Int, val frame: Long)
     private data class Rendered(val samples: FloatArray, val completions: List<Completion>)
 
-    private class NativeDriver(rate: Int, voice: Int) : AutoCloseable {
+    private class NativeDriver(rate: Int, voice: Int, tool: OutputTool) : AutoCloseable {
         private val executable = File(requireNotNull(System.getProperty("ticktock.nativeFixtureDriver")) {
             "native fixture driver property missing; run the mandatory buildNativeFixtures prerequisite"
         }).also { require(it.isFile && it.canExecute()) { "native fixture driver missing or not executable" } }
-        private val process = ProcessBuilder(executable.absolutePath, rate.toString(), MIDI.toString(), voice.toString(), A4.toString())
+        private val process = ProcessBuilder(executable.absolutePath, rate.toString(), MIDI.toString(), voice.toString(), A4.toString(), tool.ordinal.toString())
             .redirectError(ProcessBuilder.Redirect.INHERIT).start()
         private val watchdog = Timer("native-fixture-deadline", true).apply {
             schedule(object : TimerTask() { override fun run() { process.destroyForcibly() } }, 60_000)

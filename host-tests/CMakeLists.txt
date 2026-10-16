@@ -44,7 +44,8 @@ set(WARNINGS -Wall -Wextra -Werror)
 add_executable(audio_fixture_driver AudioFixtureDriver.cpp
     "${ENGINE_CPP}/render/BeatGenerator.cpp"
     "${ENGINE_CPP}/render/ClickData.cpp"
-    "${ENGINE_CPP}/render/RenderEngine.cpp")
+    "${ENGINE_CPP}/render/RenderEngine.cpp"
+    "${ENGINE_CPP}/control/OutputController.cpp")
 target_include_directories(audio_fixture_driver PRIVATE "${ENGINE_CPP}")
 target_compile_options(audio_fixture_driver PRIVATE ${WARNINGS} -fno-exceptions -fno-rtti)
 
