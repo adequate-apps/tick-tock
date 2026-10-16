@@ -131,6 +131,7 @@ class LiveCapture(
     private val onDuck: (Float, () -> Unit) -> Unit = { _, settled -> settled() },
     noiseFloorDb: Int? = null,
     instrumentKey: String = "",
+    instrumentRevision: Long = 0,
 ) : InputListener {
     private val detector = Detector(mode, sounding = sounding).also { it.setA4(a4Hz); it.setNoiseFloor(noiseFloorDb) }
     private val duckLock = Any()
@@ -197,13 +198,14 @@ class LiveCapture(
     private val resetAfterInterruption = AtomicBoolean(false)
     private data class InstrumentEpoch(val serial: Long, val key: String)
     private val instrumentRequestLock = Any()
-    private val requestedInstrument = AtomicReference(InstrumentEpoch(0, instrumentKey))
+    private val requestedInstrument = AtomicReference(InstrumentEpoch(instrumentRevision, instrumentKey))
     @Volatile private var activeInstrument = requestedInstrument.get()
 
     /** Publish the epoch and ring boundary together; only analysis mutates detector or statistics. */
-    fun requestInstrument(key: String) {
+    fun requestInstrument(key: String, revision: Long) {
         synchronized(instrumentRequestLock) {
-            requestedInstrument.set(InstrumentEpoch(requestedInstrument.get().serial + 1, key))
+            if (revision <= requestedInstrument.get().serial) return
+            requestedInstrument.set(InstrumentEpoch(revision, key))
             analyser.discardPendingInput()
         }
     }
@@ -211,7 +213,10 @@ class LiveCapture(
     private fun instrumentIsCurrent(): Boolean = activeInstrument == requestedInstrument.get()
 
     /** Also guards a prefs value published just before its synchronous listener reaches capture. */
-    fun acceptsInstrument(key: String): Boolean = activeInstrument.key == key && instrumentIsCurrent()
+    fun acceptsInstrument(key: String, revision: Long): Boolean {
+        val active = activeInstrument
+        return active.key == key && active.serial == revision && active == requestedInstrument.get()
+    }
 
     /** Measures against [hz] from the next hop on; a change starts a new A4 generation (POL-19). */
     fun requestA4(hz: Double) {

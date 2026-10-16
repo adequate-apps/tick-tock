@@ -21,6 +21,7 @@ import ticktock.core.contracts.HistorySink
 import ticktock.core.contracts.SoundingNotes
 import ticktock.core.detect.NoSoundingNotes
 import ticktock.core.prefs.Prefs
+import ticktock.data.prefs.PrefsPublication
 import ticktock.engine.input.AndroidRecorderPlatform
 import ticktock.engine.input.AudioRecordSource
 import ticktock.engine.input.InputListener
@@ -49,14 +50,16 @@ class TuneSession(
     },
     sounding: SoundingNotes = NoSoundingNotes,
     onDuck: (Float, () -> Unit) -> Unit = { _, settled -> settled() },
+    initialPublication: PrefsPublication = PrefsPublication(prefs, 0, 0),
 ) {
+    init { require(initialPublication.prefs == prefs) { "initial prefs must belong to their publication" } }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val capture = LiveCapture(mode = prefs.responseMode, a4Hz = prefs.a4Hz, history = history,
-        sounding = sounding, onDuck = onDuck, noiseFloorDb = prefs.noiseFloorDb, instrumentKey = prefs.instrumentKey)
-    private var requestedInstrument = prefs.instrumentKey
-    private var requestedA4 = prefs.a4Hz
-    private var requestedMode = prefs.responseMode
-    private var requestedNoiseFloor = prefs.noiseFloorDb
+        sounding = sounding, onDuck = onDuck, noiseFloorDb = prefs.noiseFloorDb, instrumentKey = prefs.instrumentKey,
+        instrumentRevision = initialPublication.instrumentRevision)
+    private val settingsLock = Any()
+    private var acceptedPublication = initialPublication
     private var input: AudioInput? = null
     private var reporting: Job? = null
 
@@ -98,27 +101,37 @@ class TuneSession(
         resume()
     }
 
+    /** Isolated callers without a PrefsStore supply sequential changes; store owners use publications. */
     fun settingsChanged(prefs: Prefs) {
-        if (prefs.instrumentKey != requestedInstrument) {
-            requestedInstrument = prefs.instrumentKey
-            capture.requestInstrument(prefs.instrumentKey)
-        }
-        if (prefs.noiseFloorDb != requestedNoiseFloor) {
-            requestedNoiseFloor = prefs.noiseFloorDb
-            capture.requestNoiseFloor(prefs.noiseFloorDb)
-        }
-        if (prefs.a4Hz != requestedA4) {
-            requestedA4 = prefs.a4Hz
-            capture.requestA4(prefs.a4Hz)
-        }
-        if (prefs.responseMode != requestedMode) {
-            requestedMode = prefs.responseMode
-            capture.requestMode(prefs.responseMode)
+        synchronized(settingsLock) {
+            val old = acceptedPublication
+            applySettings(PrefsPublication(prefs, old.revision + 1,
+                old.instrumentRevision + if (prefs.instrumentKey == old.prefs.instrumentKey) 0 else 1))
         }
     }
 
-    /** History labels can advance only after analysis consumes the same instrument epoch. */
-    internal fun acceptsInstrument(key: String): Boolean = capture.acceptsInstrument(key)
+    /** Submit one coherent publication; stale callbacks cannot roll any detector setting back. */
+    fun settingsChanged(publication: PrefsPublication) {
+        synchronized(settingsLock) { applySettings(publication) }
+    }
+
+    // Only atomic request submission while settingsLock is held: no output, history, disk or join.
+    private fun applySettings(publication: PrefsPublication) {
+        val previous = acceptedPublication
+        if (publication.revision <= previous.revision) return
+        val prefs = publication.prefs
+        if (publication.instrumentRevision > previous.instrumentRevision) {
+            capture.requestInstrument(prefs.instrumentKey, publication.instrumentRevision)
+        }
+        if (prefs.noiseFloorDb != previous.prefs.noiseFloorDb) capture.requestNoiseFloor(prefs.noiseFloorDb)
+        if (prefs.a4Hz != previous.prefs.a4Hz) capture.requestA4(prefs.a4Hz)
+        if (prefs.responseMode != previous.prefs.responseMode) capture.requestMode(prefs.responseMode)
+        acceptedPublication = publication
+    }
+
+    /** History uses the current source epoch even before that publication's callback arrives. */
+    internal fun acceptsInstrument(publication: PrefsPublication): Boolean =
+        capture.acceptsInstrument(publication.prefs.instrumentKey, publication.instrumentRevision)
 
     fun outputContextChanged() = capture.outputContextChanged()
 

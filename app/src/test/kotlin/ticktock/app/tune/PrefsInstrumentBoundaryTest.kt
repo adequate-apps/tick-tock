@@ -40,13 +40,13 @@ class PrefsInstrumentBoundaryTest {
         val callbackResume = CountDownLatch(1)
         val armed = AtomicBoolean(false)
         // This earlier listener holds the first publisher between publication and the bridge.
-        fixture.store.addListener { prefs ->
-            if (prefs.instrumentKey == Y && armed.getAndSet(false)) {
+        fixture.store.addPublicationListener { publication ->
+            if (publication.prefs.instrumentKey == Y && armed.getAndSet(false)) {
                 callbackEntered.countDown()
                 check(callbackResume.await(10, TimeUnit.SECONDS))
             }
         }
-        fixture.store.addListener(fixture.session::settingsChanged)
+        fixture.store.addPublicationListener(fixture.session::settingsChanged)
         var publisher: Thread? = null
         val failure = AtomicReference<Throwable?>(null)
         try {
@@ -55,11 +55,11 @@ class PrefsInstrumentBoundaryTest {
             val lastQueuedHop = fixture.holdOldBatch()
             armed.set(true)
             publisher = Thread {
-                try { fixture.store.update { it.copy(instrumentKey = Y) } }
+                try { fixture.store.update { it.copy(instrumentKey = Y, a4Hz = 442.0) } }
                 catch (error: Throwable) { failure.set(error) }
             }.also { it.start() }
             assertTrue(callbackEntered.await(5, TimeUnit.SECONDS))
-            fixture.store.update { it.copy(instrumentKey = X) }
+            fixture.store.update { it.copy(instrumentKey = X, a4Hz = 440.0) }
             callbackResume.countDown()
             joinPublisher(publisher, failure)
             assertEquals(X, fixture.store.prefs.value.instrumentKey)
@@ -84,12 +84,12 @@ class PrefsInstrumentBoundaryTest {
         val callbackResume = CountDownLatch(1)
         val armed = AtomicBoolean(false)
         // Capture the event at listener entry, then delay its delivery to the real session.
-        fixture.store.addListener { prefs ->
-            if (prefs.instrumentKey == Y && armed.getAndSet(false)) {
+        fixture.store.addPublicationListener { publication ->
+            if (publication.prefs.instrumentKey == Y && armed.getAndSet(false)) {
                 callbackEntered.countDown()
                 check(callbackResume.await(10, TimeUnit.SECONDS))
             }
-            fixture.session.settingsChanged(prefs)
+            fixture.session.settingsChanged(publication)
         }
         var publisher: Thread? = null
         val failure = AtomicReference<Throwable?>(null)
@@ -99,11 +99,11 @@ class PrefsInstrumentBoundaryTest {
             val lastQueuedHop = fixture.holdOldBatch()
             armed.set(true)
             publisher = Thread {
-                try { fixture.store.update { it.copy(instrumentKey = Y) } }
+                try { fixture.store.update { it.copy(instrumentKey = Y, a4Hz = 442.0) } }
                 catch (error: Throwable) { failure.set(error) }
             }.also { it.start() }
             assertTrue(callbackEntered.await(5, TimeUnit.SECONDS))
-            fixture.store.update { it.copy(instrumentKey = X) }
+            fixture.store.update { it.copy(instrumentKey = X, a4Hz = 440.0) }
             callbackResume.countDown()
             joinPublisher(publisher, failure)
             fixture.releaseAnalysis.countDown()
@@ -112,6 +112,7 @@ class PrefsInstrumentBoundaryTest {
             assertEquals(X, fixture.store.prefs.value.instrumentKey)
             assertEquals(69, fixture.session.state.value.readout.midi)
             assertTrue("fresh X PCM must remain writable after an older Y callback", fixture.savedReadings() > before)
+            assertEquals("stale publications cannot roll the pitch reference back", 0, fixture.session.state.value.readout.cents)
             fixture.assertOnlyX()
         } finally {
             callbackResume.countDown()
@@ -132,6 +133,7 @@ class PrefsInstrumentBoundaryTest {
         private val context = RuntimeEnvironment.getApplication()
         private val path = temporary.newFile().apply { writeText(PrefsSchema.write(Prefs(instrumentKey = X))) }
         val store = PrefsStore(AtomicPrefsFile(path), storage).also { it.load() }
+        private val initialPublication = store.publication.value
         private val database = HistoryDatabase(context, null)
         private val history = HistoryStore(database, storage, AppGraph.runContextOf(store.prefs.value))
         private val input = FakeAudioInput(48_000)
@@ -152,14 +154,14 @@ class PrefsInstrumentBoundaryTest {
         private val sink = object : HistorySink {
             override val rejected: Int get() = history.rejected
             override fun accept(reading: Reading, firstSettled: Boolean) {
-                val prefs = store.prefs.value
-                if (!session.acceptsInstrument(prefs.instrumentKey)) return
-                history.setContext(AppGraph.runContextOf(prefs))
+                val publication = store.publication.value
+                if (!session.acceptsInstrument(publication)) return
+                history.setContext(AppGraph.runContextOf(publication.prefs))
                 history.accept(reading, firstSettled)
             }
         }
-        val session: TuneSession = TuneSession(context, store.prefs.value, sink,
-            makeInput = { input }, micAllowed = { true }, sounding = sounding)
+        val session: TuneSession = TuneSession(context, initialPublication.prefs, sink,
+            makeInput = { input }, micAllowed = { true }, sounding = sounding, initialPublication = initialPublication)
 
         fun establishNote() {
             history.start()

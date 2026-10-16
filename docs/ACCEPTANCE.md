@@ -105,7 +105,7 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 | RNG-11 | always show cents | U | 2.0 | RangeScreenTest `RNG-11 out of range note keeps its cents and Hz dimmed and an imported widening restores ink` drives real analysis and checks retained values and foreground pixels. | green |
 | RNG-12 | played out-of-range notes in the table | U | 2.0 |  | open |
 | RNG-13 | narrowing a range | U | v1.1 |  | deferred |
-| RNG-14 | instrument switch | U | 2.0 |  | open |
+| RNG-14 | instrument switch | U, H | 2.0 | InstrumentSwitchAcceptanceTest (actual picker and PCM: current statistics reset, held notes reconfirm, historical labels/transposition and explicit running tools retained); HopAnalyserTest `RNG-14` (queued/overlapping delivered PCM excluded without lost hop time); InstrumentBoundaryTest (rapid round trip); PrefsInstrumentBoundaryTest (actual store, delayed/reordered publications, PCM and SQLite); PrefsStoreTest publication/load/recovery cases. Earlier labeled groups remain in the selected session; a switch resets live analysis without deleting history. | green |
 | RNG-15 | an override can only widen | U | v1.1 | RangeResolverTest `RNG-15` (the resolver rule landed with the layers; the editor ships in v1.1) | green |
 | RNG-16 | strict read before write | U | v1.1 |  | deferred |
 | RNG-17 | save reports the truth | U | v1.1 |  | deferred |
