@@ -40,6 +40,14 @@ set(TEST_SOURCES
 )
 set(WARNINGS -Wall -Wextra -Werror)
 
+# The JVM bridge feeds samples from this production renderer to the real detector.
+add_executable(audio_fixture_driver AudioFixtureDriver.cpp
+    "${ENGINE_CPP}/render/BeatGenerator.cpp"
+    "${ENGINE_CPP}/render/ClickData.cpp"
+    "${ENGINE_CPP}/render/RenderEngine.cpp")
+target_include_directories(audio_fixture_driver PRIVATE "${ENGINE_CPP}")
+target_compile_options(audio_fixture_driver PRIVATE ${WARNINGS} -fno-exceptions -fno-rtti)
+
 # One executable per variant. The engine objects carry the same -fno-exceptions
 # -fno-rtti the Android build uses, so a host pass proves the device build's
 # constraints too; the test objects keep exceptions for gtest.

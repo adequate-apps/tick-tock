@@ -35,7 +35,27 @@ kotlin {
     }
 }
 
+val nativeFixtureDirectory = layout.buildDirectory.dir("native-fixtures")
+val configureNativeFixtures by tasks.registering(Exec::class) {
+    inputs.file(rootProject.file("host-tests/CMakeLists.txt"))
+    outputs.file(nativeFixtureDirectory.map { it.file("CMakeCache.txt") })
+    commandLine("cmake", "-S", rootProject.file("host-tests").absolutePath,
+        "-B", nativeFixtureDirectory.get().asFile.absolutePath, "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release")
+}
+val buildNativeFixtures by tasks.registering(Exec::class) {
+    dependsOn(configureNativeFixtures)
+    inputs.file(rootProject.file("host-tests/AudioFixtureDriver.cpp"))
+    inputs.dir(rootProject.file("engine/src/main/cpp/render"))
+    outputs.file(nativeFixtureDirectory.map { it.file("audio_fixture_driver") })
+    commandLine("cmake", "--build", nativeFixtureDirectory.get().asFile.absolutePath,
+        "--target", "audio_fixture_driver")
+}
+
 tasks.named<Test>("jvmTest") {
+    dependsOn(buildNativeFixtures)
+    val nativeDriver = nativeFixtureDirectory.map { it.file("audio_fixture_driver") }
+    inputs.file(nativeDriver)
+    systemProperty("ticktock.nativeFixtureDriver", nativeDriver.get().asFile.absolutePath)
     // KnownGapRuleTest drives its nested suites through JUnitCore to observe the
     // rule from outside. Gradle would otherwise run those suites directly, and
     // one of them is meant to fail.
