@@ -205,7 +205,10 @@ render_dir="engine/src/main/cpp/render"
 callback_functions="engine/src/main/cpp/control/OutputController.cpp OutputController::onRender
 engine/src/main/cpp/control/OutputController.cpp OutputController::onRoutingChanged
 engine/src/main/cpp/AAudioDevice.cpp AAudioDevice::onData
+engine/src/main/cpp/AAudioDevice.cpp AAudioDevice::onError
 engine/src/main/cpp/AAudioDevice.cpp AAudioDevice::onRoutingChanged
+engine/src/main/cpp/AAudioDevice.cpp CallbackLease::CallbackLease
+engine/src/main/cpp/AAudioDevice.cpp CallbackLease::~CallbackLease
 engine/src/main/cpp/JniBridge.cpp onWake"
 if [ -d "$render_dir" ]; then
     render_sources=$(find "$render_dir" -type f \( -name '*.cpp' -o -name '*.cc' -o -name '*.h' -o -name '*.hpp' \) || true)

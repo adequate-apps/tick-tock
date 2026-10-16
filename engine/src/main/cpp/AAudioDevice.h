@@ -51,8 +51,10 @@ private:
     WakeFn wake_;
     void* context_;
     RoutingSymbols routing_;
-    // Control-thread handle remains alive until close has joined platform callbacks.
+    // Platform close need not join a running routing task. The process-lifetime
+    // callback token pins this owner until close has drained acquired leases.
     AAudioStream* stream_ = nullptr;
+    void* callbackToken_ = nullptr;
     std::atomic<AAudioStream*> activeStream_{nullptr};
     control::DeviceListener* listener_ = nullptr;
     std::int32_t framesPerBurst_ = 0;

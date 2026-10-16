@@ -16,6 +16,7 @@ using AAudioStream_dataCallback = aaudio_data_callback_result_t (*)(AAudioStream
 using AAudioStream_errorCallback = void (*)(AAudioStream*, void*, aaudio_result_t);
 constexpr std::int32_t AAUDIO_OK = 0;
 constexpr std::int32_t AAUDIO_ERROR_DISCONNECTED = -899;
+constexpr std::int32_t AAUDIO_ERROR_UNAVAILABLE = -889;
 constexpr std::int32_t AAUDIO_DIRECTION_OUTPUT = 0;
 constexpr std::int32_t AAUDIO_SHARING_MODE_EXCLUSIVE = 0;
 constexpr std::int32_t AAUDIO_SHARING_MODE_SHARED = 1;

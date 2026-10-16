@@ -7,7 +7,7 @@
 # that produced it. A control run on the unmodified tree must be green first,
 # otherwise a red proves nothing.
 #
-# The thirteen planted failures:
+# The fifteen planted failures:
 #   1. missing tier output     the U tier task is disabled, so it writes no XML
 #   2. zero tests found        the U tier runs with a filter that matches nothing
 #   3. a passing known gap     a @KnownGap test whose body passes
@@ -21,6 +21,8 @@
 #  11. missing native suite    the required native CMake entry point is absent
 #  12. device route allocation   a heap allocation inside AAudioDevice::onRoutingChanged
 #  13. controller route allocation   a heap allocation inside OutputController::onRoutingChanged
+#  14. callback lease acquisition   a heap allocation inside CallbackLease::CallbackLease
+#  15. callback lease release       a heap allocation inside CallbackLease::~CallbackLease
 #
 # The denylisted string is read from the denylist at run time, written into
 # the scratch tree only and never printed. The misaligned library is compiled
@@ -28,7 +30,7 @@
 #
 #   tools/verify-selftest.sh [--only NAME ...]
 #
-# --only runs the control case plus the named cases; the default is all thirteen.
+# --only runs the control case plus the named cases; the default is all fifteen.
 set -uo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -165,7 +167,7 @@ plant_callback_alloc() {
 }
 
 
-plant_route_alloc() {
+plant_named_callback_alloc() {
     python3 - "$scratch/$1" "$2" <<'PYTHON' || exit 2
 from pathlib import Path
 import re
@@ -175,18 +177,26 @@ source = path.read_text()
 pattern = re.escape(sys.argv[2]) + r"\([^{}]*\)\s*\{"
 matches = list(re.finditer(pattern, source))
 if len(matches) != 1:
-    raise SystemExit("verify-selftest: routing callback definition was not unique")
+    raise SystemExit("verify-selftest: callback definition was not unique")
 end = matches[0].end()
 path.write_text(source[:end] + "\n    float* planted = new float[64];\n    delete[] planted;" + source[end:])
 PYTHON
 }
 
 plant_device_route_alloc() {
-    plant_route_alloc engine/src/main/cpp/AAudioDevice.cpp AAudioDevice::onRoutingChanged
+    plant_named_callback_alloc engine/src/main/cpp/AAudioDevice.cpp AAudioDevice::onRoutingChanged
 }
 
 plant_controller_route_alloc() {
-    plant_route_alloc engine/src/main/cpp/control/OutputController.cpp OutputController::onRoutingChanged
+    plant_named_callback_alloc engine/src/main/cpp/control/OutputController.cpp OutputController::onRoutingChanged
+}
+
+plant_callback_lease_acquire_alloc() {
+    plant_named_callback_alloc engine/src/main/cpp/AAudioDevice.cpp CallbackLease::CallbackLease
+}
+
+plant_callback_lease_release_alloc() {
+    plant_named_callback_alloc engine/src/main/cpp/AAudioDevice.cpp CallbackLease::~CallbackLease
 }
 
 plant_threshold() {
@@ -250,6 +260,8 @@ run_case render-allocation RED "allocation, locking or logging on the render pat
 run_case callback-allocation RED "allocation, locking or logging on the render path" plant_callback_alloc
 run_case device-route-allocation RED "allocation, locking or logging on the render path" plant_device_route_alloc
 run_case controller-route-allocation RED "allocation, locking or logging on the render path" plant_controller_route_alloc
+run_case callback-lease-acquire-allocation RED "allocation, locking or logging on the render path" plant_callback_lease_acquire_alloc
+run_case callback-lease-release-allocation RED "allocation, locking or logging on the render path" plant_callback_lease_release_alloc
 run_case threshold-outside-band RED "a cents threshold outside" plant_threshold
 run_case denylisted-string RED "denylist rule" plant_denylisted
 run_case wrong-commit-author RED "rule commit-identity matched" plant_wrong_author
