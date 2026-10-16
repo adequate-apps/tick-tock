@@ -35,6 +35,7 @@ void RenderEngine::apply(const Command& cmd) {
             const float g = cmd.gain < kDuckFloor ? kDuckFloor : (cmd.gain > 1.0f ? 1.0f : cmd.gain);
             duckTarget_ = g;
             duckGeneration_ = cmd.generation;
+            duckRouteRevision_ = cmd.routeRevision;
             break;
         }
         case CommandKind::MetroStart: generator_.start(cmd.metro, position_.load(std::memory_order_relaxed)); break;
@@ -76,7 +77,7 @@ void RenderEngine::renderSlice(float* interleaved, std::int32_t frames) {
         rampMaster();
         if (duckGeneration_ != 0 && duck_ == duckTarget_) {
             // A lost acknowledgement leaves the detector excluding unproven leakage.
-            ducks_.tryPush(DuckEvent{duckGeneration_, blockStart + i});
+            ducks_.tryPush(DuckEvent{duckGeneration_, blockStart + i, duckRouteRevision_});
             duckGeneration_ = 0;
         }
         float s = mono_[i] * duck_ * gate_;

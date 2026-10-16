@@ -72,6 +72,33 @@ class DuckPresentationTest {
     }
 
     @Test
+    fun `SHM-03 same-route facts cancel scheduled and late duck proof before a fresh probe`() = runTest {
+        val r = Rig(this)
+        var old = 0
+        var fresh = 0
+        var invalidations = 0
+        r.output.bleedContextChanged = { invalidations++ }
+        r.output.duck(0.3f) { old++ }
+        val first = r.latest()
+        r.acknowledge(first, 100_000_000L)
+        // Identical info must still convey changed physical routing/presentation context.
+        val info = checkNotNull(r.link.info.value)
+        r.link.events.tryEmit(OutputEvent.RoutingChanged(info))
+        r.link.events.tryEmit(OutputEvent.DuckSettled(first.generation, 240, 0))
+        testScheduler.runCurrent()
+        testScheduler.advanceTimeBy(101)
+        testScheduler.runCurrent()
+        assertEquals(0, old)
+        assertTrue(invalidations > 0)
+        assertTrue(r.output.state.value.droneSounding)
+        r.output.duck(0.3f) { fresh++ }
+        r.acknowledge(first)
+        assertEquals(0, fresh)
+        r.acknowledge()
+        assertEquals(1, fresh)
+    }
+
+    @Test
     fun `POL-28 replug cancels both delivered and scheduled acknowledgements from the old stream`() = runTest {
         val r = Rig(this)
         var old = 0

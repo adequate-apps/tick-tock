@@ -20,6 +20,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import ticktock.core.config.*
 import ticktock.core.detect.Reading
+import ticktock.core.contracts.fakes.FakeAudioInput
+import ticktock.core.detect.Hop
+import ticktock.core.detect.fakes.Sine
 import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
@@ -37,6 +40,23 @@ class SettingsExtrasTest {
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.onNodeWithTag("open-settings").performClick()
     }
+    private val captureInput = FakeAudioInput(48_000)
+
+    /** Exercise fresh analysis admission after a choice/import, including its instrument reset. */
+    private fun captureTone() {
+        graph.tune.makeInput = { captureInput }
+        graph.tune.micAllowed = { true }
+        compose.runOnIdle { graph.tune.resume() }
+        compose.waitUntil(5_000) { captureInput.isOpen }
+        val tone = Sine(440.0, 0.1, 48_000)
+        repeat(24) {
+            val before = graph.tune.level.value.hop
+            assertTrue(captureInput.push(tone.next(Hop.frames(48_000))))
+            compose.waitUntil(5_000) { graph.tune.level.value.hop > before }
+        }
+        compose.waitForIdle()
+    }
+
     private fun click(tag: String) { compose.onNodeWithTag(tag).performScrollTo().performClick() }
     private fun awaitState(predicate: () -> Boolean) { compose.waitUntil(5_000) { compose.waitForIdle(); predicate() } }
     private fun chooseDocument(expectedAction: String, file: File) {
@@ -143,14 +163,14 @@ class SettingsExtrasTest {
     @Test fun `ordinary instrument choices clear a named identity before capture`() {
         launch()
         graph.prefs.update { it.copy(personalConfig = PersonalConfig(hornProfiles = listOf(HornProfile("alto", "eb_alto", "Silver alto")))) }
-        for ((index, instrument) in listOf("eb_alto", "flute_c").withIndex()) {
+        for (instrument in listOf("eb_alto", "flute_c")) {
             click("setting-instrument")
             click("horn-profile-alto")
             click("setting-instrument")
             compose.onNodeWithTag("instrument-eb_alto").assertIsNotSelected()
             click("instrument-$instrument")
             assertEquals("", graph.prefs.prefs.value.hornNickname)
-            graph.captureHistory.accept(Reading(index.toLong(), 69, 440.0, 0.0, 440.0, 0), true)
+            captureTone()
             runBlocking { graph.history.flushAndWait() }
             assertTrue(runBlocking { graph.history.summaries(ticktock.data.history.Scope.CurrentSession) }
                 .any { it.label.instrumentKey == instrument && it.label.nickname.isEmpty() })
@@ -256,7 +276,7 @@ class SettingsExtrasTest {
         awaitState { !graph.configuration.state.value.busy }
         assertEquals("flute_c", graph.prefs.prefs.value.instrumentKey)
         assertEquals("", graph.prefs.prefs.value.hornNickname)
-        graph.captureHistory.accept(Reading(0, 69, 440.0, 0.0, 440.0, 0), true)
+        captureTone()
         runBlocking {
             graph.history.flushAndWait()
             val rows = graph.history.summaries(ticktock.data.history.Scope.CurrentSession)

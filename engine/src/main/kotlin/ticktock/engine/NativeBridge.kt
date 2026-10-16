@@ -16,7 +16,7 @@ class NativeBridge : NativeCalls {
     /**
      * How an event arrives. `kind` is the OutputEvent variant in declaration
      * order: 0 Opened, 1 Closed, 2 Beat, 3 Parked, 4 Resumed, 5 Failed,
-     * 6 Counters, 7 DuckSettled. The fields per kind:
+     * 6 Counters, 7 DuckSettled, 8 RoutingChanged. The fields per kind:
      * - Opened, Resumed: a sampleRate, b framesPerBlock, c deviceId, d latencyMillis,
      *   tools the resumed set as a bit mask of OutputTool ordinals (0 for Opened);
      * - Beat: a index, b beatInBar, c frame, d nanos (CLOCK_MONOTONIC);
@@ -26,6 +26,7 @@ class NativeBridge : NativeCalls {
      * - Failed: a deviceId, ints the refused sample rates;
      * - Counters: a lateBeatsDropped, b underruns.
      * - DuckSettled: a generation, c frame, d monotonic presentation nanos.
+     * - RoutingChanged: c deviceId, d current latencyMillis.
      * The route class and device name come from the device id through the
      * audio manager on the control thread.
      */

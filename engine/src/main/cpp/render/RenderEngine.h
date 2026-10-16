@@ -92,6 +92,7 @@ private:
     float duck_ = 1.0f;
     float duckTarget_ = 1.0f;
     std::int32_t duckGeneration_ = 0;
+    std::uint32_t duckRouteRevision_ = 0;
     float gate_ = 1.0f;
     float gateTarget_ = 1.0f;
     float rampStep_ = 0.004f;

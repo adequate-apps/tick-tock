@@ -30,7 +30,7 @@ import ticktock.engine.NativeCalls
  * because the bridge has no way to pass it through.
  *
  * [outputs] is how a device id becomes a [RoutedDevice]: the platform's
- * current output list, read on the control thread.
+ * current output list, read while opening or draining native events.
  */
 class NativeStreamBackend(
     private val native: NativeCalls,
@@ -67,10 +67,11 @@ class NativeStreamBackend(
         if (resuming) native.nativeResume(handle) else native.nativeRegister(handle, HOLDER.ordinal)
         val verdict = object : NativeBridge.Listener {
             var outcome: NativeEvent? = null
+            val following = mutableListOf<NativeEvent>()
             override fun onEvent(kind: Int, a: Long, b: Long, c: Long, d: Long, tools: Int, ints: IntArray?) {
-                if (outcome != null) return
                 val event = NativeEvent.decode(kind, a, b, c, d, tools, ints)
-                if (event is NativeEvent.Opened || event is NativeEvent.Failed) outcome = event
+                if (outcome != null) following += event
+                else if (event is NativeEvent.Opened || event is NativeEvent.Failed) outcome = event
             }
         }
         native.nativeDrainEvents(handle, verdict, 0)
@@ -80,7 +81,7 @@ class NativeStreamBackend(
                 // its list no longer has it, and the control thread still
                 // needs to match the removal against the stream.
                 val device = outputs().firstOrNull { it.id == outcome.deviceId }
-                val stream = NativeOpenStream(native, handle, outcome, device, listener, ::endStream)
+                val stream = NativeOpenStream(native, handle, outcome, device, outputs, verdict.following.toList(), listener, ::endStream)
                 current = stream
                 stream.startDraining()
                 Result.success(stream)
@@ -175,7 +176,9 @@ private class NativeOpenStream(
     private val native: NativeCalls,
     private val handle: Long,
     opened: NativeEvent.Opened,
-    private val device: RoutedDevice?,
+    @Volatile private var device: RoutedDevice?,
+    private val outputs: () -> List<RoutedDevice>,
+    private val initialEvents: List<NativeEvent>,
     private val listener: StreamListener,
     /** Runs when the stream ends, with what becomes of its handle. */
     private val onEnded: (handle: Long, fate: HandleFate) -> Unit,
@@ -189,7 +192,7 @@ private class NativeOpenStream(
 
     fun startDraining() = drainer.start()
 
-    /** The device present when the stream opened. The API 37 routing callback is where it would be read again (SHM-03). */
+    /** Retains the most recently routed descriptor if its inventory entry disappears during removal. */
     override fun routedDevice(): RoutedDevice? = device
 
     override fun latencyMillis(): Int = native.nativeLatencyMillis(handle)
@@ -263,11 +266,24 @@ private class NativeOpenStream(
     }
 
     private fun drainLoop() {
+        initialEvents.forEach(::dispatch)
         while (running) native.nativeDrainEvents(handle, this, NativeStreamBackend.DRAIN_WAIT_MILLIS)
     }
 
     override fun onEvent(kind: Int, a: Long, b: Long, c: Long, d: Long, tools: Int, ints: IntArray?) {
-        when (val event = NativeEvent.decode(kind, a, b, c, d, tools, ints)) {
+        if (!running) return
+        dispatch(NativeEvent.decode(kind, a, b, c, d, tools, ints))
+    }
+
+    private fun dispatch(event: NativeEvent) {
+        if (!running) return
+        when (event) {
+            is NativeEvent.RoutingChanged -> {
+                val routed = outputs().firstOrNull { it.id == event.deviceId }
+                    ?: device?.takeIf { it.id == event.deviceId }
+                device = routed
+                listener.onRoutingChanged(this, routed, event.latencyMillis)
+            }
             is NativeEvent.Beat -> listener.onEvent(this, event.event)
             is NativeEvent.DuckSettled -> listener.onEvent(this, event.event)
             is NativeEvent.Counters -> listener.onEvent(this, event.event)

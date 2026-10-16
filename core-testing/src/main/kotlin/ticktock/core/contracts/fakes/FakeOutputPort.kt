@@ -76,6 +76,12 @@ class FakeOutputPort(private val foregroundOwner: ForegroundOwner = NoForeground
         emit(OutputEvent.Opened(info))
     }
 
+    /** The stream keeps playing, but presentation evidence from its previous route expires. */
+    fun routingChanged(next: OutputInfo) {
+        info.value = next
+        emit(OutputEvent.RoutingChanged(next))
+    }
+
     fun close() {
         info.value = null
         emit(OutputEvent.Closed)

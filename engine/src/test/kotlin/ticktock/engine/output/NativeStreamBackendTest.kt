@@ -106,6 +106,70 @@ class NativeStreamBackendTest {
     }
 
     @Test
+    fun `SHM-03 native routing refreshes the current stream without reopening or replaying voices`() {
+        val opened = open()
+        val handle = native.single
+        val headset = RoutedDevice(42, AudioDeviceInfo.TYPE_USB_HEADSET, "USB headset")
+        present += headset
+        opened.send(OutputCommand.VoiceOn(0, 62, Voice.SINE, 0.4f))
+        val calls = handle.calls.toList()
+        handle.routingChanged(headset.id, 81)
+        await("routing event") { routed.size == 1 }
+        assertEquals(opened, routed.single())
+        assertEquals(headset, opened.routedDevice())
+        assertEquals(81, opened.latencyMillis())
+        assertEquals(calls, handle.calls.toList())
+        assertEquals(1, native.handles.size)
+        assertTrue(disconnected.isEmpty())
+        // Retain the most recently routed identity if its inventory entry disappears.
+        present.remove(headset)
+        assertEquals(headset, opened.routedDevice())
+    }
+
+    @Test
+    fun `SHM-03 route and following duck callbacks retain native event order`() {
+        val trace = Collections.synchronizedList(mutableListOf<String>())
+        val ordered = object : StreamListener {
+            override fun onDisconnected(stream: OpenStream) { trace += "disconnect" }
+            override fun onRoutingChanged(stream: OpenStream) { trace += "route" }
+            override fun onEvent(stream: OpenStream, event: OutputEvent) { trace += "duck" }
+        }
+        stream = backend.open(StreamRequest(), ordered).getOrThrow()
+        native.single.routingChanged(speaker.id, 90)
+        native.single.duckSettled(72, 4_000, 9_000_000_000)
+        await("ordered callbacks") { trace.size == 2 }
+        assertEquals(listOf("route", "duck"), trace.toList())
+    }
+
+    @Test
+    fun `SHM-03 routing delivered in the opening verdict batch is not lost`() {
+        val headset = RoutedDevice(42, AudioDeviceInfo.TYPE_USB_HEADSET, "USB headset")
+        present += headset
+        native.routingAfterOpen = headset.id to 81
+        val opened = open()
+        await("route received during start") { routed.size == 1 }
+        assertEquals(headset, opened.routedDevice())
+        assertEquals(81, opened.latencyMillis())
+        assertTrue(disconnected.isEmpty())
+    }
+
+    @Test
+    fun `SHM-03 a late drain callback after close cannot publish routing or duck evidence`() {
+        val opened = open()
+        val handle = native.single
+        await("native drain entry") { handle.lastDrainListener != null }
+        val delayed = checkNotNull(handle.lastDrainListener)
+        assertTrue(opened.close())
+        stream = null
+        routed.clear()
+        events.clear()
+        delayed.onEvent(8, 0, 0, speaker.id.toLong(), 81, 0, null)
+        delayed.onEvent(7, 71, 0, 4000, 9_000_000_000, 0, null)
+        assertTrue(routed.isEmpty())
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
     fun `OUT-17 a refused open fails with the device name and the refused rates and destroys its handle`() {
         native.refuseOpens = true
         val failure = backend.open(StreamRequest(), listener).exceptionOrNull() as StreamOpenFailure

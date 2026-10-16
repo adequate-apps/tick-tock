@@ -56,6 +56,8 @@
     <string name="table_compact_extent">Plots −25 to +25 cents</string>
     <string name="table_detail_extent">Share of readings · −50 to +50 cents</string>
     <string name="table_dimmed">Dimmed &lt;5 readings</string>
+    <string name="table_outside_keyed">Outside keyed range</string>
+    <string name="table_outside_extended">Outside extended range</string>
     <string name="table_band_in_tune">In tune ±%1$d cents</string>
     <string name="table_band_close">Close ±%1$d cents</string>
     <string name="table_probability">Share of readings</string>

@@ -34,6 +34,8 @@ sealed interface NativeEvent {
 
     data class Counters(val event: OutputEvent.Counters) : NativeEvent
 
+    data class RoutingChanged(val deviceId: Int, val latencyMillis: Int) : NativeEvent
+
     companion object {
         private const val KIND_OPENED = 0
         private const val KIND_CLOSED = 1
@@ -43,11 +45,13 @@ sealed interface NativeEvent {
         private const val KIND_FAILED = 5
         private const val KIND_COUNTERS = 6
         private const val KIND_DUCK_SETTLED = 7
+        private const val KIND_ROUTING_CHANGED = 8
 
         fun decode(kind: Int, a: Long, b: Long, c: Long, d: Long, tools: Int, ints: IntArray?): NativeEvent = when (kind) {
             KIND_OPENED -> Opened(a.toInt(), b.toInt(), c.toInt(), d.toInt(), emptySet())
             KIND_RESUMED -> Opened(a.toInt(), b.toInt(), c.toInt(), d.toInt(), toolSet(tools))
             KIND_CLOSED -> Closed
+            KIND_ROUTING_CHANGED -> RoutingChanged(c.toInt(), d.toInt())
             KIND_DUCK_SETTLED -> DuckSettled(OutputEvent.DuckSettled(a.toInt(), c, d))
             KIND_BEAT -> {
                 require(ints?.size == 4) { "native beat needs bar, flags and generation" }

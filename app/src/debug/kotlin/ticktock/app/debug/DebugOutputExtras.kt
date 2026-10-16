@@ -44,6 +44,7 @@ fun installDebugOutput(activity: ComponentActivity, graph: AppGraph) {
 
 private fun OutputEvent.line(): String = when (this) {
     is OutputEvent.Opened -> "Opened ${info.line()}"
+    is OutputEvent.RoutingChanged -> "RoutingChanged ${info.line()}"
     is OutputEvent.Resumed -> "Resumed tools=$tools ${info.line()}"
     OutputEvent.Closed -> "Closed"
     is OutputEvent.Beat -> "Beat index=$index beatInBar=$beatInBar frame=$frame nanos=$nanos"

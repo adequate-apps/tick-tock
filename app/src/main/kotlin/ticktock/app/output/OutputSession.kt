@@ -474,7 +474,7 @@ class OutputSession(
                 mutableState.value = state.value.copy(failed = event, parked = ParkReason.OUTPUT_FAILED)
                 refresh()
             }
-            is OutputEvent.Opened, is OutputEvent.Resumed, OutputEvent.Closed -> {
+            is OutputEvent.Opened, is OutputEvent.Resumed, is OutputEvent.RoutingChanged, OutputEvent.Closed -> {
                 invalidateBleed()
                 refresh()
             }

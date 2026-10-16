@@ -282,3 +282,49 @@ questions below.
 - Two fresh clones at the same commit and toolchain must produce byte-identical complete signed
   APK and AAB files. Payload equality alone cannot satisfy the check. Production key custody and
   public tag/release approval remain separate owner actions.
+
+## 23. Routing facts and callback lifetime
+
+- JNI ABI 5 appends RoutingChanged as event kind 8. Native, Kotlin, fake and round-trip
+  tests change together. Route notifications invalidate duck evidence even when the new
+  output information equals the previous information; a conflated state flow cannot
+  preserve this ordering by itself.
+- The public routing setter is resolved once off callback threads on API 37. Earlier
+  versions and a missing symbol retain normal audio and the disconnect fallback. A route
+  callback increments an atomic revision and wakes control; it neither retains the
+  temporary device array nor queries platform information. Control reports the current
+  route, coalescing notifications. The singular device getter reports the first device;
+  this interface does not enumerate simultaneous output devices.
+- Routing invalidates rendered and queued duck acknowledgements from an earlier route
+  revision while preserving voice phase, gain intent, metronome position and frame time.
+  Close and disconnect take precedence over pending routing facts.
+- Platform close need not join an already-running routing callback. All platform callbacks
+  therefore use opaque generation tokens into 64 process-lifetime slots. A callback
+  acquires a lock-free reader lease before inspecting owner and generation. Control
+  detaches the owner, closes the stream and drains acquired leases before retiring the
+  listener or wake semaphore. Delayed entry can access only inert slot storage; a reused
+  owner or stream address cannot authenticate an old generation.
+- Slot claims and reclamation run off callback threads. Exhaustion refuses the open attempt
+  with the platform unavailable result. A generation at its numeric limit permanently
+  retires its slot. Host tests cover capacity, reuse and delayed entry in normal and
+  sanitizer builds; actual API 37 framework/device validation remains separate.
+
+## 24. Instrument boundaries follow preference publications
+
+- Each immutable preference publication carries an overall revision and an instrument
+  revision. A published change away and back advances the instrument revision twice,
+  even when listener callbacks overtake one another. These counters are process-local
+  and do not change the saved preference schema. Load and recovery publish the same
+  coherent identity; recovery compares the final merged visible preferences.
+- Listeners run outside preference locks and receive captured publications. Capture
+  rejects stale overall revisions for every detector setting. History admission reads
+  preferences and instrument revision from one current publication, so an old analysis
+  epoch cannot acquire a newly published instrument label before its callback arrives.
+- The analysis owner clears current statistics and detector votes after an instrument
+  change. Already delivered PCM and overlapping windows are excluded while preserving
+  level and hop time. The microphone remains open; saved history retains its original
+  labels. Upstream audio not yet delivered has no acquisition timestamp in this interface.
+- The retained table shows all played rows in labeled groups. Keyed range controls the
+  row outline; extended range controls chart and matching series-legend ink. Low sample
+  count remains independent. Exceptional rows also expose a spoken range fact; the
+  ordinary row summary and layout remain unchanged.

@@ -81,3 +81,26 @@ ticktock_variant(host_tests_alloc
     DEFINES TICKTOCK_ALLOC_COUNTER=1
     EXTRA_SOURCES support/AllocCounter.cpp AllocationTest.cpp
 )
+
+# Compile the real Android edge against test platform calls; no device or new artifact is needed.
+set(TEST_JNI_INCLUDE "$ENV{JAVA_HOME}/include")
+if(NOT EXISTS "${TEST_JNI_INCLUDE}/jni.h")
+    message(FATAL_ERROR "JAVA_HOME must name the approved JDK for the native bridge tests")
+endif()
+function(ticktock_aaudio_variant name)
+    cmake_parse_arguments(V "" "" "FLAGS;LINK" ${ARGN})
+    add_executable("${name}" AAudioDeviceTest.cpp support/AllocCounter.cpp
+        "${ENGINE_CPP}/AAudioDevice.cpp" "${ENGINE_CPP}/engine.cpp" ${ENGINE_SOURCES})
+    target_include_directories("${name}" PRIVATE support/platform "${ENGINE_CPP}"
+        "${CMAKE_CURRENT_SOURCE_DIR}" "${TEST_JNI_INCLUDE}" "${TEST_JNI_INCLUDE}/linux")
+    target_compile_options("${name}" PRIVATE ${WARNINGS} ${V_FLAGS})
+    target_link_options("${name}" PRIVATE -Wl,--wrap=sem_destroy ${V_LINK})
+    target_link_libraries("${name}" PRIVATE GTest::gtest GTest::gtest_main dl)
+    gtest_discover_tests("${name}" TEST_PREFIX "${name}." DISCOVERY_TIMEOUT 60)
+endfunction()
+
+ticktock_aaudio_variant(aaudio_device_tests)
+ticktock_aaudio_variant(aaudio_device_tests_sanitize
+    FLAGS -fsanitize=address,undefined -fno-sanitize=vptr -fno-sanitize-recover=all -fno-omit-frame-pointer -g
+    LINK -fsanitize=address,undefined -fno-sanitize=vptr
+)

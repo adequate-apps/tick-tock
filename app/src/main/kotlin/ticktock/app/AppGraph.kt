@@ -50,6 +50,7 @@ class AppGraph(
     val crashLog = CrashLog(filesDir)
     val prefs = PrefsStore(AtomicPrefsFile(File(filesDir, Storage.PREFS_FILE)), storage)
     val prefsLoad: PrefsLoad = prefs.load()
+    private val initialPrefsPublication = prefs.publication.value
     internal val configuration = ticktock.app.config.ConfigurationSession(context, prefs)
     private val database = HistoryDatabase(context, databaseName)
     val history = HistoryStore(database, storage, runContextOf(prefs.prefs.value))
@@ -65,8 +66,12 @@ class AppGraph(
     internal val captureHistory = object : HistorySink {
         override val rejected: Int get() = history.rejected
         override fun accept(reading: Reading, firstSettled: Boolean) {
-            val context = currentRunContext()
+            // Output callbacks also update history; never take its monitor while holding ours.
+            val drone = output.soundingDroneMidi
             synchronized(historyContextLock) {
+                val publication = prefs.publication.value
+                if (!tune.acceptsInstrument(publication)) return
+                val context = runContextOf(publication.prefs, drone)
                 history.setContext(context)
                 history.accept(reading, firstSettled)
             }
@@ -74,7 +79,8 @@ class AppGraph(
     }
 
     /** The microphone and the live readout. */
-    val tune = TuneSession(context, prefs.prefs.value, captureHistory, sounding = output, onDuck = output::duck)
+    val tune: TuneSession = TuneSession(context, initialPrefsPublication.prefs, captureHistory,
+        sounding = output, onDuck = output::duck, initialPublication = initialPrefsPublication)
 
     /** The screen theme, as its own flow so the root recomposes on a theme change and on nothing else in prefs. */
     val theme: StateFlow<Theme> = prefs.prefs.map { it.theme }.stateIn(scope, SharingStarted.Eagerly, prefs.prefs.value.theme)
@@ -84,10 +90,10 @@ class AppGraph(
         crashLog.install { prefs.prefs.value.hornNickname }
         history.start()
         // On the changing thread, so no reading after a label change carries the old label.
-        prefs.addListener {
+        prefs.addPublicationListener {
+            tune.settingsChanged(it)
             output.settingsChanged()
             refreshHistoryContext()
-            tune.settingsChanged(it)
         }
     }
 
@@ -117,14 +123,9 @@ class AppGraph(
         database.close()
     }
 
-    private fun currentRunContext(): RunContext {
-        val drone = output.soundingDroneMidi
-        return runContextOf(prefs.prefs.value, drone)
-    }
-
     private fun refreshHistoryContext() {
-        val context = currentRunContext()
-        synchronized(historyContextLock) { history.setContext(context) }
+        val drone = output.soundingDroneMidi
+        synchronized(historyContextLock) { history.setContext(runContextOf(prefs.publication.value.prefs, drone)) }
     }
 
     companion object {

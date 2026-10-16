@@ -163,14 +163,21 @@ fun TableScreen(graph: AppGraph = TickTockApp.graph(LocalContext.current)) {
                             }
                             val name = tableNoteName(note, prefs)
                             val mean = Cents.shown(note.meanCents)
-                            val description = stringResource(R.string.table_row_spoken, spokenNote(name), spokenCents(mean),
+                            val outsideKeyed = !tableInRange(note, prefs, extended = false)
+                            val rangeFact = when {
+                                !tableInRange(note, prefs, extended = true) -> stringResource(R.string.table_outside_extended)
+                                outsideKeyed -> stringResource(R.string.table_outside_keyed)
+                                else -> null
+                            }
+                            val summary = stringResource(R.string.table_row_spoken, spokenNote(name), spokenCents(mean),
                                 Cents.shown(note.spreadCents) ?: 0,
                                 pluralStringResource(R.plurals.table_attack_total, note.attacks.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), note.attacks),
                                 pluralStringResource(R.plurals.table_reading_total, note.n.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), note.n))
+                            val description = rangeFact?.let { "$summary, $it" } ?: summary
                             HistoryRow(name, "${pluralStringResource(R.plurals.table_attack_total, note.attacks.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), note.attacks)}\n${pluralStringResource(R.plurals.table_reading_total, note.n.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), note.n)}", description, note.n < MIN_TABLE_READINGS,
-                                { selected = note.label to note.midiSounding }, tag = "table-note-${note.midiSounding}",
+                                { selected = note.label to note.midiSounding }, tag = "table-note-${note.midiSounding}", outsideKeyedRange = outsideKeyed,
                                 mean = { TableMean(mean, note.n < MIN_TABLE_READINGS) }, chart = {
-                                    TableHistogram(note, comparison, true, scopeLabel)
+                                    TableHistogram(note, comparison, true, scopeLabel, prefs)
                                 })
                         }
                     }
@@ -233,12 +240,12 @@ private fun TableGhost(gated: Boolean) {
 }
 
 @Composable
-internal fun TableHistogram(note: NoteSummary, history: List<NoteSummary>, compact: Boolean, scopeLabel: String) {
+internal fun TableHistogram(note: NoteSummary, history: List<NoteSummary>, compact: Boolean, scopeLabel: String, prefs: Prefs = Prefs()) {
     val comparison = history.find { it.label == note.label && it.midiSounding == note.midiSounding }
     Histogram(note.bins, comparison?.bins ?: IntArray(101),
         CentsBand.IN_TUNE_MAX.toFloat(), CentsBand.CLOSE_MAX.toFloat(),
         stringResource(R.string.table_chart_spoken, scopeLabel, if (comparison == null) "" else stringResource(R.string.table_history_overlay), if (compact) 25 else 50),
-        Modifier.fillMaxWidth(), compact = compact, dimmed = note.n < MIN_TABLE_READINGS)
+        Modifier.fillMaxWidth(), compact = compact, dimmed = note.n < MIN_TABLE_READINGS || !tableInRange(note, prefs, extended = true))
 }
 
 @Composable
@@ -260,3 +267,11 @@ internal fun tableRegister(note: NoteSummary, prefs: Prefs): Int {
 }
 
 internal const val MIN_TABLE_READINGS = 5
+
+/** Historical labels own written pitch and ranges even after the selected instrument changes. */
+internal fun tableInRange(note: NoteSummary, prefs: Prefs, extended: Boolean): Boolean {
+    val instrument = Catalogue.find(note.label.instrumentKey) ?: Catalogue.get(Catalogue.DEFAULT_KEY)
+    val range = ticktock.app.config.effectiveRange(instrument, prefs)
+    val written = Transposition.writtenFromSounding(note.midiSounding, note.label.transposition)
+    return written in if (extended) range.extended else range.keyed
+}

@@ -42,6 +42,8 @@ public:
     // Audio-side error thread: the stream is dead; the controller closes it
     // from its own thread later, never from here (the AAudio guide's rule).
     virtual void onError(std::int32_t errorCode) = 0;
+    // Framework routing thread: signal only; platform reads belong to the control thread.
+    virtual void onRoutingChanged() = 0;
 };
 
 class OutputDevice {
@@ -58,6 +60,7 @@ public:
     // (CLOCK_MONOTONIC). False until the stream has run a few bursts.
     virtual bool timestamp(std::int64_t& frames, std::int64_t& nanos) = 0;
     virtual std::int64_t framesWritten() = 0;
+    virtual std::int32_t routedDeviceId() = 0;
 };
 
 }  // namespace ticktock::control

@@ -339,15 +339,19 @@ class AudioControlThread(
         if (!open(resumed = registry.registered)) parkAll(ParkReason.OUTPUT_FAILED)
     }
 
-    private fun routingChanged() {
+    private fun routingChanged(device: RoutedDevice?, latencyMillis: Int) {
         val open = stream ?: return
-        val current = describe(open)
+        val current = describe(open, device, latencyMillis)
         publish(current)
+        emit(OutputEvent.RoutingChanged(current))
         log("route is now ${current.deviceName} (${current.routeClass}), ${current.latencyMillis} ms")
     }
 
-    private fun describe(open: OpenStream): OutputInfo {
-        val routed = open.routedDevice()
+    private fun describe(
+        open: OpenStream,
+        routed: RoutedDevice? = open.routedDevice(),
+        latencyMillis: Int = open.latencyMillis(),
+    ): OutputInfo {
         val classification = RouteClassifier.classify(routed)
         routeFlow.value = classification
         return OutputInfo(
@@ -355,7 +359,7 @@ class AudioControlThread(
             framesPerBlock = open.framesPerBurst,
             routeClass = classification.routeClass,
             deviceName = routed?.name ?: UNKNOWN_DEVICE,
-            latencyMillis = open.latencyMillis(),
+            latencyMillis = latencyMillis,
             deviceId = routed?.id,
             wireless = classification.wireless,
         )
@@ -429,7 +433,11 @@ class AudioControlThread(
         }
 
         override fun onRoutingChanged(stream: OpenStream) {
-            handler.post { if (stream === this@AudioControlThread.stream) routingChanged() }
+            onRoutingChanged(stream, stream.routedDevice(), stream.latencyMillis())
+        }
+
+        override fun onRoutingChanged(stream: OpenStream, device: RoutedDevice?, latencyMillis: Int) {
+            handler.post { if (stream === this@AudioControlThread.stream) routingChanged(device, latencyMillis) }
         }
 
         override fun onEvent(stream: OpenStream, event: OutputEvent) {

@@ -11,7 +11,7 @@ jar staged under `robolectric-deps/`.
 | `install-hooks.sh` | Installs the pre-commit (staged diff) and pre-push (pushed ranges) scans and sets the commit identity. Run once per clone. |
 | `worktree.sh PATH BRANCH [START]` | Creates a task worktree, scans the branch name, sets the identity and installs the hooks. Branch names start with a milestone, `m2/engine-MET-06-reanchor`; git keeps `mN` and `mN/...` from coexisting, in either order, so a milestone-wide branch beside task branches is `mN-<role>`, as `m0-tests` and `m1-integrate`. |
 | `verify.sh [--base REV] [--skip-h]` | The full local gate with one verdict: identity, source guards, U tier, N tier, H tier, lint, debug APK, manifest allowlist, 16 KB alignment and complete supported ABIs. About 20 s warm, a few minutes cold. |
-| `verify-selftest.sh [--only NAME ...]` | Proves `verify.sh` goes red for the right reason on eleven planted failures, after a green control run. Includes a missing mandatory native suite. `--only` runs the control plus the named cases. |
+| `verify-selftest.sh [--only NAME ...]` | Proves `verify.sh` goes red for the right reason on fifteen planted failures, after a green control run. Includes a missing mandatory native suite. `--only` runs the control plus the named cases. |
 | `prove-red.sh [--base REV] [--head REV]` | Copies the branch's test files onto the base commit in a scratch worktree and refuses the branch if they pass there. CI runs it on every PR. |
 | `red-proof.py ROOT CHANGED_TESTS LOG` | Classifies failed JUnit/CTest results against changed test sources, or a missing new API diagnosed in a changed test. Rejects unrelated and infrastructure failures. Called by `prove-red.sh`. |
 | `test-prove-red.py` | Exercises the real red-proof entry point in isolated Git fixtures with controlled assertion, compiler, dependency and classpath outcomes. Runs in the source gate. |
@@ -23,6 +23,7 @@ jar staged under `robolectric-deps/`.
 | `device/readout.sh --tone HZ \| --live [--a4 HZ] [--seconds N] [--expect NOTE]` | Installs the debug APK on the connected device or emulator, opens the debug live readout on a synthesised tone (the only input path on a headless emulator) or the real microphone, and prints the readout lines the app logged; `--expect` makes the last line's note a pass or fail; `--a4` sets the A4 the detector measures against; `--burst-hops 64 --expect-drops` injects an oversized block and requires a nonzero dropped-hop count. Evidence lands in `verification/<date>/`. |
 | `device/output.sh [--drone MIDI] [--metro BPM] [--seconds N] [--expect-beats K]` | Installs the debug APK, starts the shared Drone/Metronome owner through the real engine (control thread, JNI bridge, AAudio) and reads the output events back from logcat: the stream that opened, the beats, the counters and the render callback's frame clock. Passes when a stream opened, frames advanced, at least K beats arrived and the stream closed when the screen was left. Evidence lands in `verification/<date>/`. |
 | `device/validate-audio.py --serial SERIAL` | Builds offline, exports sixty-eight checked native PCM cases, installs the debug and instrumentation APKs on the selected device, then verifies 672 pitch cases, native command/acknowledgement replay with Android SQLite, ten scored musical passages, and 3,000 individually timed analysis hops. Requires JDK 21 and the existing Android SDK. Saves source/PCM/APK hashes, device identity, case results and percentiles under `build/audio-validation/`; missing evidence, stale source or an incomplete test selection fails. |
+| `device/validate-cold-prefs.py --serial SERIAL --app-apk APK --test-apk APK` | Verifies the separately built and installed `com.adequateapps.metronome.coldproof.debug` sandbox, then drives saved capture, ears-first and drone octave settings across two instrumentation processes separated by force-stop. Requires an emulator and exact installed APK hashes; clears only the fixed sandbox. Saves source/APK hashes, process witnesses, actual PCM capture exclusions and native drone command evidence under `build/cold-prefs-validation/`. Build the sandbox offline with `-Pticktock.applicationIdOverride=com.adequateapps.metronome.coldproof`; the runner never builds or installs. |
 | `gen-ranges/check.sh INPUT_DIR` | Regenerates the two range layers from their inputs and compares byte for byte (RNG-03). `verify.sh` runs it when `TICKTOCK_RANGE_INPUTS` is set. |
 
 ## Source guards in `verify.sh`
@@ -41,12 +42,16 @@ jar staged under `robolectric-deps/`.
   `band-literal-allowlist.txt` with its reason. The BND-04 test in `:core`
   applies the same rule and reads the same allowlist.
 - **Render path.** Files under `engine/src/main/cpp/render/` run inside the
-  audio callback, and so do three functions in files that otherwise belong to
-  the control thread: `OutputController::onRender`, `AAudioDevice::onData` and
-  the bridge's `onWake`. Heap allocation, standard containers, locks and
-  logging are refused in all of them by a source lint, which fails if one of
-  the three functions goes missing; the host-tests allocation counter adds the
-  runtime check for the controller's callback.
+  audio callback. The guarded bodies outside that directory are
+  `OutputController::onRender`, `AAudioDevice::onData`, `AAudioDevice::onError`, both classes'
+  `onRoutingChanged` callbacks, the `CallbackLease` constructor/destructor and the bridge's `onWake`. Heap allocation,
+  standard containers, locks and logging are refused in all of them by a
+  source lint, which fails if any guarded function goes missing. Host allocation
+  counters also exercise the controller and actual platform routing callback.
+  The platform callbacks share a bounded generation-token registry; its lease
+  helpers are scanned because they run before and after every callback body.
+  The actual device tests run both normally and with ASan/UBSan, including
+  delayed callback entry after owner destruction and owner/stream address reuse.
 
 Every test tier must leave JUnit XML with at least one test case and no
 skipped case; a tier that produced nothing is as red as one that failed.

@@ -4,13 +4,15 @@ package ticktock.data.prefs
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import ticktock.core.prefs.Prefs
 import ticktock.core.prefs.PrefsSchema
 import ticktock.core.prefs.ReadResult
 import ticktock.data.StorageThread
 import java.util.concurrent.ScheduledFuture
+
+/** One visible prefs value and its process-local publication identities; revisions are never persisted. */
+data class PrefsPublication(val prefs: Prefs, val revision: Long, val instrumentRevision: Long)
 
 /** How the last load went. */
 sealed class PrefsLoad {
@@ -51,6 +53,10 @@ class PrefsStore(
 ) {
     private val prefsFlow = MutableStateFlow(Prefs())
     val prefs: StateFlow<Prefs> = prefsFlow
+    private val publicationFlow = MutableStateFlow(PrefsPublication(prefsFlow.value, 0, 0))
+
+    /** Read prefs and their instrument epoch together when admitting capture readings. */
+    val publication: StateFlow<PrefsPublication> = publicationFlow
 
     private val noticeFlow = MutableStateFlow<PrefsNotice?>(null)
     val notice: StateFlow<PrefsNotice?> = noticeFlow
@@ -83,19 +89,20 @@ class PrefsStore(
 
     /** Reads the file and publishes the result. Call once at start, before anything reads [prefs] for real. */
     fun load(): PrefsLoad = storage.call {
+        var loadedPublication = publicationFlow.value
         val result = try {
             when (val text = file.read()) {
                 null -> PrefsLoad.Fresh.also { written = null }
                 else -> when (val read = PrefsSchema.read(text)) {
                     is ReadResult.Ok -> {
-                        prefsFlow.value = read.result.prefs
+                        loadedPublication = synchronized(replay) { publishLocked(read.result.prefs) }
                         written = read.result.prefs
                         PrefsLoad.Loaded(read.result.notes)
                     }
                     is ReadResult.Corrupt -> {
                         val copy = keepCorruptCopy()
                         // The player had prefs, so this is not a first run (ERR-05 applies the same rule).
-                        prefsFlow.value = Prefs(firstRunComplete = true)
+                        loadedPublication = synchronized(replay) { publishLocked(Prefs(firstRunComplete = true)) }
                         written = null
                         if (copy != null) {
                             noticeFlow.value = PrefsNotice.CORRUPT_COPY_KEPT
@@ -110,14 +117,15 @@ class PrefsStore(
             }
         } catch (failure: Exception) {
             Log.w(TAG, "prefs could not be read", failure)
-            prefsFlow.value = Prefs(firstRunComplete = true)
+            loadedPublication = synchronized(replay) { publishLocked(Prefs(firstRunComplete = true)) }
             // Nothing is written until the file has been read: it may be fine once storage recovers.
-            written = prefsFlow.value
+            written = loadedPublication.prefs
             guard = Guard.UNREADABLE
             noticeFlow.value = PrefsNotice.UNREADABLE
             PrefsLoad.Unreadable(failure.toString())
         }
         lastLoad = result
+        notifyPublication(loadedPublication)
         result
     }
 
@@ -135,24 +143,47 @@ class PrefsStore(
 
     /** Applies [change] to the latest prefs and schedules a write. Safe from any thread. */
     fun update(change: (Prefs) -> Prefs) {
-        synchronized(replay) {
-            prefsFlow.update(change)
+        val published = synchronized(replay) {
+            val next = change(publicationFlow.value.prefs)
             if (guard != Guard.NONE) replay += change
+            publishLocked(next)
         }
-        listeners.forEach { it(prefsFlow.value) }
+        notifyPublication(published)
         storage.post { scheduleWrite(writeDelayMillis) }
     }
 
-    private val listeners = java.util.concurrent.CopyOnWriteArrayList<(Prefs) -> Unit>()
+    /** Caller holds replay's monitor. Publish one coherent identity before the compatibility prefs flow. */
+    private fun publishLocked(next: Prefs): PrefsPublication {
+        val previous = publicationFlow.value
+        if (next == previous.prefs) return previous
+        val published = PrefsPublication(next, previous.revision + 1,
+            previous.instrumentRevision + if (next.instrumentKey == previous.prefs.instrumentKey) 0 else 1)
+        publicationFlow.value = published
+        prefsFlow.value = next
+        return published
+    }
+
+    private val listeners = java.util.concurrent.CopyOnWriteArrayList<(PrefsPublication) -> Unit>()
+
+    /** Call outside every prefs lock; concurrent publishers may deliver captured events out of order. */
+    private fun notifyPublication(published: PrefsPublication) {
+        listeners.forEach { it(published) }
+    }
+
+    /** Compatibility listener for consumers that do not track publication identity. */
+    fun addListener(listener: (Prefs) -> Unit) = addPublicationListener { listener(it.prefs) }
 
     /**
-     * Calls [listener] with the prefs now and after every change, on the
-     * changing thread, so a label reaches the history store before the next
-     * reading can (SES-02, CAP-01).
+     * Supplies one immutable publication now and after each update. Callbacks run on the publishing
+     * thread outside prefs locks. Consumers that retain state reject revisions older than their own;
+     * an instrument round trip remains visible even if a newer callback overtakes an older one.
      */
-    fun addListener(listener: (Prefs) -> Unit) {
-        listeners += listener
-        listener(prefsFlow.value)
+    fun addPublicationListener(listener: (PrefsPublication) -> Unit) {
+        val current = synchronized(replay) {
+            listeners += listener
+            publicationFlow.value
+        }
+        listener(current)
     }
 
     /** Writes now if anything changed. The error reaches the caller, and the retry path keeps running (ERR-06). */
@@ -177,13 +208,13 @@ class PrefsStore(
     /** Storage thread only. */
     private fun writeIfChanged(): Result<Unit> {
         // Nothing changed since the load: nothing to write, guarded or not.
-        if (prefsFlow.value == written && synchronized(replay) { replay.isEmpty() }) return Result.success(Unit)
+        if (publicationFlow.value.prefs == written && synchronized(replay) { replay.isEmpty() }) return Result.success(Unit)
         if (!safeToWrite()) {
             scheduled?.cancel(false)
             scheduled = storage.later(retryMillis) { writeIfChanged() }
             return Result.failure(java.io.IOException("the prefs file cannot be read, so it is not written"))
         }
-        val current = prefsFlow.value
+        val current = publicationFlow.value.prefs
         if (current == written) return Result.success(Unit)
         return try {
             file.write(PrefsSchema.write(current))
@@ -214,14 +245,17 @@ class PrefsStore(
                 guard = Guard.CORRUPT_UNCOPIED
             } else {
                 val base = (stored as? ReadResult.Ok)?.result?.prefs
-                synchronized(replay) {
-                    if (base != null) prefsFlow.value = replay.fold(base) { prefs, change -> change(prefs) }
+                val recovered = synchronized(replay) {
+                    val merged = if (base == null) publicationFlow.value.prefs
+                        else replay.fold(base) { prefs, change -> change(prefs) }
+                    val published = publishLocked(merged)
                     replay.clear()
                     guard = Guard.NONE
+                    published
                 }
                 written = base
                 if (noticeFlow.value == PrefsNotice.UNREADABLE) noticeFlow.value = null
-                listeners.forEach { it(prefsFlow.value) }
+                notifyPublication(recovered)
                 return true
             }
         }

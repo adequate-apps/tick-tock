@@ -130,6 +130,8 @@ class LiveCapture(
     sounding: SoundingNotes = NoSoundingNotes,
     private val onDuck: (Float, () -> Unit) -> Unit = { _, settled -> settled() },
     noiseFloorDb: Int? = null,
+    instrumentKey: String = "",
+    instrumentRevision: Long = 0,
 ) : InputListener {
     private val detector = Detector(mode, sounding = sounding).also { it.setA4(a4Hz); it.setNoiseFloor(noiseFloorDb) }
     private val duckLock = Any()
@@ -140,11 +142,11 @@ class LiveCapture(
     private val thread = AnalysisThread(
         analyser, promote, beforeBatch = { readyDecisions.clear(); applyRequests() },
         onDecisions = {
-            if (!resetAfterInterruption.get() && readyDecisions.isNotEmpty()) onDecisions(readyDecisions)
+            if (!resetAfterInterruption.get() && instrumentIsCurrent() && readyDecisions.isNotEmpty()) onDecisions(readyDecisions)
         },
         onDecision = { decision ->
             // A route or voice change can arrive while an old window is being estimated.
-            if (resetAfterInterruption.get()) {
+            if (resetAfterInterruption.get() || !instrumentIsCurrent()) {
                 readyDecisions.clear()
                 applyRequests()
             } else {
@@ -194,6 +196,27 @@ class LiveCapture(
     private val requestedNoiseFloor = AtomicReference<Int?>(null)
     private val requestedMode = AtomicReference<ResponseMode?>(null)
     private val resetAfterInterruption = AtomicBoolean(false)
+    private data class InstrumentEpoch(val serial: Long, val key: String)
+    private val instrumentRequestLock = Any()
+    private val requestedInstrument = AtomicReference(InstrumentEpoch(instrumentRevision, instrumentKey))
+    @Volatile private var activeInstrument = requestedInstrument.get()
+
+    /** Publish the epoch and ring boundary together; only analysis mutates detector or statistics. */
+    fun requestInstrument(key: String, revision: Long) {
+        synchronized(instrumentRequestLock) {
+            if (revision <= requestedInstrument.get().serial) return
+            requestedInstrument.set(InstrumentEpoch(revision, key))
+            analyser.discardPendingInput()
+        }
+    }
+
+    private fun instrumentIsCurrent(): Boolean = activeInstrument == requestedInstrument.get()
+
+    /** Also guards a prefs value published just before its synchronous listener reaches capture. */
+    fun acceptsInstrument(key: String, revision: Long): Boolean {
+        val active = activeInstrument
+        return active.key == key && active.serial == revision && active == requestedInstrument.get()
+    }
 
     /** Measures against [hz] from the next hop on; a change starts a new A4 generation (POL-19). */
     fun requestA4(hz: Double) {
@@ -283,6 +306,18 @@ class LiveCapture(
     }
 
     private fun applyRequests() {
+        // Taking the snapshot under the request lock guarantees its ring fence is already set.
+        // Release that lock before calling output control: prefs can originate from output too.
+        val instrument = synchronized(instrumentRequestLock) { requestedInstrument.get() }
+        if (instrument != activeInstrument) {
+            detector.reset() // An instrument change is not a completed-note reveal.
+            clearInstrumentStatistics()
+            stateFlow.update { it.copy(readout = Readout()) }
+            synchronized(duckLock) {
+                if (duckEnabled) onDuck(1f, analyser.deferBleedEvidence())
+            }
+            activeInstrument = instrument
+        }
         if (resetAfterInterruption.getAndSet(false)) {
             detector.reset()?.let(::endNote)
             stateFlow.update { it.copy(readout = Readout()) }
@@ -299,6 +334,24 @@ class LiveCapture(
         }
     }
 
+    private fun clearInstrumentStatistics() {
+        traceRing.fill(Float.NaN)
+        traceHead = 0
+        traceHop = -1L
+        attackHops.clear()
+        traceFlow.value = TraceSnapshot.EMPTY
+        noteMidi = null
+        noteStartHop = 0L
+        noteLastReadingHop = 0L
+        noteCentsSum = 0.0
+        noteHzSum = 0.0
+        noteReadings = 0
+        noteSettled = null
+        notePoints.fill(Float.NaN)
+        notePointCount = 0
+        lastNoteFlow.value = null
+    }
+
     private fun dispatchDuck(decision: Decision) {
         synchronized(duckLock) {
             if (duckEnabled) decision.duck?.let { onDuck(it, analyser.deferBleedEvidence()) }
@@ -307,8 +360,12 @@ class LiveCapture(
 
     private fun onDecisions(decisions: List<Decision>) {
         if (history != null) {
-            for (decision in decisions) decision.saved?.let { history.accept(it, decision.firstSettled) }
+            for (decision in decisions) {
+                if (!instrumentIsCurrent()) return
+                decision.saved?.let { history.accept(it, decision.firstSettled) }
+            }
         }
+        if (!instrumentIsCurrent()) return
         val newest = decisions.last()
         levelFlow.value = Level(newest.hop, Level.db(newest.level))
         stateFlow.update { previous ->

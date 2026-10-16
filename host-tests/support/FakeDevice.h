@@ -79,6 +79,12 @@ public:
         return timestampValid;
     }
     std::int64_t framesWritten() override { return written; }
+    std::int32_t routedDeviceId() override { return deviceId; }
+
+    void routeChanged(std::int32_t nextDeviceId) {
+        deviceId = nextDeviceId;
+        if (listener_ != nullptr) listener_->onRoutingChanged();
+    }
 
     // The audio thread's side.
     void render(float* interleaved, std::int32_t frames) {

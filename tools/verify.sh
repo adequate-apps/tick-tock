@@ -7,7 +7,7 @@
 #   1. identity   tools/identity-scan.sh over the tree and the branch's commits
 #   2. sources    skipped-test markers, band thresholds outside CentsBand,
 #                 heap allocation, locking or logging on the render path
-#                 (render/ and the three callback functions outside it)
+#                 (render/ and the device callback functions outside it)
 #   3. U tier     :core:jvmTest
 #   4. N tier     host-tests/ (cmake, ninja, gtest) when present
 #   5. H tier     Robolectric tests, lint, assembleDebug, manifest allowlist,
@@ -177,8 +177,8 @@ echo "no cents threshold outside ${band_file##*/}"
 # The render callback has a deadline: no heap, no locks, no logging (spec 2.6).
 # Everything under engine/src/main/cpp/render is the render path; the engine
 # builder keeps the callback and the synth there and the control thread outside.
-# The callback also passes through three functions in files that otherwise
-# belong to the control thread; those bodies are scanned by the same rule.
+# Render and routing callbacks also pass through functions in files that
+# otherwise belong to the control thread; their bodies share the same rule.
 render_hits() {
     # stdin: file:line:text; prints the lines that reach the heap, a lock or a log.
     grep -E \
@@ -203,7 +203,12 @@ function_body() {
 }
 render_dir="engine/src/main/cpp/render"
 callback_functions="engine/src/main/cpp/control/OutputController.cpp OutputController::onRender
+engine/src/main/cpp/control/OutputController.cpp OutputController::onRoutingChanged
 engine/src/main/cpp/AAudioDevice.cpp AAudioDevice::onData
+engine/src/main/cpp/AAudioDevice.cpp AAudioDevice::onError
+engine/src/main/cpp/AAudioDevice.cpp AAudioDevice::onRoutingChanged
+engine/src/main/cpp/AAudioDevice.cpp CallbackLease::CallbackLease
+engine/src/main/cpp/AAudioDevice.cpp CallbackLease::~CallbackLease
 engine/src/main/cpp/JniBridge.cpp onWake"
 if [ -d "$render_dir" ]; then
     render_sources=$(find "$render_dir" -type f \( -name '*.cpp' -o -name '*.cc' -o -name '*.h' -o -name '*.hpp' \) || true)

@@ -86,14 +86,14 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 | BND-03 | colour agrees with digits | U | 2.0 | CentsBandTest `BND-03` | green |
 | BND-04 | no other thresholds exist | U + source grep | 2.0 | CentsBandTest `BND-04` (three tests) + `tools/verify.sh` sources stage, shared allowlist `tools/band-literal-allowlist.txt`; SourceGuardTest `band plots receive their edges without declaring local thresholds`; the app supplies both plot edges from CentsBand | green |
 | BND-05 | no data | U | 2.0 | CentsBandTest `BND-05` | green |
-| BND-06 | whole cents only | U | 2.0 |  | open |
+| BND-06 | whole cents only | U, H | 2.0 | WholeCentsTest `BND-06 signed fractional cents format as whole numbers including half boundaries`; DisplayAcceptanceTest `BND-06` exercises real positive/negative PCM, ears-first reveal/last note, Table rows and both detail scopes. Decimal-format and raw-statistics mutations fail these tests. | green |
 
 ## Instrument ranges and transpositions
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | RNG-01 | two tiers per key | U | 2.0 | RangeGoldenTest `RNG-01` | green |
-| RNG-02 | what each tier drives | U | 2.0 |  | open |
+| RNG-02 | what each tier drives | U, H | 2.0 | RangeResolverTest and RangeScreenTest cover extended judgment; RangeTableAcceptanceTest separates keyed outlines from extended chart/legend ink and preserves low-count dimming. Retained played rows replace guide/matrix clauses; editor remains deferred. Wrong-instrument hint integration is still missing (HNT rows). | open (app) |
 | RNG-03 | data source | U | 2.0 | RangeLayerDataTest (source hashes) + `tools/gen-ranges/check.sh` (byte-for-byte reproduction where the inputs are present) | green |
 | RNG-04 | golden file | U | 2.0 | RangeGoldenTest `RNG-04` | green |
 | RNG-05 | policy test | U | 2.0 | RangeGoldenTest `RNG-05`; the twenty decisions were drafted during M0 and await the owner's confirmation (see `tools/gen-ranges/README.md`) | green |
@@ -103,9 +103,9 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 | RNG-09 | mappings | U | 2.0 | CatalogueTest `RNG-09` | green |
 | RNG-10 | catch-all keys | U | 2.0 | RangeResolverTest `RNG-10` | green |
 | RNG-11 | always show cents | U | 2.0 | RangeScreenTest `RNG-11 out of range note keeps its cents and Hz dimmed and an imported widening restores ink` drives real analysis and checks retained values and foreground pixels. | green |
-| RNG-12 | played out-of-range notes in the table | U | 2.0 |  | open |
+| RNG-12 | played out-of-range notes in the table | H | 2.0 | RangeTableAcceptanceTest: keyed/extended endpoints, retained low-count and outside rows, historical instrument plus imported overrides, keyed outline, matching detail chart/legend, truthful detail fact and spoken range distinction. Played rows and counts remain available with their original labels; no unplayed guide cells or range filter. | green |
 | RNG-13 | narrowing a range | U | v1.1 |  | deferred |
-| RNG-14 | instrument switch | U | 2.0 |  | open |
+| RNG-14 | instrument switch | U, H | 2.0 | InstrumentSwitchAcceptanceTest (actual picker and PCM: current statistics reset, held notes reconfirm, historical labels/transposition and explicit running tools retained); HopAnalyserTest `RNG-14` (queued/overlapping delivered PCM excluded without lost hop time); InstrumentBoundaryTest (rapid round trip); PrefsInstrumentBoundaryTest (actual store, delayed/reordered publications, PCM and SQLite); PrefsStoreTest publication/load/recovery cases. Earlier labeled groups remain in the selected session; a switch resets live analysis without deleting history. | green |
 | RNG-15 | an override can only widen | U | v1.1 | RangeResolverTest `RNG-15` (the resolver rule landed with the layers; the editor ships in v1.1) | green |
 | RNG-16 | strict read before write | U | v1.1 |  | deferred |
 | RNG-17 | save reports the truth | U | v1.1 |  | deferred |
@@ -123,14 +123,14 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| HNT-01 | three different notes | U | 2.0 | StrayCounterTest `HNT-01` | green |
-| HNT-02 | the window is playing time | U | 2.0 | StrayCounterTest `HNT-02` | green |
-| HNT-03 | single-note cases never trigger it | U | 2.0 | StrayCounterTest `HNT-03` | green |
-| HNT-04 | spread-out strays never trigger it | U | 2.0 | StrayCounterTest `HNT-04` | green |
+| HNT-01 | three different notes | U | 2.0 |StrayCounterTest `HNT-01` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
+| HNT-02 | the window is playing time | U | 2.0 |StrayCounterTest `HNT-02` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
+| HNT-03 | single-note cases never trigger it | U | 2.0 |StrayCounterTest `HNT-03` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
+| HNT-04 | spread-out strays never trigger it | U | 2.0 |StrayCounterTest `HNT-04` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
 | HNT-05 | it offers the fix | U | v1.1 |  | deferred |
 | HNT-06 | editing forgets covered strays | U | v1.1 |  | deferred |
-| HNT-07 | scope | U | 2.0 | StrayCounterTest `HNT-07` | green |
-| HNT-08 | cents keep showing | U | 2.0 | StrayCounterTest `HNT-08` | green |
+| HNT-07 | scope | U | 2.0 |StrayCounterTest `HNT-07` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
+| HNT-08 | cents keep showing | U | 2.0 |StrayCounterTest `HNT-08` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
 
 ## Sessions and runs, history bounds and storage
 
@@ -207,8 +207,8 @@ ledgered under their own prefixes below.
 | TON-02 | accuracy | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Voices.everyVoiceIsInTuneAt442` (7 notes x 3 voices x 2 rates, FFT peak within 0.5 c, sine within 0.1 c) | green |
 | TON-03 | held notes retune | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Voices.aHeldNoteRetunesInPlaceWhenA4Changes` (no gap, no re-strike) and `Voices.aHeldVoiceKeepsItsPitchAcrossARateChange`; OutputSessionTest `TON-04` changes A4 without a new VoiceOn; DroneScreenTest `TON-01 and TON-04` walks Next check through the saved owner | green |
 | TON-04 | volume is gain | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Voices.volumeIsAGainChangeAndNotARestrike` (ramped gain, constant voice count) and `Mixer.duckIsARampedGainWithAFloor`; DroneScreenTest `TON-01 and TON-04` verifies the volume control sends VoiceGain without another VoiceOn DroneScreenTest `TON-04 five volume decreases silence the drone and disable the lower endpoint` and MetronomeScreenTest `click volume steps reach both exact endpoints` exercise percentage controls; OutputGraphTest `CTX-02 and POL-24` uses five decreases before player capture and persisted free context. | green |
-| TON-05 | sine voice and fallback | N | 2.0 |  | open |
-| TON-06 | transposition persists | H | 2.0 |  | open |
+| TON-05 | output open failure names the device and refused rates; sine is selectable (adopted decision 8) | N, H | 2.0 | Voices `everyVoiceIsInTuneAt442`; DroneScreenTest `TON-01 and TON-04 every drone control reaches the shared owner and navigation keeps it running` selects SINE; AudioControlThreadTest `OUT-17 an open failure names the device and the refused rates, and the tool parks`; DebugOutputTest verifies the visible refusal. Removing sine selection or failure details fails the corresponding test. | green |
+| TON-06 | transposition persists | H, D | 2.0 | ColdPreferencesTest `CAP-02 EAR-03 TON-06 controls survive a closed graph and fresh file load`; ColdPreferencesDeviceTest `coldPreferencesPhase` via `validate-cold-prefs.py` restores the selected alto instrument, transposition and octave across separate Android processes, then verifies MIDI 82 reaches native output. Saved-octave mutation fails the cold-graph test. | green |
 
 ## Deck recording and save location
 
@@ -253,7 +253,7 @@ revision document; the IDs are claimed here like any other.
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | CAP-01 | paused capture drives the needle and reaches no store | H | 2.0 | TuneScreenTest `CAP-01 paused capture keeps listening and live plots while history waits until On` proves Listening plus Capture paused and the Tune tab running indicator, live needle/trace/level, unchanged stored count while paused and resumed writes on On; HistoryStoreTest `CAP-01 and CAP-03 paused readings are counted and only the empty run is recorded` | green |
-| CAP-02 | paused state survives process death | H | 2.0 | prefs field `capturePaused`, device-bound | open |
+| CAP-02 | paused state survives process death | H, D | 2.0 | ColdPreferencesTest `CAP-02 EAR-03 TON-06 controls survive a closed graph and fresh file load`; ColdPreferencesDeviceTest `coldPreferencesPhase` via `validate-cold-prefs.py` proves unchanged saved settings and distinct Android processes, then real PCM produces valid paused readings and no stored history. Dropping the saved pause fails the cold-graph test. | green |
 | CAP-03 | a run opened while paused counts skipped readings | H | 2.0 | HistoryStoreTest `CAP-01 and CAP-03`; DiagnosticsScreenTest `CAP-03 Diagnostics includes readings skipped while capture is paused`. | green |
 
 ### Attacks as the unit
@@ -293,7 +293,7 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| A4W-01 | A4 steps 415 to 466 Hz (decision 16; the sweep ends follow with the detector) | U, H | 2.0 | U: `Pitch.A4_HZ`, PitchMathTest, DetectorA4Test and HopAnalyserTest `A4W-01`, PrefsSchemaTest `A4W-01`, PersonalConfigTest `A4W-01` (415 and 466 accepted, 414.9 and 466.1 refused); H: the stepper in M4 | open |
+| A4W-01 | A4 steps 415 to 466 Hz (decision 16; the sweep ends follow with the detector) | U, H | 2.0 | PitchMathTest, DetectorA4Test, HopAnalyserTest, PrefsSchemaTest and PersonalConfigTest `A4W-01`; DisplayAcceptanceTest `A4W-01 Tune and Settings step every integer and disable both endpoints` and `A4W-01 415 Hz reads zero and each stepped reference labels actual accepted runs`. Old limits, two-Hz steps and missing analysis forwarding each fail. | green |
 
 ### Ears first
 
@@ -301,7 +301,7 @@ revision document; the IDs are claimed here like any other.
 |---|---|---|---|---|---|
 | EAR-01 | readout hidden, capture unchanged | H | 2.0 | TuneScreenTest `EAR-01 ears first hides the needle and preserves every held history reading` compares ten saved hops in Show with ten in Ears first, asserts hidden cents/Hz and the blank needle label; `tune-ears-first-hidden-needle.png` verifies the ghost pointer; the existing ears-first reveal test and hidden readout golden cover sounding feedback | green |
 | EAR-02 | reveal after the note | H | 2.0 | TuneScreenTest `ears first hides the cents, Hz and needle while a note sounds, shows its mean for two seconds after it ends, then hides`, `EAR-02 enabling ears first never replays a note ended in Show`, and `EAR-02 a new note without readings cancels the previous reveal permanently`; LiveCaptureTest `EAR-02 duration ends after the last accepted hop and excludes release silence`, held-mean/settled/serial tracking, same-hop note changes, and A4/mode release tests; LiveCaptureTest `EAR-02 last note preserves rejected and dropped hops through its last reading`; TuneScreenTest `EAR-02 a short note reveals a ghost attack when no settled reading exists`; TracePlotTest `a singleton reading and an isolated reading between gaps both draw a visible point`; reveal golden and round-one reveal mutation | green |
-| EAR-03 | setting persists | H | 2.0 | PrefsSchemaTest `SES-12 a full round trip keeps every field and every unknown field` includes `earsFirst = true`; PrefsStoreTest `SES-01 saved prefs come back on a cold start` exercises other fields; an ears-first cold restart test remains | open |
+| EAR-03 | setting persists | H, D | 2.0 | ColdPreferencesTest `CAP-02 EAR-03 TON-06 controls survive a closed graph and fresh file load`; ColdPreferencesDeviceTest `coldPreferencesPhase` via `validate-cold-prefs.py` restores the setting across separate Android processes and verifies real analysed PCM keeps the cents and Hz hidden. Dropping saved ears-first fails the cold-graph test. | green |
 
 ### Pitch trace
 
@@ -344,7 +344,7 @@ revision document; the IDs are claimed here like any other.
 |---|---|---|---|---|---|
 | SHM-01 | SHARED, LOW_LATENCY, two bursts, granted values reported (decision 13) | H, D | 2.0 | H: AudioControlThreadTest `SHM-01 and OUT-14` (the control thread's `StreamRequest` is SHARED, LOW_LATENCY, rate and frames-per-callback unspecified, two bursts, and `OutputInfo` carries the granted rate, burst, route and latency), NativeStreamBackendTest `SHM-01` (a request the bridge cannot honour is refused before the library is touched); N: `OutputController.theFirstRegistrationOpensSharedLowLatencyAtTwoBurstsAndTheLastCloses` against the fake device; D (emulator, API 36): Opened rate=48000 burst=960 class=SPEAKER, 2 bursts, latency 29 to 57 ms, `verification/2026-10-14/output-*.log`; the owner's phone reading is still listed under the device checks | green (H, N, emulator); phone pending |
 | SHM-02 | buffer grows on xruns up to four bursts | H | 2.0 | H: AudioControlThreadTest `SHM-02` (two tests: a rising xrun count grows the buffer one burst at a time, 2 to 3 to 4, then stops, each step a Diagnostics line; two steps the render callback took inside one poll are two lines, and a refused step is none); N: `OutputController.theBufferGrowsOneBurstPerXrunUpToFour` (the growth the render callback performs itself, decision 13) and `OutputController.bufferGrowthCountsOnlyTheStepsTheDeviceGranted` (a step counts when the device took it; a clamped or erroring device grows nothing); the Kotlin side reads what the native side holds (NativeStreamBackendTest `SHM-02`); D: one underrun on the emulator grew the buffer 2 to 3 bursts, shown in the debug output pane | green |
-| SHM-03 | routing-changed callback on API 37 | H, D | 2.0 | H green: AudioControlThreadTest `OUT-12` (the routing-changed callback re-classifies the route and re-reads latency within the same control-thread turn, with no Parked and no new stream); native registration is blocked: NDK 28.2's AAudio.h has no `AAudioStreamBuilder_setRoutingChangedCallback`, so `AAudioDevice` registers none and the bridge never calls `StreamListener.onRoutingChanged`; needs an NDK that exposes it (an install checkpoint) and then a D check on an API 37 device | open (NDK) |
+| SHM-03 | routing-changed callback on API 37 | N, H, D | 2.0 | N: AAudioRouting exercises actual device and bridge with simulated platform calls, normal and ASan/UBSan variants: API fallback, registration, allocation-free notification, wake, close/disconnect, delayed callback entry, owner/stream address reuse and bounded token reuse. OutputController routing tests fence stale duck completions without restarting voices. H: NativeStreamBackendTest and AudioControlThreadTest `SHM-03`, DuckPresentationTest `SHM-03`; ordered route facts survive opening and invalidate same-info proof. Public API symbol resolved only on API 37; no new NDK required. Actual API 37 framework routing remains unmeasured. | open (device) |
 
 ### Bluetooth calibration
 
@@ -359,7 +359,7 @@ revision document; the IDs are claimed here like any other.
 |---|---|---|---|---|---|
 | TLK-01 | needle state description, read on focus only | H | 2.0 | NeedleAccessibilityTest `focus reads the latest note while held-focus changes emit no accessibility events` checks actual focus events and on-demand node state; TuneScreenTest `TLK-01 needle semantics stay stable while its visual cents change` proves the visual updates leave Compose descriptions unchanged. Physical TalkBack speech remains a device check. | green |
 | TLK-02 | opt-in settled-note live region | H | 2.0 | TuneScreenTest `TLK-01 and TLK-02 settled announcements are opt in and never follow cents at hop rate` proves default silence, one-second settling, frozen held-note speech, note changes and ears-first suppression. | green |
-| TLK-03 | table rows read as sentences | H | 2.0 | HistoryControlsTest `history rows expose one full spoken action and fields retain multiline drafts`; TableScreenTest `SES-03` checks the complete note, mean and spread with cents units, attacks and readings sentence. TableScreenTest `histograms label scope units density and both comparison statistics` also exposes separately labelled historical facts. | green |
+| TLK-03 | table rows read as sentences | H | 2.0 | HistoryControlsTest `history rows expose one full spoken action and fields retain multiline drafts`; TableScreenTest `SES-03` checks the complete note, mean and spread with cents units, attacks and readings sentence. TableScreenTest `histograms label scope units density and both comparison statistics` also exposes separately labelled historical facts. RangeTableAcceptanceTest `RNG-12 TLK-03` adds historical keyed/extended range facts while preserving the ordinary summary. | green |
 | TLK-04 | beats never announced; stepper actions | H | 2.0 |  | open |
 
 ### Colour and shape

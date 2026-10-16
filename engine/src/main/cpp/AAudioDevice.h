@@ -8,7 +8,10 @@
 
 #include <aaudio/AAudio.h>
 
+#include <atomic>
 #include <cstdint>
+
+#include "RoutingSymbols.h"
 
 #include "control/OutputDevice.h"
 #include "render/Commands.h"
@@ -17,12 +20,13 @@ namespace ticktock {
 
 class AAudioDevice final : public control::OutputDevice {
 public:
-    // `wake` runs after every data callback and on every error; the bridge
-    // behind it posts only when beats or an error wait, so the control thread
+    // `wake` runs after data, error and routing callbacks; the bridge
+    // posts only when events wait, so the control thread
     // can sleep between beats.
     using WakeFn = void (*)(void* context);
 
-    AAudioDevice(WakeFn wake, void* context) : wake_(wake), context_(context) {}
+    AAudioDevice(WakeFn wake, void* context, RoutingSymbols routing = RoutingSymbols::system())
+        : wake_(wake), context_(context), routing_(routing) {}
     ~AAudioDevice() override { close(); }
 
     control::DeviceOpen open(const control::DeviceRequest& request, control::DeviceListener& listener) override;
@@ -33,6 +37,7 @@ public:
     std::int32_t xrunCount() override;
     bool timestamp(std::int64_t& frames, std::int64_t& nanos) override;
     std::int64_t framesWritten() override;
+    std::int32_t routedDeviceId() override;
 
     bool isOpen() const { return stream_ != nullptr; }
 
@@ -41,9 +46,16 @@ private:
                                                 int32_t numFrames);
     static void onError(AAudioStream* stream, void* userData, aaudio_result_t error);
 
+    static void onRoutingChanged(AAudioStream* stream, void* userData, const int32_t* deviceIds, int32_t numDevices);
+
     WakeFn wake_;
     void* context_;
+    RoutingSymbols routing_;
+    // Platform close need not join a running routing task. The process-lifetime
+    // callback token pins this owner until close has drained acquired leases.
     AAudioStream* stream_ = nullptr;
+    void* callbackToken_ = nullptr;
+    std::atomic<AAudioStream*> activeStream_{nullptr};
     control::DeviceListener* listener_ = nullptr;
     std::int32_t framesPerBurst_ = 0;
 };

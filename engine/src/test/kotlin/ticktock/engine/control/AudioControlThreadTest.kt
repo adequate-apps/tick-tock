@@ -524,6 +524,44 @@ class AudioControlThreadTest {
     }
 
     @Test
+    fun `SHM-03 same-device routing emits an ordered fact before later duck acknowledgements`() {
+        start(apiLevel = 37)
+        register(OutputTool.DRONE)
+        send(drone)
+        val open = checkNotNull(backend.current)
+        val commands = open.sent.toList()
+        events.clear()
+        open.latency = 87
+        open.routeChanged(SPEAKER)
+        open.event(OutputEvent.DuckSettled(72, 4_000, 9_000_000_000))
+        idle()
+        val expected = checkNotNull(control.info.value)
+        assertEquals(87, expected.latencyMillis)
+        assertEquals(listOf(OutputEvent.RoutingChanged(expected), OutputEvent.DuckSettled(72, 4_000, 9_000_000_000)), events.toList())
+        assertEquals(commands, open.sent)
+        assertEquals(1, backend.opened.size)
+        assertFalse(open.closed)
+    }
+
+    @Test
+    fun `SHM-03 callbacks from a closed stream cannot replace the current route`() {
+        start(apiLevel = 37)
+        register(OutputTool.DRONE)
+        val old = checkNotNull(backend.current)
+        send(OutputCommand.Unregister(OutputTool.DRONE))
+        register(OutputTool.DRONE)
+        val current = checkNotNull(backend.current)
+        val info = control.info.value
+        events.clear()
+        old.routeChanged(USB_DAC)
+        old.event(OutputEvent.DuckSettled(71, 4_000, 9_000_000_000))
+        idle()
+        assertEquals(info, control.info.value)
+        assertTrue(events.isEmpty())
+        assertFalse(current.closed)
+    }
+
+    @Test
     fun `BTC-01 equal output names retain different route identities`() {
         backend.nextRouted = BLE_HEADSET
         start()

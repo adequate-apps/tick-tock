@@ -25,12 +25,15 @@ import ticktock.design.GridlineColors
 import ticktock.design.GridlineMetrics
 import ticktock.design.GridlineSpacing
 import ticktock.design.GridlineType
+import ticktock.design.Line
+import ticktock.design.frame
 
 /** One focused action and spoken summary, with room for the distribution at large text sizes. */
 @Composable
 fun HistoryRow(note: String, counts: String, description: String, dimmed: Boolean, onOpen: () -> Unit,
-    modifier: Modifier = Modifier, tag: String = "history-row", mean: @Composable () -> Unit, chart: @Composable () -> Unit) {
-    Column(modifier.fillMaxWidth().background(GridlineColors.field).clickable(role = Role.Button, onClick = onOpen)
+    modifier: Modifier = Modifier, tag: String = "history-row", outsideKeyedRange: Boolean = false, mean: @Composable () -> Unit, chart: @Composable () -> Unit) {
+    val rangeFrame = if (outsideKeyedRange) Modifier.frame(Line(GridlineMetrics.line, GridlineColors.borderLight)) else Modifier
+    Column(modifier.fillMaxWidth().background(GridlineColors.field).then(rangeFrame).clickable(role = Role.Button, onClick = onOpen)
         .testTag(tag).clearAndSetSemantics { contentDescription = description }) {
         BoxWithConstraints(Modifier.fillMaxWidth().defaultMinSize(minHeight = GridlineMetrics.touchTarget).padding(GridlineSpacing.sp3)) {
             val stacked = maxWidth < 260.dp || LocalDensity.current.fontScale >= 1.5f

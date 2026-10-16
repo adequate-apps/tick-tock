@@ -55,4 +55,7 @@ sealed interface OutputEvent {
 
     /** The requested duck reached its target at [frame], with monotonic presentation time [nanos]. */
     data class DuckSettled(val generation: Int, val frame: Long, val nanos: Long) : OutputEvent
+
+    /** The open stream changed routing; invalidates earlier presentation evidence even when [info] is unchanged. */
+    data class RoutingChanged(val info: OutputInfo) : OutputEvent
 }
