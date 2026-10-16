@@ -32,6 +32,7 @@ def verify(directory, version, version_code, app_certificate, upload_certificate
     if (directory / 'SHA256SUMS').read_text() != expected_sums:
         raise ValueError('release checksums differ')
     apk, bundle = [directory / name for name in names]
+    run(sys.executable, ROOT / 'tools/check-apk-metadata.py', apk)
     sdk = Path(os.environ['ANDROID_HOME'])
     build_tools = sdk / 'build-tools' / '36.0.0'
     signing = run(build_tools / 'apksigner', 'verify', '--verbose', '--print-certs', apk)

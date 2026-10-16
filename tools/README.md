@@ -76,3 +76,6 @@ Release tooling (JDK 21 and the pinned Android SDK must already be staged):
 - `release-source.py TAG REVISION` requires a clean source tree at the expected revision, matches
   the tag to the application version and extracts that version's curated changelog section.
   `test-release-source.py` checks version mismatch and section boundaries.
+- `check-apk-metadata.py APK` rejects the randomized SDK inventory block in the APK signature area.
+  The AAB retains the stable dependency inventory for Play. Full signed-byte comparison remains
+  the reproducibility proof.

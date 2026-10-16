@@ -78,7 +78,7 @@ android {
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "2.0.0-m0"
+        versionName = "2.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["clearPackageData"] = "true"
     }
@@ -114,6 +114,9 @@ android {
     }
 
     packaging { jniLibs { useLegacyPackaging = false } }
+    // The APK metadata block is encrypted with fresh randomness on each build.
+    // Play still receives the stable dependency inventory in the AAB.
+    dependenciesInfo { includeInApk = false; includeInBundle = true }
 
     testOptions {
         execution = "ANDROIDX_TEST_ORCHESTRATOR"
