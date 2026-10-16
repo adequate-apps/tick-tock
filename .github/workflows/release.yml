@@ -71,8 +71,9 @@ jobs:
 
       - name: Stage the already approved SDK packages
         run: |
-          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" $SDK_PACKAGES
-          for p in $SDK_PACKAGES; do
+          read -r -a approved_sdk_ids <<< "$SDK_PACKAGES"
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" "${approved_sdk_ids[@]}"
+          for p in "${approved_sdk_ids[@]}"; do
             [ -d "$ANDROID_SDK_ROOT/${p/;//}" ] || exit 1
           done
           echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"

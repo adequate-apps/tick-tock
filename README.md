@@ -69,7 +69,7 @@ Screenshot goldens for the screens and themes live in `app/src/test/screenshots/
 ./gradlew --offline :app:recordRoborazziDebug   # rewrite the goldens after a reviewed visual change
 ```
 
-`tools/verify.sh` runs every tier plus lint, the debug APK, the manifest allowlist and the
+`tools/verify.sh` runs U, N and H plus lint, the debug APK, the manifest allowlist and the
 identity scan, ABI completeness and native alignment, and prints one verdict; `tools/README.md`
 describes the gate scripts. Signed release tests use temporary keys; production credentials are
 unnecessary for development checks. The release task produces and verifies an APK, AAB and checksums
