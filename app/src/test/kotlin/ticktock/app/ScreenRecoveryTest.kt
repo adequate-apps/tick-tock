@@ -12,7 +12,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -35,6 +38,11 @@ import ticktock.app.screens.ScreenRenderProbe
 import ticktock.core.contracts.OutputTool
 import ticktock.design.GridlineSpacing
 import ticktock.design.components.SquareDialog
+import ticktock.design.components.TextField
+import ticktock.data.Storage
+import ticktock.data.history.StoreStatus
+import kotlinx.coroutines.flow.MutableStateFlow
+import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -47,6 +55,7 @@ class ScreenRecoveryTest {
         ScreenRenderProbe.beforeRender = null
         ScreenRenderProbe.content = null
         scenario?.close()
+        RuntimeEnvironment.setFontScale(1f)
     }
 
     @Test fun `ERR-01 a real screen composition failure leaves navigation and sounding tools intact`() {
@@ -141,6 +150,76 @@ class ScreenRecoveryTest {
         scenario!!.recreate()
         assertSurvived(graph, link)
         assertEquals(1, attempts)
+    }
+
+    @Test fun `ERR-01 a temporarily detached pane returns with its saved draft and sounding tools`() {
+        val (graph, link) = launchSounding()
+        ScreenRenderProbe.content = { screen -> if (screen == "metronome") {
+            var draft by rememberSaveable { mutableStateOf("") }
+            TextField("Draft", draft, { draft = it }, tag = "recovery-draft")
+        } }
+        compose.onNodeWithTag("tabs-2").performClick()
+        compose.onNodeWithTag("recovery-draft").performScrollTo().performTextInput("Kept draft")
+        val commandsBefore = link.sent.toList()
+        scenario!!.onActivity { activity ->
+            fun host(view: View): View? {
+                if (view.javaClass.simpleName == "GuardedContentView") return view
+                if (view is ViewGroup) repeat(view.childCount) { index -> host(view.getChildAt(index))?.let { return it } }
+                return null
+            }
+            val pane = checkNotNull(host(activity.window.decorView))
+            val parent = pane.parent as ViewGroup
+            val index = parent.indexOfChild(pane)
+            val layout = pane.layoutParams
+            parent.removeView(pane)
+            parent.addView(pane, index, layout)
+        }
+        compose.onNodeWithTag("recovery-draft").performScrollTo().assertTextContains("Kept draft")
+        compose.onNodeWithTag("metro-bpm").performScrollTo().assertExists()
+        assertEquals(commandsBefore, link.sent)
+        assertTrue(graph.output.state.value.droneSounding && graph.output.state.value.metroSounding)
+    }
+
+    private fun launchCrowdedNotices(): AppGraph {
+        RuntimeEnvironment.setFontScale(2f)
+        val context = RuntimeEnvironment.getApplication()
+        File(context.filesDir, Storage.PREFS_FILE).writeText("{ broken")
+        val graph = TickTockApp.graph(context)
+        graph.tune.micAllowed = { false }
+        graph.crashLog.record(Thread.currentThread(), IllegalStateException("Planted earlier crash"), "")
+        (graph.history.status as MutableStateFlow<StoreStatus>).value = StoreStatus(failing = true)
+        graph.output.makeConnection = { TestOutputConnection().apply {
+            openInfo = TestOutputConnection.INFO.copy(wireless = true, deviceId = 7, deviceName = "Headset")
+        } }
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.runOnIdle { graph.output.startDrone(); graph.output.startMetro() }
+        return graph
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
+    fun `ERR-01 crowded notices and screen controls remain scrollable at double text`() {
+        launchCrowdedNotices()
+        compose.onNodeWithTag("notice-key-1").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("notice-prefs-dismiss").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("bluetooth-measure").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("open-settings").performClick()
+        compose.onNodeWithTag("settings-about").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("notice-key-2").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
+    fun `ERR-01 crowded notices leave recovery Share and Retry reachable at double text`() {
+        val graph = launchCrowdedNotices()
+        ScreenRenderProbe.beforeRender = { screen -> if (screen == "metronome") {
+            throw IllegalStateException("Planted crowded render failure")
+        } }
+        compose.onNodeWithTag("tabs-2").performClick()
+        compose.onNodeWithTag("screen-share-log").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("screen-retry").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("notice-prefs-dismiss").performScrollTo().assertIsDisplayed()
+        assertTrue(graph.output.state.value.droneSounding && graph.output.state.value.metroSounding)
     }
 
     @Test fun `ERR-01 measurement failure stays inside the screen`() = assertPhase("measure")
