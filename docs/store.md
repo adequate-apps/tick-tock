@@ -34,7 +34,7 @@ is based on the code, exact manifest allowlist and dependency inventory.
 | Collection | No data collected off-device by the app or developer. Microphone processing stays in memory; readings/settings stay in private storage. The app has no network permission, analytics or advertising SDK. |
 | Sharing | No developer-directed sharing. CSV, settings and crash-report exports occur only through an explicit user action and selected destination. Review these under the user-initiated-transfer exception. |
 | Audio | Raw microphone audio remains in working memory. The app stores pitch readings and derived statistics. |
-| Retention | Raw readings last seven days; aggregates last until cleared. Uninstall removes private data. Exported documents remain with their chosen destination. |
+| Retention | Unsaved-session raw readings age out after seven days. Saved-session readings and aggregates remain until deleted. Uninstall removes private data. Exported documents remain with their chosen destination. |
 | Deletion | Settings clears practice history. Users control exported documents through their storage provider. There are no app accounts to delete. |
 | Security | Android private app storage, sandboxing and disabled app backup. No app-controlled network transfer or account credentials. |
 
