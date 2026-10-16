@@ -86,7 +86,7 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 | BND-03 | colour agrees with digits | U | 2.0 | CentsBandTest `BND-03` | green |
 | BND-04 | no other thresholds exist | U + source grep | 2.0 | CentsBandTest `BND-04` (three tests) + `tools/verify.sh` sources stage, shared allowlist `tools/band-literal-allowlist.txt`; SourceGuardTest `band plots receive their edges without declaring local thresholds`; the app supplies both plot edges from CentsBand | green |
 | BND-05 | no data | U | 2.0 | CentsBandTest `BND-05` | green |
-| BND-06 | whole cents only | U | 2.0 |  | open |
+| BND-06 | whole cents only | U, H | 2.0 | WholeCentsTest `BND-06 signed fractional cents format as whole numbers including half boundaries`; DisplayAcceptanceTest `BND-06` exercises real positive/negative PCM, ears-first reveal/last note, Table rows and both detail scopes. Decimal-format and raw-statistics mutations fail these tests. | green |
 
 ## Instrument ranges and transpositions
 
@@ -207,8 +207,8 @@ ledgered under their own prefixes below.
 | TON-02 | accuracy | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Voices.everyVoiceIsInTuneAt442` (7 notes x 3 voices x 2 rates, FFT peak within 0.5 c, sine within 0.1 c) | green |
 | TON-03 | held notes retune | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Voices.aHeldNoteRetunesInPlaceWhenA4Changes` (no gap, no re-strike) and `Voices.aHeldVoiceKeepsItsPitchAcrossARateChange`; OutputSessionTest `TON-04` changes A4 without a new VoiceOn; DroneScreenTest `TON-01 and TON-04` walks Next check through the saved owner | green |
 | TON-04 | volume is gain | N | 2.0 | host-tests (N, three variants: release, ASan+UBSan, allocation counter): `Voices.volumeIsAGainChangeAndNotARestrike` (ramped gain, constant voice count) and `Mixer.duckIsARampedGainWithAFloor`; DroneScreenTest `TON-01 and TON-04` verifies the volume control sends VoiceGain without another VoiceOn DroneScreenTest `TON-04 five volume decreases silence the drone and disable the lower endpoint` and MetronomeScreenTest `click volume steps reach both exact endpoints` exercise percentage controls; OutputGraphTest `CTX-02 and POL-24` uses five decreases before player capture and persisted free context. | green |
-| TON-05 | sine voice and fallback | N | 2.0 |  | open |
-| TON-06 | transposition persists | H | 2.0 |  | open |
+| TON-05 | output open failure names the device and refused rates; sine is selectable (adopted decision 8) | N, H | 2.0 | Voices `everyVoiceIsInTuneAt442`; DroneScreenTest `TON-01 and TON-04 every drone control reaches the shared owner and navigation keeps it running` selects SINE; AudioControlThreadTest `OUT-17 an open failure names the device and the refused rates, and the tool parks`; DebugOutputTest verifies the visible refusal. Removing sine selection or failure details fails the corresponding test. | green |
+| TON-06 | transposition persists | H, D | 2.0 | ColdPreferencesTest `CAP-02 EAR-03 TON-06 controls survive a closed graph and fresh file load`; ColdPreferencesDeviceTest `coldPreferencesPhase` via `validate-cold-prefs.py` restores the selected alto instrument, transposition and octave across separate Android processes, then verifies MIDI 82 reaches native output. Saved-octave mutation fails the cold-graph test. | green |
 
 ## Deck recording and save location
 
@@ -253,7 +253,7 @@ revision document; the IDs are claimed here like any other.
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | CAP-01 | paused capture drives the needle and reaches no store | H | 2.0 | TuneScreenTest `CAP-01 paused capture keeps listening and live plots while history waits until On` proves Listening plus Capture paused and the Tune tab running indicator, live needle/trace/level, unchanged stored count while paused and resumed writes on On; HistoryStoreTest `CAP-01 and CAP-03 paused readings are counted and only the empty run is recorded` | green |
-| CAP-02 | paused state survives process death | H | 2.0 | prefs field `capturePaused`, device-bound | open |
+| CAP-02 | paused state survives process death | H, D | 2.0 | ColdPreferencesTest `CAP-02 EAR-03 TON-06 controls survive a closed graph and fresh file load`; ColdPreferencesDeviceTest `coldPreferencesPhase` via `validate-cold-prefs.py` proves unchanged saved settings and distinct Android processes, then real PCM produces valid paused readings and no stored history. Dropping the saved pause fails the cold-graph test. | green |
 | CAP-03 | a run opened while paused counts skipped readings | H | 2.0 | HistoryStoreTest `CAP-01 and CAP-03`; DiagnosticsScreenTest `CAP-03 Diagnostics includes readings skipped while capture is paused`. | green |
 
 ### Attacks as the unit
@@ -293,7 +293,7 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| A4W-01 | A4 steps 415 to 466 Hz (decision 16; the sweep ends follow with the detector) | U, H | 2.0 | U: `Pitch.A4_HZ`, PitchMathTest, DetectorA4Test and HopAnalyserTest `A4W-01`, PrefsSchemaTest `A4W-01`, PersonalConfigTest `A4W-01` (415 and 466 accepted, 414.9 and 466.1 refused); H: the stepper in M4 | open |
+| A4W-01 | A4 steps 415 to 466 Hz (decision 16; the sweep ends follow with the detector) | U, H | 2.0 | PitchMathTest, DetectorA4Test, HopAnalyserTest, PrefsSchemaTest and PersonalConfigTest `A4W-01`; DisplayAcceptanceTest `A4W-01 Tune and Settings step every integer and disable both endpoints` and `A4W-01 415 Hz reads zero and each stepped reference labels actual accepted runs`. Old limits, two-Hz steps and missing analysis forwarding each fail. | green |
 
 ### Ears first
 
@@ -301,7 +301,7 @@ revision document; the IDs are claimed here like any other.
 |---|---|---|---|---|---|
 | EAR-01 | readout hidden, capture unchanged | H | 2.0 | TuneScreenTest `EAR-01 ears first hides the needle and preserves every held history reading` compares ten saved hops in Show with ten in Ears first, asserts hidden cents/Hz and the blank needle label; `tune-ears-first-hidden-needle.png` verifies the ghost pointer; the existing ears-first reveal test and hidden readout golden cover sounding feedback | green |
 | EAR-02 | reveal after the note | H | 2.0 | TuneScreenTest `ears first hides the cents, Hz and needle while a note sounds, shows its mean for two seconds after it ends, then hides`, `EAR-02 enabling ears first never replays a note ended in Show`, and `EAR-02 a new note without readings cancels the previous reveal permanently`; LiveCaptureTest `EAR-02 duration ends after the last accepted hop and excludes release silence`, held-mean/settled/serial tracking, same-hop note changes, and A4/mode release tests; LiveCaptureTest `EAR-02 last note preserves rejected and dropped hops through its last reading`; TuneScreenTest `EAR-02 a short note reveals a ghost attack when no settled reading exists`; TracePlotTest `a singleton reading and an isolated reading between gaps both draw a visible point`; reveal golden and round-one reveal mutation | green |
-| EAR-03 | setting persists | H | 2.0 | PrefsSchemaTest `SES-12 a full round trip keeps every field and every unknown field` includes `earsFirst = true`; PrefsStoreTest `SES-01 saved prefs come back on a cold start` exercises other fields; an ears-first cold restart test remains | open |
+| EAR-03 | setting persists | H, D | 2.0 | ColdPreferencesTest `CAP-02 EAR-03 TON-06 controls survive a closed graph and fresh file load`; ColdPreferencesDeviceTest `coldPreferencesPhase` via `validate-cold-prefs.py` restores the setting across separate Android processes and verifies real analysed PCM keeps the cents and Hz hidden. Dropping saved ears-first fails the cold-graph test. | green |
 
 ### Pitch trace
 
