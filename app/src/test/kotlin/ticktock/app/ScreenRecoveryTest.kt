@@ -3,6 +3,7 @@ package ticktock.app
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.test.*
@@ -22,6 +23,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.node.RootForTest
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.ViewRootForTest
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.test.core.app.ActivityScenario
 import org.junit.After
@@ -31,6 +33,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import ticktock.app.output.TestOutputConnection
@@ -152,6 +155,7 @@ class ScreenRecoveryTest {
         assertEquals(1, attempts)
     }
 
+    @OptIn(androidx.compose.ui.InternalComposeUiApi::class)
     @Test fun `ERR-01 a temporarily detached pane returns with its saved draft and sounding tools`() {
         val (graph, link) = launchSounding()
         ScreenRenderProbe.content = { screen -> if (screen == "metronome") {
@@ -168,11 +172,42 @@ class ScreenRecoveryTest {
                 return null
             }
             val pane = checkNotNull(host(activity.window.decorView))
+            fun roots(view: View): List<ViewRootForTest> = buildList {
+                if (view is ViewRootForTest) add(view)
+                if (view is ViewGroup) repeat(view.childCount) { addAll(roots(view.getChildAt(it))) }
+            }
+            val oldRoots = roots(pane)
             val parent = pane.parent as ViewGroup
             val index = parent.indexOfChild(pane)
             val layout = pane.layoutParams
             parent.removeView(pane)
             parent.addView(pane, index, layout)
+            // Robolectric does not draw windows. Exercise a bounded number of real
+            // traversals after the posted child recreation, without waiting on Compose
+            // idleness first (the new root may itself be waiting for this traversal).
+            repeat(3) {
+                compose.mainClock.advanceTimeByFrame()
+                shadowOf(Looper.getMainLooper()).idle()
+                Snapshot.sendApplyNotifications()
+                val window = activity.window.decorView
+                fun force(view: View) {
+                    view.forceLayout()
+                    if (view is ViewGroup) repeat(view.childCount) { force(view.getChildAt(it)) }
+                }
+                force(window)
+                val width = window.width.coerceAtLeast(1)
+                val height = window.height.coerceAtLeast(1)
+                window.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+                window.layout(window.left, window.top, window.left + width, window.top + height)
+                val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                try { window.draw(Canvas(bitmap)) } finally { bitmap.recycle() }
+            }
+            assertTrue("previous child roots detached", oldRoots.all { !it.view.isAttachedToWindow })
+            assertTrue("replacement child root attached", roots(pane).any { it.view.isAttachedToWindow })
+            assertFalse("attached roots settled after three window traversals",
+                roots(activity.window.decorView).any { it.hasPendingMeasureOrLayout })
+            assertFalse("Compose settled after bounded traversal", compose.hasPendingWork())
         }
         compose.onNodeWithTag("recovery-draft").performScrollTo().assertTextContains("Kept draft")
         compose.onNodeWithTag("metro-bpm").performScrollTo().assertExists()
