@@ -77,12 +77,19 @@ class ScreenRecoveryTest {
         val commands = link.sent.toList()
         compose.mainClock.autoAdvance = false
         compose.runOnIdle { run.value = true }
-        compose.mainClock.advanceTimeByFrame()
-        compose.mainClock.advanceTimeByFrame()
+        repeat(3) {
+            compose.mainClock.advanceTimeByFrame()
+            compose.runOnIdle { }
+        }
+        val started = animation.value
+        assertTrue("animation started", animation.isRunning)
         compose.mainClock.advanceTimeBy(400)
-        assertTrue("animation at 400ms was ${animation.value}", animation.value in 0.35f..0.5f)
+        compose.runOnIdle {
+            assertTrue("animation advanced from $started to ${animation.value} in 400ms",
+                animation.value - started in 0.35f..0.5f)
+        }
         compose.mainClock.advanceTimeBy(1000)
-        assertEquals(1f, animation.value, 0.0001f)
+        compose.runOnIdle { assertEquals(1f, animation.value, 0.0001f) }
         assertEquals(commands, link.sent)
         assertTrue(graph.output.state.value.droneSounding && graph.output.state.value.metroSounding)
     }

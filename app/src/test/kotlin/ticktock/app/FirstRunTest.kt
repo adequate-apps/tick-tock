@@ -5,7 +5,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
@@ -41,14 +40,14 @@ class FirstRunTest {
         compose.onNodeWithTag("first-run-mic").assertIsDisplayed()
         compose.onNodeWithTag("open-settings").assertDoesNotExist()
         compose.onNodeWithTag("tabs").assertDoesNotExist()
-        compose.onRoot().captureRoboImage("src/test/screenshots/first-run-microphone-360x640.png")
+        compose.onNodeWithTag("frame").captureRoboImage("src/test/screenshots/first-run-microphone-360x640.png")
 
         compose.onNodeWithTag("first-run-later").performClick()
         compose.onNodeWithTag("first-run-instrument").assertIsDisplayed()
         compose.onNodeWithTag("first-run-bb_tenor").assertIsSelected()
         compose.onNodeWithTag("first-run-eb_alto").performClick()
         compose.onNodeWithTag("first-run-eb_alto").assertIsSelected()
-        compose.onRoot().captureRoboImage("src/test/screenshots/first-run-instrument-360x640.png")
+        compose.onNodeWithTag("frame").captureRoboImage("src/test/screenshots/first-run-instrument-360x640.png")
 
         compose.onNodeWithTag("first-run-start").performScrollTo().performClick()
         compose.onNodeWithTag("tabs").assertIsDisplayed()

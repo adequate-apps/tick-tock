@@ -26,7 +26,7 @@ class TableScreenshotTest(private val scale: Float, private val theme: Theme, pr
     private val originalZone = java.util.TimeZone.getDefault()
     private var scenario: ActivityScenario<MainActivity>? = null
     @After fun close() { scenario?.close(); RuntimeEnvironment.setFontScale(1f); java.util.TimeZone.setDefault(originalZone) }
-    private fun golden(name: String) = compose.onRoot().captureRoboImage("src/test/screenshots/table-$name-${width}x800-fs$scale-${theme.name.lowercase()}.png")
+    private fun golden(name: String) = compose.onNodeWithTag("frame").captureRoboImage("src/test/screenshots/table-$name-${width}x800-fs$scale-${theme.name.lowercase()}.png")
 
     @Test fun `table distributions note detail and save remain reachable across text sizes and themes`() {
         RuntimeEnvironment.setQualifiers("w${width}dp-h800dp-xhdpi")

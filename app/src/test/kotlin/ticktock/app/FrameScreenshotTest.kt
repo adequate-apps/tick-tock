@@ -4,7 +4,6 @@ package ticktock.app
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
@@ -52,7 +51,7 @@ class FrameScreenshotTest {
     }
 
     private fun golden(name: String) {
-        compose.onRoot().captureRoboImage("src/test/screenshots/$name.png")
+        compose.onNodeWithTag("frame").captureRoboImage("src/test/screenshots/$name.png")
     }
 
     private fun assertFrameReadable() {
