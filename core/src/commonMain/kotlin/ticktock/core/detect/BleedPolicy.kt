@@ -93,7 +93,7 @@ object BleedPolicy {
             val duck = if (state.ducked) FULL_GAIN else null
             return BleedStep(BleedState.IDLE, exclude = false, duck = duck)
         }
-        val leak = candidate != null && candidate in sounding
+        val leak = candidate != null && possibleLeak(candidate, sounding)
         if (!leak) return clear(state)
         if (!evidenceReady) {
             // Buffered audio cannot prove how the player responded to a later gain change.
@@ -102,6 +102,14 @@ object BleedPolicy {
         }
         if (state.admitted == candidate) return holdAdmission(state, level)
         return suspect(state, candidate, level, duckable)
+    }
+
+    private fun possibleLeak(candidate: Int, sounding: IntArray): Boolean {
+        if (candidate in sounding) return true
+        // A 3:2 root-and-fifth pair repeats at the octave below its root. The estimator
+        // can hear that virtual fundamental even though neither voice names it. Probe
+        // that candidate through the same duck evidence so a real lower player can qualify.
+        return candidate + 12 in sounding && candidate + 19 in sounding
     }
 
     /**
