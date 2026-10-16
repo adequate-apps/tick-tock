@@ -80,4 +80,4 @@ Release tooling (JDK 21 and the pinned Android SDK must already be staged):
   The AAB retains the stable dependency inventory for Play. Full signed-byte comparison remains
   the reproducibility proof.
 
-`stage-release-cache.py` stages the two existing Activity 1.7.0 AARs needed by release lint into the Gradle cache. CI debug builds select different variants and leave these files absent. It requires their existing SHA-256 entries in verification metadata, checks downloaded and cached bytes, and writes the Gradle content-addressed paths atomically. It adds no dependency or verification entry. `test-stage-release-cache.py` covers download integrity, cached corruption, cache reuse and missing approval metadata. The release fixture workflow uses explicit Bash so a failed producer in its log pipeline stops the step.
+`test-release-dependencies.sh` compares the resolved Activity versions in the app and design release graphs. Release lint must use the same approved versions as the app, so CI can reuse its debug dependency cache for offline signing fixtures. The workflow uses explicit Bash so a failed fixture producer stops the log pipeline before validation.

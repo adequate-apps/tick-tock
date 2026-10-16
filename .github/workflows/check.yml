@@ -153,8 +153,7 @@ jobs:
       - name: Release guards and temporary signing fixtures
         shell: bash
         run: |
-          python3 tools/test-stage-release-cache.py
-          python3 tools/stage-release-cache.py
+          tools/test-release-dependencies.sh
           python3 tools/test-stage-signing.py
           python3 tools/test-release-source.py
           tools/test-signing-gate.sh
