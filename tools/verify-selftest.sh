@@ -7,7 +7,7 @@
 # that produced it. A control run on the unmodified tree must be green first,
 # otherwise a red proves nothing.
 #
-# The ten planted failures:
+# The eleven planted failures:
 #   1. missing tier output     the U tier task is disabled, so it writes no XML
 #   2. zero tests found        the U tier runs with a filter that matches nothing
 #   3. a passing known gap     a @KnownGap test whose body passes
@@ -18,6 +18,7 @@
 #   8. a wrong commit author   a commit on the branch by someone else
 #   9. a stray permission      a <uses-permission> the allowlist does not name
 #  10. a misaligned library    a prebuilt 64-bit .so linked for 4 KB pages
+#  11. missing native suite    the required native CMake entry point is absent
 #
 # The denylisted string is read from the denylist at run time, written into
 # the scratch tree only and never printed. The misaligned library is compiled
@@ -25,7 +26,7 @@
 #
 #   tools/verify-selftest.sh [--only NAME ...]
 #
-# --only runs the control case plus the named cases; the default is all ten.
+# --only runs the control case plus the named cases; the default is all eleven.
 set -uo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -106,6 +107,10 @@ run_case() {
 }
 
 plant_nothing() { :; }
+
+plant_missing_native_suite() {
+    rm -f "$scratch/host-tests/CMakeLists.txt"
+}
 
 plant_missing_output() {
     printf '\ntasks.named<Test>("jvmTest") { enabled = false }\n' >> "$scratch/core/build.gradle.kts"
@@ -210,6 +215,7 @@ plant_misaligned_library() {
 
 echo "verify-selftest: base ${base:0:12}, $(git rev-parse --short HEAD) plus uncommitted changes"
 run_case control GREEN "VERDICT: GREEN" plant_nothing
+run_case missing-native-suite RED "mandatory native test suite is missing" plant_missing_native_suite
 run_case missing-tier-output RED "missing tier output" plant_missing_output
 run_case zero-tests RED "zero tests found" plant_zero_tests
 run_case passing-known-gap RED "SELFTEST-01 (a gap that quietly closed) passed" plant_passing_gap

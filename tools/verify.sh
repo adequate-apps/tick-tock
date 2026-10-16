@@ -66,6 +66,8 @@ java_version=$("$JAVA_HOME/bin/java" -version 2>&1 | head -1 | sed 's/.*"\([0-9]
 gradle_flags=(--console=plain)
 [ -n "${CI:-}" ] || gradle_flags+=(--offline)
 
+[ -f host-tests/CMakeLists.txt ] || red "N tier" "mandatory native test suite is missing (host-tests/CMakeLists.txt)"
+
 run_gradle() {
     # $1 log name, rest: tasks. On failure prints every failed test with its
     # first message line, then the log tail. The tail alone is not enough: a
@@ -129,6 +131,9 @@ fi
 # --- 2. source guards ----------------------------------------------------------
 
 stage "sources"
+
+python3 tools/test-prove-red.py || red sources "red-proof safeguard tests failed"
+python3 tools/test-verify-preflight.py || red sources "native-suite preflight tests failed"
 
 # Lines of code only: a comment may explain a rule without triggering it.
 code_lines() { grep -n -H -E -v '^[[:space:]]*(//|\*|/\*|#)' "$@" 2>/dev/null; }
@@ -246,7 +251,7 @@ if [ -f host-tests/CMakeLists.txt ]; then
     } > "$n_log" 2>&1 || { tail -40 "$n_log"; red "N tier" "host-tests failed"; }
     check_results "N tier" host-tests/build/results
 else
-    echo "host-tests/ absent (M2 adds it); nothing to run"
+    red "N tier" "mandatory native test suite is missing (host-tests/CMakeLists.txt)"
 fi
 
 if [ "$skip_h" = 1 ]; then

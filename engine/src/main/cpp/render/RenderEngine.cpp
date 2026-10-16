@@ -6,6 +6,7 @@ namespace ticktock::render {
 void RenderEngine::onStreamStart(double sampleRate) {
     sampleRate_ = sampleRate > 0.0 ? sampleRate : 48000.0;
     rampStep_ = static_cast<float>(1.0 / (kGainRampSeconds * sampleRate_));
+    duckRampStep_ = static_cast<float>((1.0 - kDuckFloor) / (kDuckRampSeconds * sampleRate_));
     position_.store(0, std::memory_order_release);
     voices_.prepare(sampleRate_);
     clicks_.prepare(sampleRate_);
@@ -31,7 +32,7 @@ void RenderEngine::apply(const Command& cmd) {
         case CommandKind::SetA4: voices_.setA4(cmd.a4); break;
         case CommandKind::Duck: {
             // POL-26: 0.3 is the floor; the detector never asks for silence.
-            const float g = cmd.gain < 0.3f ? 0.3f : (cmd.gain > 1.0f ? 1.0f : cmd.gain);
+            const float g = cmd.gain < kDuckFloor ? kDuckFloor : (cmd.gain > 1.0f ? 1.0f : cmd.gain);
             duckTarget_ = g;
             duckGeneration_ = cmd.generation;
             break;
@@ -51,8 +52,8 @@ void RenderEngine::apply(const Command& cmd) {
 }
 
 void RenderEngine::rampMaster() {
-    if (duck_ < duckTarget_) { duck_ += rampStep_; if (duck_ > duckTarget_) duck_ = duckTarget_; }
-    else if (duck_ > duckTarget_) { duck_ -= rampStep_; if (duck_ < duckTarget_) duck_ = duckTarget_; }
+    if (duck_ < duckTarget_) { duck_ += duckRampStep_; if (duck_ > duckTarget_) duck_ = duckTarget_; }
+    else if (duck_ > duckTarget_) { duck_ -= duckRampStep_; if (duck_ < duckTarget_) duck_ = duckTarget_; }
     if (gate_ < gateTarget_) { gate_ += rampStep_; if (gate_ > gateTarget_) gate_ = gateTarget_; }
     else if (gate_ > gateTarget_) { gate_ -= rampStep_; if (gate_ < gateTarget_) gate_ = gateTarget_; }
 }

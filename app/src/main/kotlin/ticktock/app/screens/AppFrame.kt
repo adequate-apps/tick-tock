@@ -75,6 +75,7 @@ fun AppFrame() {
     // Both survive rotation and process death: the enum saves as a Serializable.
     var tab by rememberSaveable { mutableStateOf(Tab.Tune) }
     var settings by rememberSaveable { mutableStateOf<SettingsPage?>(null) }
+    val screenFailures = rememberScreenFailures()
     val settingsOpen = settings != null
 
     val firstRun by remember { derivedStateOf { !prefs.value.firstRunComplete } }
@@ -132,21 +133,30 @@ fun AppFrame() {
         Column(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(GridlineSpacing.sp2),
+                .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2),
         ) {
-            AppNotices(graph)
-            BluetoothNotice(graph.output)
-            when {
-                firstRun -> FirstRun(graph, mic, firstStep) { firstStep = it }
-                settings == SettingsPage.INSTRUMENT -> InstrumentPicker(graph) { settings = SettingsPage.MAIN }
-                settingsOpen -> SettingsScreen(graph) { settings = SettingsPage.INSTRUMENT }
-                tab == Tab.Tune -> TuneScreen(graph, mic)
-                tab == Tab.Drone -> DroneScreen(showAction = !output.droneWanted)
-                tab == Tab.Metronome -> MetronomeScreen()
-                tab == Tab.Table -> TableScreen()
+            val screenId = when {
+                firstRun -> "setup"
+                settings == SettingsPage.INSTRUMENT -> "instrument"
+                settingsOpen -> "settings"
+                else -> tab.tag
+            }
+            RecoverableScreen(screenId, screenFailures, header = {
+                ScreenRenderProbe.before("header-$screenId")
+                AppNotices(graph)
+                BluetoothNotice(graph.output)
+            }) {
+                when {
+                    firstRun -> FirstRun(graph, mic, firstStep) { firstStep = it }
+                    settings == SettingsPage.INSTRUMENT -> InstrumentPicker(graph) { settings = SettingsPage.MAIN }
+                    settingsOpen -> SettingsScreen(graph) { settings = SettingsPage.INSTRUMENT }
+                    tab == Tab.Tune -> TuneScreen(graph, mic)
+                    tab == Tab.Drone -> DroneScreen(showAction = !output.droneWanted)
+                    tab == Tab.Metronome -> MetronomeScreen()
+                    tab == Tab.Table -> TableScreen()
+                }
+                DelayDialog(graph.output)
             }
         }
 
@@ -170,7 +180,6 @@ fun AppFrame() {
             modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
         )
     }
-    DelayDialog(graph.output)
 }
 
 /** Keeps the screen on while [active]: the player's hands are on the instrument (keep-awake, PLAN 3.3). */

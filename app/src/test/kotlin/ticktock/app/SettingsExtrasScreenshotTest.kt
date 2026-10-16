@@ -4,10 +4,12 @@ package ticktock.app
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.test.core.app.ActivityScenario
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.github.takahirom.roborazzi.captureScreenRoboImage
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -30,7 +32,18 @@ class SettingsExtrasScreenshotTest(private val scale: Float, private val theme: 
     @get:Rule val compose = createEmptyComposeRule()
     private var scenario: ActivityScenario<MainActivity>? = null
     @After fun close() { scenario?.close(); RuntimeEnvironment.setFontScale(1f) }
-    private fun golden(name: String) = compose.onAllNodes(isRoot()).onLast().captureRoboImage("src/test/screenshots/settings-$name-${width}x800-fs$scale-${theme.name.lowercase()}.png")
+    private fun golden(name: String) {
+        val path = "src/test/screenshots/settings-$name-${width}x800-fs$scale-${theme.name.lowercase()}.png"
+        compose.waitForIdle()
+        when (name) {
+            // These goldens include the dimmed frame behind the dialog.
+            "import", "diagnostics" -> captureScreenRoboImage(path)
+            // About's golden is the dialog canvas, including its outer padding.
+            "about" -> compose.onNode(isDialog())
+                .captureToImage().asAndroidBitmap().captureRoboImage(path)
+            else -> compose.onNodeWithTag("frame").captureRoboImage(path)
+        }
+    }
     private fun click(tag: String) { compose.onNodeWithTag(tag).performScrollTo().performClick() }
 
     @Test fun `practice storage import diagnostics and About remain reachable at every text size`() {

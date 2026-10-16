@@ -24,6 +24,10 @@ constexpr std::uint32_t kBeatCapacity = 1024;
 constexpr std::int32_t kMaxSlice = 4096;
 constexpr std::int32_t kMaxBeatsPerSlice = 64;
 
+// POL-26: the full-to-floor duck takes 80 ms in either direction.
+constexpr float kDuckFloor = 0.30f;
+constexpr double kDuckRampSeconds = 0.080;
+
 class RenderEngine {
 public:
     using CommandQueue = SpscQueue<Command, kCommandCapacity>;
@@ -91,6 +95,7 @@ private:
     float gate_ = 1.0f;
     float gateTarget_ = 1.0f;
     float rampStep_ = 0.004f;
+    float duckRampStep_ = 0.0f;
 };
 
 }  // namespace ticktock::render

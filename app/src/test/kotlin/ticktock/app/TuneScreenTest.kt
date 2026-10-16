@@ -460,21 +460,32 @@ class TuneScreenTest {
     }
 
     @Test
-    fun `POL-31 five seconds of a held note recompose the frame not once`() {
+    fun `POL-31 sixty seconds of a held note recompose the frame not once`() {
         val input = FakeAudioInput(sampleRate = rate)
         launch(input)
+        val graph = TickTockApp.graph(ApplicationProvider.getApplicationContext())
         compose.waitUntil(TIMEOUT) { input.isOpen }
         val sine = Sine(Pitch.hzFromMidi(69, 440.0), 0.1, rate)
         repeat(12) { input.push(sine.next(Hop.frames(rate))); Thread.sleep(5) }
         compose.waitUntil(TIMEOUT) { text("readout-letter") != null }
+        compose.waitUntil(TIMEOUT) { graph.tune.level.value.hop >= 11 }
         compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
         val before = ticktock.app.screens.FrameCompositions.count
-        repeat(Hop.count(5.0)) {
-            input.push(sine.next(Hop.frames(rate)))
-            Thread.sleep(5)
-            if (it % 10 == 0) compose.waitForIdle()
+        val heldLetter = text("readout-letter")
+        val firstHop = graph.tune.level.value.hop
+        val started = compose.mainClock.currentTime
+        val hops = kotlin.math.ceil(60.0 / Hop.SECONDS).toInt()
+        repeat(hops) { index ->
+            assertTrue(input.push(sine.next(Hop.frames(rate))))
+            compose.waitUntil(TIMEOUT) { graph.tune.level.value.hop >= firstHop + index + 1 }
+            compose.mainClock.advanceTimeBy(Hop.MILLIS.toLong() + 1)
         }
         compose.waitForIdle()
+        assertTrue("sixty seconds of UI time elapsed", compose.mainClock.currentTime - started >= 60_000)
+        assertTrue("sixty seconds of audio reached analysis", (graph.tune.level.value.hop - firstHop) * Hop.SECONDS >= 60.0)
+        assertEquals(0L, graph.tune.diagnostics.value.counters.droppedHops)
+        assertEquals(heldLetter, text("readout-letter"))
         assertEquals("frame compositions during a held note", 0, ticktock.app.screens.FrameCompositions.count - before)
     }
 

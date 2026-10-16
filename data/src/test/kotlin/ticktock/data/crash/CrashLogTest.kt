@@ -58,6 +58,28 @@ class CrashLogTest {
     }
 
     @Test
+    fun `ERR-02 an oversized Unicode entry keeps a valid UTF-8 tail within its byte cap`() {
+        for (cap in listOf(4_096, Storage.CRASH_LOG_MAX_BYTES, 1, 2, 3, 4, 5, 31)) {
+            for (unit in listOf("\u754c", "\uD834\uDD1E", "a\u754c\uD834\uDD1E")) {
+                val log = CrashLog(dir, maxBytes = cap)
+                val failure = object : RuntimeException("oversized entry") {
+                    override fun printStackTrace(writer: java.io.PrintWriter) {
+                        writer.print(unit.repeat(cap + 4))
+                    }
+                }
+                log.record(Thread.currentThread(), failure, nickname = "")
+                val bytes = File(dir, Storage.CRASH_LOG_FILE).readBytes()
+                assertTrue("${bytes.size} bytes exceed cap $cap", bytes.size <= cap)
+                val tail = Charsets.UTF_8.newDecoder()
+                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                    .decode(java.nio.ByteBuffer.wrap(bytes)).toString()
+                assertTrue("the newest newline fits cap $cap", tail.endsWith("\n"))
+                assertTrue("the log tail belongs to the recorded entry", (unit.repeat(cap + 4) + "\n").endsWith(tail))
+            }
+        }
+    }
+
+    @Test
     fun `ERR-02 an error while recording still hands the crash to the platform handler`() {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         var handedOn = false

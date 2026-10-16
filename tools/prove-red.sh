@@ -5,8 +5,8 @@
 # ever been seen passing proves nothing, so this script checks out the base
 # commit in a scratch worktree, copies only the branch's test files onto it,
 # runs the touched modules' test tasks there and refuses the branch when they
-# pass. A compile failure on the base counts as red: the test names code the
-# base does not have.
+# pass. A missing API reported in a changed test source also counts as red.
+# Build infrastructure failures and failures in unrelated tests are refused.
 #
 #   tools/prove-red.sh [--base REV] [--head REV]
 #
@@ -122,7 +122,7 @@ if [ ${#tasks[@]} -gt 0 ]; then
 fi
 if [ $native = 1 ] && [ -f "$scratch/host-tests/CMakeLists.txt" ]; then
     if ! (cd "$scratch" && cmake -S host-tests -B host-tests/build -G Ninja -DCMAKE_BUILD_TYPE=Release &&
-          cmake --build host-tests/build && cd host-tests/build && ctest --output-on-failure) >> "$log" 2>&1; then
+          cmake --build host-tests/build && cd host-tests/build && ctest --output-on-failure --output-junit results/TEST-host.xml) >> "$log" 2>&1; then
         passed=0
     fi
 fi
@@ -131,5 +131,6 @@ if [ $passed = 1 ]; then
     echo "prove-red: REFUSED: the branch's tests pass on the base ${base:0:12}; they prove nothing" >&2
     exit 1
 fi
-grep -E 'FAILED|error:|e: ' "$log" | head -20
+printf '%s\n' "$changed_tests" > "$root/build/verify/prove-red-tests.txt"
+python3 "$root/tools/red-proof.py" "$scratch" "$root/build/verify/prove-red-tests.txt" "$log" || exit 1
 echo "prove-red: OK: the branch's tests are red on the base ${base:0:12} (log: build/verify/prove-red.log)"

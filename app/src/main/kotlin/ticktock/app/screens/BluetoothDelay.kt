@@ -37,6 +37,7 @@ internal fun DelayDialog(output: OutputSession) {
     val state by output.calibration.collectAsStateWithLifecycle()
     val measurement = state ?: return
     SquareDialog(stringResource(R.string.bluetooth_measure), output::cancelCalibration, tag = "delay-dialog") {
+        ScreenRenderProbe.before("delay-dialog")
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp3)) {
             if (!measurement.complete) {
                 ProgressSquares(8, measurement.clicks, measurement.clicks - 1, stringResource(R.string.bluetooth_measure), tag = "delay-progress", cellSize = GridlineSpacing.sp6)

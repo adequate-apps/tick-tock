@@ -17,6 +17,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import ticktock.app.output.TestOutputConnection
+import ticktock.app.screens.ScreenRenderProbe
 import ticktock.core.contracts.OutputCommand
 import ticktock.core.contracts.OutputEvent
 import ticktock.core.contracts.ParkReason
@@ -29,7 +30,7 @@ class BluetoothDelayScreenTest {
     private var scenario: ActivityScenario<MainActivity>? = null
     private lateinit var graph: AppGraph
     private val link = TestOutputConnection().apply { openInfo = TestOutputConnection.INFO.copy(wireless = true, deviceId = 7, deviceName = "Headset") }
-    @After fun close() { scenario?.close(); RuntimeEnvironment.setFontScale(1f) }
+    @After fun close() { ScreenRenderProbe.beforeRender = null; scenario?.close(); RuntimeEnvironment.setFontScale(1f) }
     private fun launch(scale: Float = 1f) {
         RuntimeEnvironment.setFontScale(scale)
         graph = TickTockApp.graph(RuntimeEnvironment.getApplication())
@@ -40,6 +41,32 @@ class BluetoothDelayScreenTest {
         compose.runOnIdle { graph.output.startDrone(); graph.output.startMetro() }
     }
     private fun tap(tag: String) = compose.onNodeWithTag(tag).performScrollTo().performClick()
+
+    @Test fun `ERR-01 actual Bluetooth delay dialog failure preserves calibration and navigation`() {
+        launch()
+        var attempts = 0
+        var commandsAtFailure = emptyList<OutputCommand>()
+        ScreenRenderProbe.beforeRender = { screen -> if (screen == "delay-dialog") {
+            attempts++
+            commandsAtFailure = link.sent.toList()
+            throw IllegalStateException("Planted delay dialog failure")
+        } }
+        tap("bluetooth-measure")
+        compose.onNodeWithTag("screen-failure-tune").assertIsDisplayed()
+        compose.onNodeWithTag("delay-dialog").assertDoesNotExist()
+        assertEquals(1, attempts)
+        val measurement = graph.output.calibration.value
+        assertNotNull(measurement)
+        assertEquals(commandsAtFailure, link.sent)
+        ScreenRenderProbe.beforeRender = null
+        compose.onNodeWithTag("open-settings").performClick()
+        compose.onNodeWithTag("delay-dialog").assertExists()
+        assertSame(measurement, graph.output.calibration.value)
+        assertEquals(commandsAtFailure, link.sent)
+        tap("delay-cancel")
+        assertTrue(graph.output.state.value.droneSounding && graph.output.state.value.metroSounding)
+        assertNull(graph.prefs.prefs.value.bluetoothVisualOffsetMs)
+    }
 
     @Test fun `BTC-01 a physical contact is measured before release and release adds no second tap`() {
         launch()

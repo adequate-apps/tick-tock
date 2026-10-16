@@ -113,8 +113,13 @@ fun NumberField(value: String, onValueChange: (String) -> Unit, description: Str
 @Composable
 fun SquareDialog(title: String, onDismiss: () -> Unit, state: String? = null, tag: String = "dialog", content: @Composable ColumnScope.() -> Unit) {
     val available = LocalConfiguration.current.screenHeightDp.dp - GridlineSpacing.sp8
+    val failureHandler = LocalRenderFailureHandler.current
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Pane(title, Modifier.padding(GridlineSpacing.sp2).widthIn(max = 560.dp).fillMaxWidth()
-            .heightIn(max = available).verticalScroll(rememberScrollState()), state, tag, content)
+        val pane: @Composable () -> Unit = {
+            Pane(title, Modifier.padding(GridlineSpacing.sp2).widthIn(max = 560.dp).fillMaxWidth()
+                .heightIn(max = available).verticalScroll(rememberScrollState()), state, tag, content)
+        }
+        if (failureHandler == null) pane()
+        else GuardedContent("dialog-$tag", failureHandler, content = pane)
     }
 }

@@ -38,7 +38,7 @@ class OutputScreenshotTest(private val scale: Float, private val theme: Theme) {
             metroBpm = 92, metroSubdivision = 2, metroBarsOn = 3, metroBarsOff = 1) }
         scenario = ActivityScenario.launch(MainActivity::class.java)
     }
-    private fun golden(name: String) = compose.onRoot().captureRoboImage("src/test/screenshots/output-$name-600x800-fs$scale-${theme.name.lowercase()}.png")
+    private fun golden(name: String) = compose.onNodeWithTag("frame").captureRoboImage("src/test/screenshots/output-$name-600x800-fs$scale-${theme.name.lowercase()}.png")
 
     @Test fun `running drone retains all controls and both naming modes on a wide screen`() {
         launch()
