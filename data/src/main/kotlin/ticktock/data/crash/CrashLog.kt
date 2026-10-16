@@ -45,10 +45,18 @@ class CrashLog(
         var start = 0
         while (true) {
             val next = text.indexOf(ENTRY_START, start + 1)
-            if (next < 0) return text.takeLast(maxBytes / 2) // one entry larger than the cap: keep its tail
+            if (next < 0) return cappedTail(text)
             start = next
             if (text.substring(start).encodeToByteArray().size <= maxBytes) return text.substring(start)
         }
+    }
+
+    private fun cappedTail(text: String): String {
+        val bytes = text.encodeToByteArray()
+        var start = (bytes.size - maxBytes.coerceAtLeast(0)).coerceAtLeast(0)
+        // A byte limit can land inside a code point; retain the next complete one.
+        while (start < bytes.size && bytes[start].toInt() and 0xC0 == 0x80) start++
+        return bytes.decodeToString(start, bytes.size)
     }
 
     /** The log, if a crash was recorded since it was last offered. */
