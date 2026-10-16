@@ -32,6 +32,7 @@ class FakeNativeCalls : NativeCalls {
         var bufferBursts = 2L
         var lateBeatsDropped = 0L
         var framesRendered = 0L
+        @Volatile var lastDrainListener: NativeBridge.Listener? = null
 
         fun calls(name: String): List<Call> = synchronized(calls) { calls.filter { it.name == name } }
 
@@ -47,6 +48,12 @@ class FakeNativeCalls : NativeCalls {
 
         fun duckSettled(generation: Int, frame: Long, nanos: Long) {
             events += Event(7, a = generation.toLong(), c = frame, d = nanos)
+        }
+
+        fun routingChanged(nextDevice: Int, nextLatencyMillis: Int) {
+            deviceId = nextDevice.toLong()
+            latencyMillis = nextLatencyMillis.toLong()
+            events += Event(8, c = nextDevice.toLong(), d = nextLatencyMillis.toLong())
         }
 
         fun counters(late: Long, underruns: Long) {
@@ -80,6 +87,7 @@ class FakeNativeCalls : NativeCalls {
     var framesPerBurst = 96L
     var deviceId = 7L
     var latencyMillis = 23L
+    var routingAfterOpen: Pair<Int, Int>? = null
 
     /** When set, every open is refused and Failed names this device with the two fallback rates. */
     var refuseOpens = false
@@ -122,6 +130,7 @@ class FakeNativeCalls : NativeCalls {
                 } else {
                     h.streamOpen = true
                     h.events += Event(KIND_OPENED, sampleRate, framesPerBurst, deviceId, latencyMillis)
+                    routingAfterOpen?.let { (device, latency) -> h.routingChanged(device, latency) }
                 }
             }
         }
@@ -206,6 +215,7 @@ class FakeNativeCalls : NativeCalls {
     fun releaseDiagnostics() = diagnosticsGate.countDown()
 
     override fun nativeDrainEvents(handle: Long, listener: NativeBridge.Listener, timeoutMillis: Int): Int {
+        if (timeoutMillis > 0) handle(handle).lastDrainListener = listener
         if (timeoutMillis > 0) {
             drainThreads += Thread.currentThread().name
             // The verdict drain at open passes no wait; only the event thread hangs here.

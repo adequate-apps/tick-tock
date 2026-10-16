@@ -14,6 +14,11 @@ class EngineLibraryTest {
     }
 
     @Test
+    fun `SHM-03 the routing event requires ABI five`() {
+        assertEquals(5, EngineLibrary.ABI_VERSION)
+    }
+
+    @Test
     fun `the CMake target name matches the library name`() {
         val cmake = File("src/main/cpp/CMakeLists.txt").readText()
         assertEquals(true, Regex("""add_library\(${EngineLibrary.NAME}\s+SHARED""").containsMatchIn(cmake))

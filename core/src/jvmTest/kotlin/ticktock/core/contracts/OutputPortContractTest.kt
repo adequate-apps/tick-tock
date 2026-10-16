@@ -86,6 +86,7 @@ class OutputPortContractTest {
             OutputEvent.Failed("USB DAC", listOf(48_000, 44_100)),
             OutputEvent.Closed,
             OutputEvent.DuckSettled(71, 3_360, 5_123_000_000),
+            OutputEvent.RoutingChanged(info.copy(deviceId = 9, latencyMillis = 81)),
         )
         everyEvent.forEach(port::emit)
 

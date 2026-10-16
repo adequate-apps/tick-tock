@@ -84,6 +84,11 @@ class NativeEventTest {
 
     @Test(expected = IllegalArgumentException::class)
     fun `an unknown kind is refused rather than guessed`() {
-        decode(8)
+        decode(9)
+    }
+
+    @Test
+    fun `SHM-03 RoutingChanged carries the new device and measured latency`() {
+        assertEquals(NativeEvent.RoutingChanged(deviceId = 42, latencyMillis = 81), decode(8, c = 42, d = 81))
     }
 }

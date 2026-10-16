@@ -53,6 +53,119 @@ std::vector<std::int64_t> pull(FakeDevice& device, std::int32_t frames, std::vec
 
 }  // namespace
 
+TEST(OutputController, routingChangeWakesAnIdleControllerAndPreservesVoiceFrames) {
+    FakeDevice device, referenceDevice;
+    OutputController c(device), reference(referenceDevice);
+    c.registerTool(OutputTool::Drone);
+    reference.registerTool(OutputTool::Drone);
+    drainAll(c); drainAll(reference);
+    ASSERT_TRUE(c.voiceOn(0, 62, render::Voice::Warm, 0.4f));
+    ASSERT_TRUE(reference.voiceOn(0, 62, render::Voice::Warm, 0.4f));
+    pull(device, 2400); pull(referenceDevice, 2400);
+    EXPECT_FALSE(c.hasEvents());
+    const auto position = c.engine().position();
+    device.routeChanged(42);
+    EXPECT_TRUE(c.hasPendingRoutingChange());
+    EXPECT_TRUE(c.hasEvents());
+    auto events = drainAll(c);
+    ASSERT_EQ(1u, events.size());
+    EXPECT_EQ(EventKind::RoutingChanged, events[0].kind);
+    EXPECT_EQ(42, events[0].c);
+    EXPECT_EQ(8, events[0].d);
+    EXPECT_FALSE(c.hasPendingRoutingChange());
+    EXPECT_EQ(position, c.engine().position());
+    EXPECT_EQ(1, device.opens);
+    EXPECT_EQ(1, device.starts);
+    std::vector<float> actual, expected;
+    pull(device, 2400, &actual); pull(referenceDevice, 2400, &expected);
+    EXPECT_EQ(expected, actual) << "routing must preserve voice phase and gain";
+}
+
+TEST(OutputController, sameDeviceRoutingStillInvalidatesPresentationAndReportsCurrentLatency) {
+    FakeDevice device;
+    OutputController c(device);
+    c.registerTool(OutputTool::Drone);
+    drainAll(c);
+    device.xruns = 1;
+    pull(device, 192);
+    drainAll(c);
+    device.routeChanged(device.deviceId);
+    auto events = drainAll(c);
+    ASSERT_EQ(1u, events.size());
+    EXPECT_EQ(EventKind::RoutingChanged, events[0].kind);
+    EXPECT_EQ(7, events[0].c);
+    EXPECT_EQ(12, events[0].d) << "the new three-burst latency is read at routing time";
+}
+
+TEST(OutputController, routingDropsRenderedAndAlreadyQueuedDuckCompletions) {
+    for (bool queuedOnControl : {false, true}) {
+        FakeDevice device;
+        device.timestampValid = true;
+        OutputController c(device);
+        c.registerTool(OutputTool::Drone);
+        drainAll(c);
+        ASSERT_TRUE(c.duck(0.3f, 71));
+        pull(device, 4000);
+        if (queuedOnControl) {
+            EXPECT_EQ(0, c.drain(nullptr, 0));
+        }
+        device.routeChanged(42);
+        auto events = drainAll(c);
+        ASSERT_EQ(1u, events.size());
+        EXPECT_EQ(EventKind::RoutingChanged, events[0].kind);
+        ASSERT_TRUE(c.duck(1.0f, 72));
+        pull(device, 4000);
+        events = drainAll(c);
+        ASSERT_EQ(1u, events.size());
+        EXPECT_EQ(EventKind::DuckSettled, events[0].kind);
+        EXPECT_EQ(72, events[0].a);
+    }
+}
+
+TEST(OutputController, routingFencesAnOldRampThatFinishesLaterButAllowsANewProbe) {
+    FakeDevice device;
+    device.timestampValid = true;
+    OutputController c(device);
+    c.registerTool(OutputTool::Drone);
+    drainAll(c);
+    ASSERT_TRUE(c.duck(0.3f, 71));
+    pull(device, 96);
+    device.routeChanged(42);
+    auto events = drainAll(c);
+    ASSERT_EQ(1u, events.size());
+    EXPECT_EQ(EventKind::RoutingChanged, events[0].kind);
+    pull(device, 4000);
+    EXPECT_TRUE(drainAll(c).empty()) << "old ramp completion must never validate the new route";
+    ASSERT_TRUE(c.duck(0.3f, 72));
+    pull(device, 192);
+    events = drainAll(c);
+    ASSERT_EQ(1u, events.size());
+    EXPECT_EQ(EventKind::DuckSettled, events[0].kind);
+    EXPECT_EQ(72, events[0].a);
+}
+
+TEST(OutputController, closeAndDisconnectWinOverPendingRoutingAndDuckEvents) {
+    for (bool disconnect : {false, true}) {
+        FakeDevice device;
+        device.timestampValid = true;
+        OutputController c(device);
+        c.registerTool(OutputTool::Drone);
+        drainAll(c);
+        ASSERT_TRUE(c.duck(0.3f, 71));
+        pull(device, 4000);
+        device.routeChanged(42);
+        if (disconnect) device.disconnect(); else c.unregisterTool(OutputTool::Drone);
+        auto events = drainAll(c);
+        ASSERT_EQ(1u, events.size());
+        EXPECT_EQ(disconnect ? EventKind::Parked : EventKind::Closed, events[0].kind);
+        EXPECT_FALSE(device.running());
+        EXPECT_FALSE(c.hasPendingRoutingChange());
+        EXPECT_TRUE(drainAll(c).empty());
+        device.routeChanged(99);
+        EXPECT_TRUE(drainAll(c).empty());
+    }
+}
+
 TEST(OutputController, theFirstRegistrationOpensSharedLowLatencyAtTwoBurstsAndTheLastCloses) {
     FakeDevice device;
     OutputController c(device);

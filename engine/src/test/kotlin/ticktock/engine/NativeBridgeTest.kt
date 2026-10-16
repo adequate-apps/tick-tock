@@ -56,7 +56,7 @@ class NativeBridgeTest {
         val kinds = Regex("""enum class EventKind[^{]*\{([^}]*)\}""").find(header)!!.groupValues[1]
         val names = Regex("""(\w+) = (\d+)""").findAll(kinds).map { it.groupValues[1] to it.groupValues[2].toInt() }.toList()
         assertEquals(
-            listOf("Opened" to 0, "Closed" to 1, "Beat" to 2, "Parked" to 3, "Resumed" to 4, "Failed" to 5, "Counters" to 6, "DuckSettled" to 7),
+            listOf("Opened" to 0, "Closed" to 1, "Beat" to 2, "Parked" to 3, "Resumed" to 4, "Failed" to 5, "Counters" to 6, "DuckSettled" to 7, "RoutingChanged" to 8),
             names,
         )
     }

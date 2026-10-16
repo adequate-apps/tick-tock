@@ -81,3 +81,17 @@ ticktock_variant(host_tests_alloc
     DEFINES TICKTOCK_ALLOC_COUNTER=1
     EXTRA_SOURCES support/AllocCounter.cpp AllocationTest.cpp
 )
+
+# Compile the real Android edge against test platform calls; no device or new artifact is needed.
+set(TEST_JNI_INCLUDE "$ENV{JAVA_HOME}/include")
+if(NOT EXISTS "${TEST_JNI_INCLUDE}/jni.h")
+    message(FATAL_ERROR "JAVA_HOME must name the approved JDK for the native bridge tests")
+endif()
+add_executable(aaudio_device_tests AAudioDeviceTest.cpp support/AllocCounter.cpp
+    "${ENGINE_CPP}/AAudioDevice.cpp" "${ENGINE_CPP}/engine.cpp" ${ENGINE_SOURCES})
+target_include_directories(aaudio_device_tests PRIVATE support/platform "${ENGINE_CPP}"
+    "${CMAKE_CURRENT_SOURCE_DIR}" "${TEST_JNI_INCLUDE}" "${TEST_JNI_INCLUDE}/linux")
+target_compile_options(aaudio_device_tests PRIVATE ${WARNINGS})
+target_link_options(aaudio_device_tests PRIVATE -Wl,--wrap=sem_destroy)
+target_link_libraries(aaudio_device_tests PRIVATE GTest::gtest GTest::gtest_main dl)
+gtest_discover_tests(aaudio_device_tests TEST_PREFIX "aaudio_device_tests." DISCOVERY_TIMEOUT 60)
