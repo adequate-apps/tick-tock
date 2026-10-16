@@ -139,6 +139,12 @@ fun AppFrame() {
         ) {
             AppNotices(graph)
             BluetoothNotice(graph.output)
+            ScreenRenderProbe.before(when {
+                firstRun -> "setup"
+                settings == SettingsPage.INSTRUMENT -> "instrument"
+                settingsOpen -> "settings"
+                else -> tab.tag
+            })
             when {
                 firstRun -> FirstRun(graph, mic, firstStep) { firstStep = it }
                 settings == SettingsPage.INSTRUMENT -> InstrumentPicker(graph) { settings = SettingsPage.MAIN }
