@@ -1,0 +1,53 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+@font-face { font-family: Plex; src: url("assets/fonts/ibm_plex_sans_regular.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: Plex; src: url("assets/fonts/ibm_plex_sans_semibold.ttf") format("truetype"); font-weight: 600 900; font-display: swap; }
+@font-face { font-family: PlexMono; src: url("assets/fonts/ibm_plex_mono_regular.ttf") format("truetype"); font-display: swap; }
+:root { --structure: #c6c6c6; --ink: #101010; --blue: #0000a8; --blue-deep: #000078; --blue-hover: #1414b8; --light: #fff; --edge: #808080; --relief-dark: #8a8a8a; --pressed-gray: #e8e8e8; }
+* { box-sizing: border-box; }
+html { scroll-padding-top: 1rem; }
+body { margin: 0; padding: 24px; color: var(--ink); background: var(--structure); font: 18px/1.5 Plex, sans-serif; overflow-wrap: anywhere; }
+a { color: var(--blue); text-underline-offset: .2em; }
+a:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+.window { max-width: 1100px; margin: auto; border: 1px solid var(--ink); border-top-color: var(--light); border-left-color: var(--light); }
+.title { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--blue); color: var(--light); font-weight: 600; }
+.title img { object-fit: contain; }
+nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: 2px; padding: 2px; border-bottom: 1px solid var(--edge); }
+nav a, .button { display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px 12px; border: 1px solid var(--relief-dark); border-top-color: var(--light); border-left-color: var(--light); color: var(--ink); background: var(--structure); text-decoration: none; }
+nav a:hover { color: var(--blue); }
+nav a:active { color: var(--ink); background: var(--pressed-gray); border-color: var(--light); border-top-color: var(--relief-dark); border-left-color: var(--relief-dark); }
+main { padding: 32px; }
+section { margin-bottom: 32px; }
+.intro { padding: 0 0 20px; border-bottom: 1px solid var(--edge); }
+h1 { max-width: 15em; font-size: clamp(1.5rem, 5vw, 3.5rem); line-height: 1.15; font-weight: 600; margin: 12px 0; }
+h2 { font-size: 1.2rem; font-weight: 600; margin: 0 0 12px; }
+p { margin: 10px 0 18px; }
+.eyebrow, .requirement, .status, .ghost { font-family: PlexMono, monospace; font-size: .85rem; }
+.field { border: 1px solid var(--ink); border-top-width: 2px; border-left-width: 2px; background: var(--light); padding: 24px; }
+.download { display: grid; gap: 12px; grid-template-columns: 1fr auto; align-items: center; }
+.download p { margin: 0; }
+.ghost { color: #666; display: flex; align-items: center; gap: 14px; grid-column: 1 / -1; }
+.button { background: var(--blue); color: white; border-color: var(--blue-deep); border-top-color: var(--blue-hover); border-left-color: var(--blue-hover); min-width: 0; max-width: 100%; }
+.button:hover { background: var(--blue-hover); }
+.button:active { background: var(--blue-deep); border-color: var(--blue-hover); border-top-color: var(--blue-deep); border-left-color: var(--blue-deep); }
+.gallery { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: start; }
+figure { margin: 0; min-width: 0; }
+figure a { display: block; border: 1px solid var(--ink); }
+figure img { width: 100%; height: auto; display: block; }
+figcaption { padding: 8px 0; font-weight: 600; }
+.links { display: flex; gap: 16px 24px; flex-wrap: wrap; margin-bottom: 0; }
+.links a { display: flex; align-items: center; min-height: 48px; }
+.status { position: sticky; bottom: 0; background: var(--structure); border-top: 1px solid var(--edge); display: flex; flex-wrap: wrap; font-size: .75rem; }
+.status span { padding: 4px 8px; border-right: 1px solid var(--edge); }
+.skip { position: absolute; left: 24px; top: -100px; padding: 12px; background: white; }
+.skip:focus { top: 4px; }
+@media (max-width: 700px) {
+  body { padding: 8px; }
+  main { padding: 20px 16px; }
+  .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .download { grid-template-columns: 1fr; padding: 18px; }
+  .ghost { flex-wrap: wrap; }
+}
+@media (max-width: 420px) {
+  .gallery { grid-template-columns: 1fr; }
+  figure { max-width: 320px; }
+}

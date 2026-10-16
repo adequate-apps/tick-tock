@@ -91,6 +91,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          cache: ${{ github.event_name == 'push' && 'gradle' || '' }}
+          cache-dependency-path: |
+            gradle/verification-metadata.xml
+            gradle/wrapper/gradle-wrapper.properties
+            gradle/libs.versions.toml
 
       - name: Install the pinned SDK packages the image lacks
         # Exact package ids only; sdkmanager verifies each archive against the
@@ -145,7 +150,16 @@ jobs:
           grep -q 'Release builds are blocked' "$RUNNER_TEMP/release.log" \
             || { tail -40 "$RUNNER_TEMP/release.log"; echo "assembleRelease failed for another reason than the guard" >&2; exit 1; }
 
-  # The gate's own proof: nine planted failures must each turn it red. It
+      - name: Release guards and temporary signing fixtures
+        run: |
+          python3 tools/test-stage-signing.py
+          python3 tools/test-release-source.py
+          tools/test-signing-gate.sh
+          tools/test-release.sh | tee "$RUNNER_TEMP/release-fixtures.log"
+          fixture=$(sed -n 's/^Temporary fixture: //p' "$RUNNER_TEMP/release-fixtures.log")
+          python3 tools/test-release-validation.py "$fixture"
+
+  # The gate's own proof: eleven cases exercise the control and planted failures. It
   # rebuilds the tree once per case, so it runs on main only.
   selftest:
     if: github.event_name == 'push'
@@ -196,5 +210,5 @@ jobs:
             "https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented/16-robolectric-13921718-i7/${ROBOLECTRIC_JAR}"
           (cd tools/robolectric-deps && sha256sum -c MANIFEST.sha256)
 
-      - name: Nine planted failures turn the gate red
+      - name: Eleven safeguard cases prove the gate
         run: tools/verify-selftest.sh

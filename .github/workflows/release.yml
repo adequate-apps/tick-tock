@@ -1,0 +1,119 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.dependency.verification=strict
+  SDK_PACKAGES: ndk;28.2.13676358 cmake;3.22.1
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require reviewed source and successful main CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          revision=$(git rev-parse "$GITHUB_REF^{commit}")
+          git merge-base --is-ancestor "$revision" origin/main
+          python3 tools/release-source.py "$GITHUB_REF_NAME" "$revision" > "$RUNNER_TEMP/release-notes.md"
+          gh run list --repo "$GITHUB_REPOSITORY" --workflow check.yml --branch main \
+            --commit "$revision" --status success --json conclusion --limit 1 > "$RUNNER_TEMP/check.json"
+          python3 -c 'import json,sys; rows=json.load(open(sys.argv[1])); assert rows and rows[0]["conclusion"] == "success", "successful main CI is required"' "$RUNNER_TEMP/check.json"
+
+      - name: Identity and wrapper checks
+        env:
+          DENYLIST: ${{ secrets.TICKTOCK_DENYLIST }}
+        run: |
+          [ -n "$DENYLIST" ] || { echo 'Identity rules are missing' >&2; exit 1; }
+          (umask 077 && printf '%s\n' "$DENYLIST" > "$RUNNER_TEMP/denylist")
+          export TICKTOCK_DENYLIST="$RUNNER_TEMP/denylist"
+          echo "TICKTOCK_DENYLIST=$TICKTOCK_DENYLIST" >> "$GITHUB_ENV"
+          tools/identity-scan.sh --tree
+          tools/identity-scan.sh --history
+          echo '497c8c2a7e5031f6aa847f88104aa80a93532ec32ee17bdb8d1d2f67a194a9c7  gradle/wrapper/gradle-wrapper.jar' | sha256sum -c -
+
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
+        id: java
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            gradle/verification-metadata.xml
+            gradle/wrapper/gradle-wrapper.properties
+            gradle/libs.versions.toml
+
+      - name: Require the approved dependency cache
+        env:
+          CACHE_HIT: ${{ steps.java.outputs.cache-hit }}
+        run: |
+          [ "$CACHE_HIT" = true ] || { echo 'Run main CI to stage approved dependencies before tagging' >&2; exit 1; }
+
+      - name: Stage the already approved SDK packages
+        run: |
+          read -r -a approved_sdk_ids <<< "$SDK_PACKAGES"
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" "${approved_sdk_ids[@]}"
+          for p in "${approved_sdk_ids[@]}"; do
+            [ -d "$ANDROID_SDK_ROOT/${p/;//}" ] || exit 1
+          done
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+
+      - name: Stage approved signing credentials
+        env:
+          RELEASE_STORE_BASE64: ${{ secrets.RELEASE_STORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_CERTIFICATE_SHA256: ${{ secrets.RELEASE_CERTIFICATE_SHA256 }}
+          RELEASE_UPLOAD_STORE_BASE64: ${{ secrets.RELEASE_UPLOAD_STORE_BASE64 }}
+          RELEASE_UPLOAD_STORE_PASSWORD: ${{ secrets.RELEASE_UPLOAD_STORE_PASSWORD }}
+          RELEASE_UPLOAD_KEY_PASSWORD: ${{ secrets.RELEASE_UPLOAD_KEY_PASSWORD }}
+          RELEASE_UPLOAD_KEY_ALIAS: ${{ secrets.RELEASE_UPLOAD_KEY_ALIAS }}
+          RELEASE_UPLOAD_CERTIFICATE_SHA256: ${{ secrets.RELEASE_UPLOAD_CERTIFICATE_SHA256 }}
+        run: python3 tools/stage-signing.py "$RUNNER_TEMP/release-signing"
+
+      - name: Build and reproduce both signed artifacts offline
+        run: |
+          tools/reproduce-release.sh HEAD "$RUNNER_TEMP/release-signing/signing.properties" | tee "$RUNNER_TEMP/reproduction.log"
+          evidence=$(sed -n 's/^Evidence: //p' "$RUNNER_TEMP/reproduction.log")
+          mkdir "$RUNNER_TEMP/release"
+          cp "$evidence/first/build/release/"* "$RUNNER_TEMP/release/"
+          (cd "$RUNNER_TEMP/release" && sha256sum -c SHA256SUMS)
+
+      - name: Publish the approved tag artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "Adequate Metronome $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md" \
+            "$RUNNER_TEMP/release/"*.apk "$RUNNER_TEMP/release/"*.aab "$RUNNER_TEMP/release/SHA256SUMS"
+
+      - name: Clear temporary signing material
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, shutil
+          path = pathlib.Path(os.environ['RUNNER_TEMP']) / 'release-signing'
+          if path.is_dir():
+              shutil.rmtree(path)
+          PY

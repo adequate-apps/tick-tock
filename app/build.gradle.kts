@@ -1,5 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import java.util.Properties
+import java.io.File
+import java.io.PrintStream
+import java.security.KeyStore
+import java.security.MessageDigest
+import java.security.PrivateKey
+import java.security.cert.X509Certificate
+import java.util.zip.ZipFile
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+import com.android.builder.internal.packaging.AabFlinger
+import com.android.tools.build.bundletool.commands.ValidateBundleCommand
+import com.android.tools.build.bundletool.commands.DumpCommand
 
 plugins {
     alias(libs.plugins.android.application)
@@ -7,10 +19,43 @@ plugins {
     alias(libs.plugins.roborazzi)
 }
 
-// Release signing reads a gitignored file; the keystore never enters the tree.
+// Private keys stay outside version control and are loaded by release tasks.
+val signingPropertiesFile = providers.gradleProperty("ticktock.signingProperties")
+    .map { rootProject.file(it) }.getOrElse(rootProject.file("private/signing.properties"))
 val releaseSigning = Properties().apply {
-    val file = rootProject.file("private/signing.properties")
-    if (file.isFile) file.inputStream().use { load(it) }
+    if (signingPropertiesFile.isFile) signingPropertiesFile.reader(Charsets.UTF_8).use { load(it) }
+}
+val signingFields = listOf("storeFile", "storePassword", "keyAlias", "keyPassword", "certificateSha256")
+fun signingField(name: String, prefix: String = ""): String =
+    if (prefix.isEmpty()) name else prefix + name.replaceFirstChar { it.uppercase() }
+fun signingComplete(prefix: String = "") = signingFields.all {
+    !releaseSigning.getProperty(signingField(it, prefix)).isNullOrBlank()
+}
+fun signingStore(prefix: String = ""): File {
+    val path = File(releaseSigning.getProperty(signingField("storeFile", prefix)))
+    return if (path.isAbsolute) path else File(signingPropertiesFile.parentFile, path.path)
+}
+class ReleaseKey(val key: PrivateKey, val certificate: X509Certificate)
+fun readReleaseKey(prefix: String = ""): ReleaseKey {
+    if (!signingComplete(prefix)) throw GradleException("Release signing is required: provide all signing properties.")
+    try {
+        fun field(name: String) = releaseSigning.getProperty(signingField(name, prefix))
+        val store = KeyStore.getInstance("PKCS12")
+        signingStore(prefix).inputStream().use { store.load(it, field("storePassword").toCharArray()) }
+        val key = store.getKey(field("keyAlias"), field("keyPassword").toCharArray()) as PrivateKey
+        val certificate = store.getCertificate(field("keyAlias")) as X509Certificate
+        certificate.checkValidity()
+        require(key.algorithm == "RSA") { "release signing requires an RSA key" }
+        val fingerprint = MessageDigest.getInstance("SHA-256").digest(certificate.encoded)
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        val expected = field("certificateSha256").filterNot { it == ':' || it.isWhitespace() }.lowercase()
+        if (fingerprint != expected) throw GradleException("Release signing certificate differs from the expected fingerprint.")
+        return ReleaseKey(key, certificate)
+    } catch (failure: GradleException) {
+        throw failure
+    } catch (failure: Exception) {
+        throw GradleException("Release signing material is invalid or unavailable.")
+    }
 }
 
 /**
@@ -30,9 +75,10 @@ android {
     defaultConfig {
         applicationId = releaseApplicationId
         minSdk = libs.versions.minSdk.get().toInt()
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "2.0.0-m0"
+        versionName = "2.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["clearPackageData"] = "true"
     }
@@ -49,9 +95,10 @@ android {
         }
         release {
             isMinifyEnabled = false
-            if (releaseSigning.isNotEmpty()) {
+            if (signingComplete()) {
                 signingConfigs.create("upload") {
-                    storeFile = rootProject.file(releaseSigning.getProperty("storeFile"))
+                    storeType = "PKCS12"
+                    storeFile = signingStore()
                     storePassword = releaseSigning.getProperty("storePassword")
                     keyAlias = releaseSigning.getProperty("keyAlias")
                     keyPassword = releaseSigning.getProperty("keyPassword")
@@ -67,6 +114,9 @@ android {
     }
 
     packaging { jniLibs { useLegacyPackaging = false } }
+    // The APK metadata block is encrypted with fresh randomness on each build.
+    // Play still receives the stable dependency inventory in the AAB.
+    dependenciesInfo { includeInApk = false; includeInBundle = true }
 
     testOptions {
         execution = "ANDROIDX_TEST_ORCHESTRATOR"
@@ -112,10 +162,19 @@ val checkReleaseApplicationId = tasks.register("checkReleaseApplicationId") {
     }
 }
 
-// preReleaseBuild is the first task of every release variant, so the guard
-// fires before any compile work and before the signing config is consulted.
-tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+val checkReleaseSigning = tasks.register("checkReleaseSigning") {
+    group = "verification"
+    description = "Requires valid signing material and its expected public certificate."
     dependsOn(checkReleaseApplicationId)
+    doLast {
+        readReleaseKey()
+        if (signingFields.any { releaseSigning.containsKey(signingField(it, "upload")) }) readReleaseKey("upload")
+    }
+}
+
+// Both release entry points require the identity and signing checks.
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(checkReleaseSigning)
 }
 
 dependencies {
@@ -171,7 +230,73 @@ tasks.withType<Test>().configureEach {
 // Bundle the repository's notices so they remain readable without a browser.
 val prepareNotices by tasks.registering(Copy::class) {
     from(rootProject.file("LICENSE"), rootProject.file("THIRD_PARTY.md"))
+    val fontLicence = rootProject.file("tools/fonts/IBM-Plex-OFL-1.1.txt")
+    inputs.file(fontLicence)
     into(layout.buildDirectory.dir("generated/notices"))
+    doLast {
+        layout.buildDirectory.file("generated/notices/THIRD_PARTY.md").get().asFile.writeText(
+            rootProject.file("THIRD_PARTY.md").readText() + "\n\n## Bundled font licence\n\n" + fontLicence.readText() + "\n")
+    }
 }
 android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/notices").get().asFile)
 tasks.named("preBuild") { dependsOn(prepareNotices) }
+
+// This adapter uses the signer already pinned by AGP. Its fixed archive times
+// keep a separate upload signature reproducible across clean builds.
+fun signUploadBundle(source: File, destination: File, signing: ReleaseKey) {
+    val unsigned = File(temporaryDirForRelease(), "bundle-payload.zip")
+    val signature = Regex("META-INF/(MANIFEST\\.MF|[^/]+\\.(SF|RSA|DSA|EC)|SIG-[^/]+)", RegexOption.IGNORE_CASE)
+    ZipFile(source).use { input ->
+        ZipOutputStream(unsigned.outputStream()).use { output ->
+            input.entries().asSequence().sortedBy { it.name }.forEach { entry ->
+                if (!signature.matches(entry.name)) {
+                    output.putNextEntry(ZipEntry(entry.name).apply { time = 0 })
+                    input.getInputStream(entry).use { it.copyTo(output) }
+                    output.closeEntry()
+                }
+            }
+        }
+    }
+    // AabFlinger creates a new archive; remove only this task's prior output.
+    destination.delete()
+    AabFlinger(destination, "UPLOAD", signing.key, listOf(signing.certificate), 18).use {
+        it.writeZip(unsigned, 9)
+    }
+}
+fun temporaryDirForRelease(): File = layout.buildDirectory.dir("tmp/releaseArtifacts").get().asFile.apply { mkdirs() }
+
+tasks.register("releaseArtifacts") {
+    group = "distribution"
+    description = "Builds, signs and checks the universal APK and Play bundle in one invocation."
+    dependsOn("assembleRelease", "bundleRelease")
+    doLast {
+        val version = android.defaultConfig.versionName!!
+        val versionCode = android.defaultConfig.versionCode!!
+        require(version.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-z0-9.-]+)?")))
+        val directory = rootProject.layout.buildDirectory.dir("release").get().asFile.apply { mkdirs() }
+        val stem = "adequate-metronome-v$version"
+        val apk = File(directory, "$stem-universal.apk")
+        val bundle = File(directory, "$stem.aab")
+        layout.buildDirectory.file("outputs/apk/release/app-release.apk").get().asFile.copyTo(apk, overwrite = true)
+        val originalBundle = layout.buildDirectory.file("outputs/bundle/release/app-release.aab").get().asFile
+        val appKey = readReleaseKey()
+        val uploadKey = if (signingComplete("upload")) readReleaseKey("upload") else appKey
+        signUploadBundle(originalBundle, bundle, uploadKey)
+        ValidateBundleCommand.builder().setBundlePath(bundle.toPath()).setPrintOutput(false).build().execute()
+        val manifest = File(temporaryDirForRelease(), "bundle-manifest.xml")
+        manifest.outputStream().use { stream ->
+            PrintStream(stream, false, "UTF-8").use { output ->
+                DumpCommand.builder().setBundlePath(bundle.toPath()).setModuleName("base")
+                    .setDumpTarget(DumpCommand.DumpTarget.MANIFEST).setOutputStream(output).build().execute()
+            }
+        }
+        fun digest(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes)
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        File(directory, "SHA256SUMS").writeText(listOf(apk, bundle).joinToString("") { "${digest(it.readBytes())}  ${it.name}\n" })
+        providers.exec {
+            workingDir(rootProject.projectDir)
+            commandLine("python3", "tools/verify-release.py", directory.path, version, versionCode.toString(),
+                digest(appKey.certificate.encoded), digest(uploadKey.certificate.encoded), manifest.path)
+        }.result.get().assertNormalExitValue()
+    }
+}

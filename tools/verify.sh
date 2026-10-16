@@ -277,6 +277,7 @@ tools/check-manifest.sh || red manifest "the merged manifest differs from its re
 # DST-03: a 64-bit library linked for 4 KB pages fails to load on a 16 KB
 # device and blocks Play updates, so the APK that ships is the thing checked.
 tools/check-alignment.sh || red alignment "a native library is not aligned to 16 KB pages"
+tools/check-abis.py app/build/outputs/apk/debug/app-debug.apk || red ABIs "packaged ABIs are incomplete or unsupported"
 
 # --- verdict -------------------------------------------------------------------
 

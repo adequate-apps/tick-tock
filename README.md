@@ -4,9 +4,16 @@ Adequate Metronome, by AdequateApps (codename TickTock), is a native Android pra
 per-note intonation statistics, a drone and reference tones, and a metronome. This repository is a
 ground-up rebuild in Kotlin, Jetpack Compose Foundation and a small C++ audio engine.
 
-The app is built in milestones. The current tree is the M0 skeleton: five modules, frozen audio
-contracts with fakes, a Gridline frame on an empty screen, and a build whose every artifact is
-hash-pinned.
+The app includes Tune, Drone, Metronome and Table, saved practice sessions, CSV sharing, personal
+settings import/export and local diagnostics. Four themes and large-text layouts use the Gridline
+design system. Audio processing and history stay on the device. Playback and listening stop in the
+background. Android 9 or later and a supported 64-bit device are required.
+
+Version 2.0 is in release preparation. Production signing, physical-device acceptance and store
+enrollment remain pending. See the [acceptance ledger](docs/ACCEPTANCE.md),
+[release runbook](docs/release.md), [privacy policy](docs/privacy.md), and
+[download page source](docs/index.html). Published assets will appear in
+[Releases](https://github.com/adequate-apps/tick-tock/releases).
 
 ## Layout
 
@@ -30,8 +37,8 @@ NDK 28.2.13676358 and CMake 3.22.1. Point `JAVA_HOME` at the JDK and `ANDROID_HO
 ```sh
 export JAVA_HOME=/path/to/jdk-21
 export ANDROID_HOME=/path/to/android-sdk
-./gradlew help
-./gradlew :core:jvmTest :app:assembleDebug
+./gradlew --offline help
+./gradlew --offline :core:jvmTest :app:assembleDebug
 ```
 
 The debug APK lands in `app/build/outputs/apk/debug/`. The application id is
@@ -46,23 +53,27 @@ Changing a version in `gradle/libs.versions.toml` therefore needs a reviewed met
 
 | Tier | Command | What it covers |
 |---|---|---|
-| U | `./gradlew :core:jvmTest` | Pure functions and the contract round trips, in seconds |
-| H | `./gradlew :app:testDebugUnitTest :design:testDebugUnitTest :data:testDebugUnitTest :engine:testDebugUnitTest` | Robolectric: the app boots to its Gridline frame; screenshot and storage tests later |
-| D | `./gradlew :app:connectedDebugAndroidTest` | Instrumented tests on an emulator or device |
+| U | `./gradlew --offline :core:jvmTest` | Pure functions, detector, music maths and contract round trips |
+| N | `tools/verify.sh --skip-h` | Core tests and host C++ audio-engine tests |
+| H | `./gradlew --offline :app:testDebugUnitTest :design:testDebugUnitTest :data:testDebugUnitTest :engine:testDebugUnitTest` | Robolectric: screens, semantics, state, storage, routes and screenshot assertions |
+| D | `./gradlew --offline :app:connectedDebugAndroidTest` | Instrumented tests on an emulator or device |
 
 The H tier runs Robolectric offline. Stage the android-all jar named in
 `tools/robolectric-deps/MANIFEST.sha256` into that directory and check it with `sha256sum -c`
 before running; a missing jar fails the run instead of downloading.
 
-Screenshot goldens of the Gridline frame live in `app/src/test/screenshots/`:
+Screenshot goldens for the screens and themes live in `app/src/test/screenshots/`:
 
 ```sh
-./gradlew :app:verifyRoborazziDebug   # fail on any pixel change against the goldens
-./gradlew :app:recordRoborazziDebug   # rewrite the goldens after a reviewed visual change
+./gradlew --offline :app:verifyRoborazziDebug   # fail on any pixel change against the goldens
+./gradlew --offline :app:recordRoborazziDebug   # rewrite the goldens after a reviewed visual change
 ```
 
-`tools/verify.sh` runs every tier plus lint, the debug APK, the manifest allowlist and the
-identity scan, and prints one verdict; `tools/README.md` describes the gate scripts.
+`tools/verify.sh` runs U, N and H plus lint, the debug APK, the manifest allowlist and the
+identity scan, ABI completeness and native alignment, and prints one verdict; `tools/README.md`
+describes the gate scripts. Signed release tests use temporary keys; production credentials are
+unnecessary for development checks. The release task produces and verifies an APK, AAB and checksums
+in one invocation and the reproduction script compares two fresh clones.
 
 `docs/ACCEPTANCE.md` lists every behaviour criterion with its tier and status.
 `docs/design/gridline-android.md` is the component inventory and the messaging rules every screen

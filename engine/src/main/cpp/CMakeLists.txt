@@ -18,4 +18,10 @@ add_library(ticktock_engine SHARED
 target_include_directories(ticktock_engine PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_features(ticktock_engine PRIVATE cxx_std_17)
 target_compile_options(ticktock_engine PRIVATE -Wall -Wextra -Werror -fno-exceptions -fno-rtti)
+# Debug symbols and the derived build id must survive a fresh checkout path.
+get_filename_component(repository_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../.." ABSOLUTE)
+target_compile_options(ticktock_engine PRIVATE
+    "-ffile-prefix-map=${repository_root}=."
+    "-fdebug-compilation-dir=."
+)
 target_link_libraries(ticktock_engine PRIVATE aaudio)
