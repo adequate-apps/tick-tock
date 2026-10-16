@@ -93,7 +93,7 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
 | RNG-01 | two tiers per key | U | 2.0 | RangeGoldenTest `RNG-01` | green |
-| RNG-02 | what each tier drives | U, H | 2.0 | RangeResolverTest and RangeScreenTest cover extended judgment; RangeTableAcceptanceTest separates keyed outlines from extended chart/legend ink and preserves low-count dimming. Retained played rows replace guide/matrix clauses; editor remains deferred. Wrong-instrument hint integration is still missing (HNT rows). | open (app) |
+| RNG-02 | what each tier drives | U, H | 2.0 | RangeResolverTest and RangeScreenTest cover extended judgment; RangeTableAcceptanceTest separates keyed outlines from extended chart/legend ink and preserves low-count dimming. Retained played rows replace guide/matrix clauses; editor remains deferred. WrongInstrumentHintAcceptanceTest proves extended-range PCM judgment, including altissimo and imported overrides; PrefsRangeHintBoundaryTest proves source range revisions. | green |
 | RNG-03 | data source | U | 2.0 | RangeLayerDataTest (source hashes) + `tools/gen-ranges/check.sh` (byte-for-byte reproduction where the inputs are present) | green |
 | RNG-04 | golden file | U | 2.0 | RangeGoldenTest `RNG-04` | green |
 | RNG-05 | policy test | U | 2.0 | RangeGoldenTest `RNG-05`; the twenty decisions were drafted during M0 and await the owner's confirmation (see `tools/gen-ranges/README.md`) | green |
@@ -123,14 +123,14 @@ Scored passages on modelled wind instruments (alto, bari and contrabass reeds, c
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| HNT-01 | three different notes | U | 2.0 |StrayCounterTest `HNT-01` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
-| HNT-02 | the window is playing time | U | 2.0 |StrayCounterTest `HNT-02` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
-| HNT-03 | single-note cases never trigger it | U | 2.0 |StrayCounterTest `HNT-03` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
-| HNT-04 | spread-out strays never trigger it | U | 2.0 |StrayCounterTest `HNT-04` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
+| HNT-01 | three different notes | U, H, emulator | 2.0 | StrayCounterTest and WrongInstrumentHintAcceptanceTest `HNT-01` prove three distinct accepted PCM notes, low/high/mixed direction and both sample rates; RangeHintDeviceTest verifies actual emulator notice and pointer navigation. | green |
+| HNT-02 | the window is playing time | U, H | 2.0 | StrayCounterTest and WrongInstrumentHintAcceptanceTest `HNT-02` prove silence preserves evidence and exactly435accepted readings age it, including multi-hop batches. | green |
+| HNT-03 | single-note cases never trigger it | U, H | 2.0 | StrayCounterTest and WrongInstrumentHintAcceptanceTest `HNT-03` cover held/repeated/squeak exclusions and saxophone altissimo through written F7. | green |
+| HNT-04 | spread-out strays never trigger it | U, H | 2.0 | StrayCounterTest and WrongInstrumentHintAcceptanceTest `HNT-04` prove25seconds of accepted in-range playing between strays prevents a notice. | green |
 | HNT-05 | it offers the fix | U | v1.1 |  | deferred |
 | HNT-06 | editing forgets covered strays | U | v1.1 |  | deferred |
-| HNT-07 | scope | U | 2.0 |StrayCounterTest `HNT-07` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
-| HNT-08 | cents keep showing | U | 2.0 |StrayCounterTest `HNT-08` (core policy passes; production hint observer and visible notice are not yet integrated) | open (app) |
+| HNT-07 | scope | U, H, emulator | 2.0 | WrongInstrumentHintAcceptanceTest `HNT-07`, PrefsRangeHintBoundaryTest, PrefsRangePublicationTest and RangeHintFlowTest prove catch-all exemption, instrument/range round trips and stale-publication rejection; RangeHintDeviceTest proves selection continuity. Custom instruments remain deferred. | green |
+| HNT-08 | cents keep showing | U, H, emulator | 2.0 | WrongInstrumentHintAcceptanceTest `HNT-08` and RangeHintDeviceTest prove actual PCM cents/Hz/history continue, including paused capture; RangeHintScreenshotTest covers all themes, widths360/600 and font scales1/1.5/2. | green |
 
 ## Sessions and runs, history bounds and storage
 
