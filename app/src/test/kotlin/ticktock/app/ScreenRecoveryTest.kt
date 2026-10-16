@@ -278,7 +278,7 @@ class ScreenRecoveryTest {
 
     @Test
     @Config(qualifiers = "w360dp-h640dp-xhdpi")
-    fun `ERR-01 crowded notices leave recovery Share and Retry reachable at double text`() {
+    fun `ERR-01 recovery actions remain reachable and pending notices return after Retry at double text`() {
         val graph = launchCrowdedNotices()
         ScreenRenderProbe.beforeRender = { screen -> if (screen == "metronome") {
             throw IllegalStateException("Planted crowded render failure")
@@ -286,10 +286,15 @@ class ScreenRecoveryTest {
         compose.onNodeWithTag("tabs-2").performClick()
         compose.onNodeWithTag("screen-share-log").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("screen-retry").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("notice-prefs-dismiss").assertDoesNotExist()
+        ScreenRenderProbe.beforeRender = null
+        compose.onNodeWithTag("screen-retry").performClick()
         compose.onNodeWithTag("notice-prefs-dismiss").performScrollTo().assertIsDisplayed()
         assertTrue(graph.output.state.value.droneSounding && graph.output.state.value.metroSounding)
     }
 
+    @Test fun `ERR-01 failed header composition is not repeated by recovery`() = assertPhase("header-compose")
+    @Test fun `ERR-01 failed header drawing is not repeated by recovery`() = assertPhase("header-draw")
     @Test fun `ERR-01 measurement failure stays inside the screen`() = assertPhase("measure")
     @Test fun `ERR-01 placement failure stays inside the screen`() = assertPhase("place")
     @Test fun `ERR-01 drawing failure stays inside the screen`() = assertPhase("draw")
@@ -306,8 +311,11 @@ class ScreenRecoveryTest {
         var traversalRoot: View? = null
         var injected = 0
         val fault = { injected++; throw IllegalStateException("Planted $phase failure") }
-        ScreenRenderProbe.content = { screen -> if (screen == "metronome") {
+        val target = if (phase.startsWith("header-")) "header-metronome" else "metronome"
+        ScreenRenderProbe.content = { screen -> if (screen == target) {
             when (phase) {
+                "header-compose" -> fault()
+                "header-draw" -> TraversalFault("draw", poison, fault) { traversalRoot = it }
                 "measure", "place", "draw" -> TraversalFault(phase, poison, fault) { traversalRoot = it }
                 "side-effect" -> SideEffect { fault() }
                 "effect" -> LaunchedEffect(Unit) { fault() }
@@ -320,7 +328,7 @@ class ScreenRecoveryTest {
             }
         } }
         compose.onNodeWithTag("tabs-2").performClick()
-        if (phase in listOf("measure", "place", "draw", "dialog-measure", "dialog-draw")) {
+        if (phase in listOf("measure", "place", "draw", "dialog-measure", "dialog-draw", "header-draw")) {
             compose.waitForIdle()
             scenario!!.onActivity {
                 val root = checkNotNull(traversalRoot)
@@ -340,8 +348,17 @@ class ScreenRecoveryTest {
                 try { root.draw(Canvas(bitmap)) } finally { bitmap.recycle() }
             }
         }
+        if (phase == "header-draw") {
+            compose.waitForIdle()
+            scenario!!.onActivity { activity ->
+                val window = activity.window.decorView
+                val bitmap = Bitmap.createBitmap(window.width, window.height, Bitmap.Config.ARGB_8888)
+                try { window.draw(Canvas(bitmap)) } finally { bitmap.recycle() }
+            }
+        }
         assertSurvived(graph, link)
         assertTrue("the actual $phase fault ran", injected > 0)
+        if (phase.startsWith("header-")) assertEquals("failed header is not retried by recovery", 1, injected)
         assertEquals(commandsBefore, link.sent)
         compose.onNodeWithTag("fault-dialog").assertDoesNotExist()
     }

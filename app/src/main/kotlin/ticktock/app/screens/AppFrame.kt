@@ -143,6 +143,7 @@ fun AppFrame() {
                 else -> tab.tag
             }
             RecoverableScreen(screenId, screenFailures, header = {
+                ScreenRenderProbe.before("header-$screenId")
                 AppNotices(graph)
                 BluetoothNotice(graph.output)
             }) {
