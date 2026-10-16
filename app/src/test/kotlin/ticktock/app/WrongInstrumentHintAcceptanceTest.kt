@@ -435,7 +435,10 @@ class WrongInstrumentHintAcceptanceTest {
         }
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("config-preview").fetchSemanticsNodes().isNotEmpty() }
         tap("config-apply")
-        compose.waitUntil(5_000) { !graph.configuration.state.value.busy && graph.configuration.state.value.incoming == null }
+        compose.waitUntil(5_000) {
+            compose.waitForIdle()
+            !graph.configuration.state.value.busy && graph.configuration.state.value.incoming == null
+        }
         assertFalse(graph.configuration.state.value.failed)
         assertEquals(WrittenRange(45, 101), graph.prefs.prefs.value.personalConfig.rangeOverrides.getValue("eb_alto").keyed)
         tap("back")
