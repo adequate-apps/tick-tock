@@ -18,9 +18,12 @@ import ticktock.core.detect.HopAnalyser
 import ticktock.core.detect.NoSoundingNotes
 import ticktock.core.detect.Release
 import ticktock.core.detect.ResponseMode
+import ticktock.core.detect.StrayCounter
 import ticktock.core.detect.YinEstimator
 import ticktock.core.music.Cents
 import ticktock.core.music.Pitch
+import ticktock.core.music.Transposition
+import ticktock.data.prefs.PrefsPublication
 import ticktock.engine.input.AnalysisThread
 import ticktock.engine.input.InputListener
 import ticktock.engine.input.RecordingState
@@ -132,6 +135,7 @@ class LiveCapture(
     noiseFloorDb: Int? = null,
     instrumentKey: String = "",
     instrumentRevision: Long = 0,
+    initialPublication: PrefsPublication? = null,
 ) : InputListener {
     private val detector = Detector(mode, sounding = sounding).also { it.setA4(a4Hz); it.setNoiseFloor(noiseFloorDb) }
     private val duckLock = Any()
@@ -171,6 +175,11 @@ class LiveCapture(
     /** The most recent note that ended; moves once per note. */
     val lastNote: StateFlow<LastNote?> = lastNoteFlow
 
+    private val rangeHintFlow = RangeHintFlow()
+
+    /** Only a changed range judgment is published; accepted-reading ages stay on analysis. */
+    val rangeHint: StateFlow<RangeHint?> = rangeHintFlow
+
     // The analysis thread's alone: the note being held, from its attack.
     private var noteMidi: Int? = null
     private var noteStartHop = 0L
@@ -197,25 +206,62 @@ class LiveCapture(
     private val requestedMode = AtomicReference<ResponseMode?>(null)
     private val resetAfterInterruption = AtomicBoolean(false)
     private data class InstrumentEpoch(val serial: Long, val key: String)
+    private data class InstrumentRequest(
+        val epoch: InstrumentEpoch,
+        val profile: RangeHintProfile?,
+        val hintGeneration: Long,
+        val publicationRevision: Long,
+    )
     private val instrumentRequestLock = Any()
-    private val requestedInstrument = AtomicReference(InstrumentEpoch(instrumentRevision, instrumentKey))
-    @Volatile private var activeInstrument = requestedInstrument.get()
+    private val requestedInstrument = AtomicReference(InstrumentRequest(
+        epoch = initialPublication?.let { InstrumentEpoch(it.instrumentRevision, it.prefs.instrumentKey) }
+            ?: InstrumentEpoch(instrumentRevision, instrumentKey),
+        profile = initialPublication?.let { RangeHintProfile.from(it.prefs) },
+        hintGeneration = 0,
+        publicationRevision = initialPublication?.revision ?: -1,
+    ))
+    @Volatile private var activeInstrument = requestedInstrument.get().epoch
+    // Only analysis mutates the counter and its profile generation after construction.
+    private var activeHintRequest = requestedInstrument.get()
+    private var strayCounter = activeHintRequest.profile?.let { StrayCounter(it.instrument, it.range) }
 
     /** Publish the epoch and ring boundary together; only analysis mutates detector or statistics. */
     fun requestInstrument(key: String, revision: Long) {
         synchronized(instrumentRequestLock) {
-            if (revision <= requestedInstrument.get().serial) return
-            requestedInstrument.set(InstrumentEpoch(revision, key))
+            val previous = requestedInstrument.get()
+            if (revision <= previous.epoch.serial) return
+            requestedInstrument.set(previous.copy(epoch = InstrumentEpoch(revision, key), profile = null,
+                hintGeneration = previous.hintGeneration + 1))
             analyser.discardPendingInput()
+        }
+        invalidateRangeHint()
+    }
+
+    /** Submit the instrument epoch and its imported range together, never in separate requests. */
+    fun requestInstrument(publication: PrefsPublication) {
+        val profile = RangeHintProfile.from(publication.prefs)
+        synchronized(instrumentRequestLock) {
+            val previous = requestedInstrument.get()
+            if (publication.revision <= previous.publicationRevision || publication.instrumentRevision < previous.epoch.serial) return
+            val epoch = InstrumentEpoch(publication.instrumentRevision, publication.prefs.instrumentKey)
+            val changed = epoch != previous.epoch || profile != previous.profile
+            requestedInstrument.set(InstrumentRequest(epoch, profile,
+                previous.hintGeneration + if (changed) 1 else 0, publication.revision))
+            if (epoch != previous.epoch) analyser.discardPendingInput()
         }
     }
 
-    private fun instrumentIsCurrent(): Boolean = activeInstrument == requestedInstrument.get()
+    /** Called after releasing settings/request locks, because a flow publication may resume its collector. */
+    fun invalidateRangeHint() {
+        rangeHintFlow.invalidate(requestedInstrument.get().hintGeneration)
+    }
+
+    private fun instrumentIsCurrent(): Boolean = activeInstrument == requestedInstrument.get().epoch
 
     /** Also guards a prefs value published just before its synchronous listener reaches capture. */
     fun acceptsInstrument(key: String, revision: Long): Boolean {
         val active = activeInstrument
-        return active.key == key && active.serial == revision && active == requestedInstrument.get()
+        return active.key == key && active.serial == revision && active == requestedInstrument.get().epoch
     }
 
     /** Measures against [hz] from the next hop on; a change starts a new A4 generation (POL-19). */
@@ -308,7 +354,8 @@ class LiveCapture(
     private fun applyRequests() {
         // Taking the snapshot under the request lock guarantees its ring fence is already set.
         // Release that lock before calling output control: prefs can originate from output too.
-        val instrument = synchronized(instrumentRequestLock) { requestedInstrument.get() }
+        val request = synchronized(instrumentRequestLock) { requestedInstrument.get() }
+        val instrument = request.epoch
         if (instrument != activeInstrument) {
             detector.reset() // An instrument change is not a completed-note reveal.
             clearInstrumentStatistics()
@@ -318,6 +365,7 @@ class LiveCapture(
             }
             activeInstrument = instrument
         }
+        applyHintProfile(request)
         if (resetAfterInterruption.getAndSet(false)) {
             detector.reset()?.let(::endNote)
             stateFlow.update { it.copy(readout = Readout()) }
@@ -359,13 +407,18 @@ class LiveCapture(
     }
 
     private fun onDecisions(decisions: List<Decision>) {
-        if (history != null) {
-            for (decision in decisions) {
-                if (!instrumentIsCurrent()) return
-                decision.saved?.let { history.accept(it, decision.firstSettled) }
+        for (decision in decisions) {
+            val request = requestedInstrument.get()
+            if (activeInstrument != request.epoch) return
+            // A range-only import changes judgment, not detection or history admission.
+            applyHintProfile(request)
+            decision.saved?.let { reading ->
+                strayCounter?.observe(reading)
+                history?.accept(reading, decision.firstSettled)
             }
         }
         if (!instrumentIsCurrent()) return
+        publishRangeHint()
         val newest = decisions.last()
         levelFlow.value = Level(newest.hop, Level.db(newest.level))
         stateFlow.update { previous ->
@@ -380,6 +433,30 @@ class LiveCapture(
             hopsSinceDiagnostics = 0
             diagnosticsFlow.value = CaptureDiagnostics(thread.counters, thread.lastHopNanos)
         }
+    }
+
+    private fun applyHintProfile(request: InstrumentRequest) {
+        if (request.hintGeneration == activeHintRequest.hintGeneration) return
+        strayCounter = request.profile?.let { StrayCounter(it.instrument, it.range) }
+        activeHintRequest = request
+        rangeHintFlow.invalidate(request.hintGeneration)
+    }
+
+    private fun publishRangeHint() {
+        val request = activeHintRequest
+        if (request.hintGeneration != requestedInstrument.get().hintGeneration) return
+        val profile = request.profile
+        val counter = strayCounter
+        val hint = if (profile == null || counter == null || !counter.hinting) null else {
+            val written = counter.strays.map { Transposition.writtenFromSounding(it, profile.instrument.transposition) }
+            val direction = when {
+                written.all { it < profile.range.extendedLow.midi } -> RangeHintDirection.BELOW
+                written.all { it > profile.range.extendedHigh.midi } -> RangeHintDirection.ABOVE
+                else -> RangeHintDirection.OUTSIDE
+            }
+            RangeHint(request.epoch.key, request.epoch.serial, profile.range, direction)
+        }
+        rangeHintFlow.publish(request.hintGeneration, hint)
     }
 
     /** A disconnect waits for an in-flight command before restoring gain. Later batches cannot duck a stopped input. */

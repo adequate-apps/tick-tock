@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="range_hint_below">Below %1$s range</string>
+    <string name="range_hint_above">Above %1$s range</string>
+    <string name="range_hint_outside">Outside %1$s range</string>
+    <string name="range_hint_instrument">instrument</string>
+    <string name="range_hint_sopranino">sopranino</string>
+    <string name="range_hint_soprano">soprano</string>
+    <string name="range_hint_alto">alto</string>
+    <string name="range_hint_tenor">tenor</string>
+    <string name="range_hint_baritone">baritone</string>
+    <string name="range_hint_bass_sax">bass sax</string>
+    <string name="range_hint_contrabass_sax">contrabass sax</string>
+</resources>
