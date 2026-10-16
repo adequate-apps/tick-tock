@@ -51,6 +51,20 @@ class NativeBleedFixtureTest {
     }
 
     @Test(timeout = 120_000)
+    fun `POL-27 a player below the native root and fifth earns admission through the duck`() {
+        for (rate in RATES) Rig(rate, 2, playerAmplitude = 0.5, playerMidi = MIDI - 12).use { rig ->
+            rig.run(60)
+            assertEquals(rig.label, listOf(0.30f), rig.requestedGains)
+            assertTrue(rig.label, rig.firstAcknowledgedHop != Long.MAX_VALUE)
+            assertTrue(rig.label, rig.decisions.takeWhile { it.hop < rig.firstAcknowledgedHop }.all { it.saved == null })
+            val readings = rig.decisions.mapNotNull { it.saved }
+            assertTrue("${rig.label}: the lower player must reach history", readings.size >= 10)
+            assertTrue(rig.label, readings.all { it.midiSounding == MIDI - 12 && abs(it.cents) < 1.0 })
+            rig.assertHealthy()
+        }
+    }
+
+    @Test(timeout = 120_000)
     fun `POL-28 delayed native completion and buffered leakage never establish a player`() = variants { rate, voice ->
         Rig(rate, voice, acknowledgementDelayHops = 8, inputBufferHops = 2).use { rig ->
             rig.run(80)
@@ -85,6 +99,7 @@ class NativeBleedFixtureTest {
         val rate: Int,
         voice: Int,
         private val playerAmplitude: Double = 0.0,
+        private val playerMidi: Int = MIDI,
         private val acknowledgementDelayHops: Int = 0,
         inputBufferHops: Int = 0,
     ) : AutoCloseable {
@@ -114,7 +129,7 @@ class NativeBleedFixtureTest {
                 val rendered = native.render(hopFrames)
                 completions += rendered.completions
                 // Independent score truth: a player at the target frequency, unaffected by output gain.
-                val hz = A4 * 2.0.pow((MIDI - 69) / 12.0)
+                val hz = A4 * 2.0.pow((playerMidi - 69) / 12.0)
                 val mixed = FloatArray(hopFrames) { i ->
                     val player = playerAmplitude * sin(2.0 * PI * hz * (samplePosition + i) / rate)
                     (rendered.samples[i] + player).toFloat().also { require(abs(it) < 1f) }

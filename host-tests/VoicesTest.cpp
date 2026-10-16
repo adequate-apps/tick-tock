@@ -187,15 +187,15 @@ TEST(Mixer, duckIsARampedGainWithAFloor) {
 
     ASSERT_TRUE(engine.send(duck(0.5f)));
     renderInto(engine, 4800, 240, out);
-    EXPECT_NEAR(0.5f, peakAbs(out.mono, 4800 + 480, 4000), 0.01f);
+    EXPECT_NEAR(0.5f, peakAbs(out.mono, 4800 + 4320, 480), 0.01f);
 
     ASSERT_TRUE(engine.send(duck(0.1f)));
     renderInto(engine, 4800, 240, out);
-    EXPECT_NEAR(0.3f, peakAbs(out.mono, 9600 + 480, 4000), 0.01f) << "0.3 is the floor";
+    EXPECT_NEAR(0.3f, peakAbs(out.mono, 9600 + 4320, 480), 0.01f) << "0.3 is the floor";
 
     ASSERT_TRUE(engine.send(duck(1.0f)));
     renderInto(engine, 4800, 240, out);
-    EXPECT_NEAR(1.0f, peakAbs(out.mono, 14400 + 480, 4000), 0.01f);
+    EXPECT_NEAR(1.0f, peakAbs(out.mono, 14400 + 4320, 480), 0.01f);
 }
 
 // OUT-10: output is audible only while no mute reason is active.

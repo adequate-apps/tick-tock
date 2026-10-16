@@ -480,7 +480,7 @@ TEST(OutputController, commandsReachTheRenderThreadInOrder) {
     EXPECT_EQ(1, c.engine().voices().activeCount());
     EXPECT_NEAR(442.0, c.engine().voices().frequencyOf(1), 1e-9);
     float peak = 0.0f;
-    for (std::size_t i = 2400; i < mono.size(); ++i) peak = std::max(peak, std::fabs(mono[i]));
+    for (std::size_t i = 4320; i < mono.size(); ++i) peak = std::max(peak, std::fabs(mono[i]));
     EXPECT_NEAR(0.5f * 0.3f, peak, 0.01f);
     ASSERT_TRUE(c.voiceOff(1));
     ASSERT_TRUE(c.metroStop());
@@ -592,13 +592,15 @@ TEST(OutputController, duckAcknowledgementWaitsForTheRenderedRampAndCarriesPrese
     EXPECT_TRUE(drainAll(c).empty());
     pull(device, 48);
     EXPECT_TRUE(drainAll(c).empty());
-    pull(device, 240);
+    pull(device, 3552);
+    EXPECT_TRUE(drainAll(c).empty()) << "the 80 ms ramp is still moving at 75 ms";
+    pull(device, 480);
     auto events = drainAll(c);
     ASSERT_EQ(1u, events.size());
     EXPECT_EQ(EventKind::DuckSettled, events[0].kind);
     EXPECT_EQ(71, events[0].a);
-    EXPECT_GE(events[0].c, 167);
-    EXPECT_LE(events[0].c, 170);
+    EXPECT_GE(events[0].c, 3838);
+    EXPECT_LE(events[0].c, 3841);
     EXPECT_EQ(device.tsNanos + static_cast<std::int64_t>(std::ceil(events[0].c * 1e9 / 48000)), events[0].d);
     pull(device, 480);
     EXPECT_TRUE(drainAll(c).empty());
@@ -627,7 +629,7 @@ TEST(OutputController, aReopenedStreamStartsAtFullGainAndCannotAcknowledgeAnOldR
     ASSERT_TRUE(c.duck(0.3f, 82));
     pull(device, 48);
     EXPECT_TRUE(drainAll(c).empty());
-    pull(device, 240);
+    pull(device, 4032);
     const auto events = drainAll(c);
     ASSERT_EQ(1u, events.size());
     EXPECT_EQ(82, events[0].a);
@@ -661,13 +663,13 @@ TEST(OutputController, aQueuedDuckCannotChangeTheGainOfAResumedStream) {
     EXPECT_LT(error, 1e-5) << "a resumed voice starts at the unducked reference gain";
     ASSERT_TRUE(c.duck(0.3f, 82));
     actual.clear(); expected.clear();
-    pull(device, 960, &actual);
-    pull(referenceDevice, 960, &expected);
+    pull(device, 4800, &actual);
+    pull(referenceDevice, 4800, &expected);
     const auto events = drainAll(c);
     ASSERT_EQ(1u, events.size());
     EXPECT_EQ(82, events[0].a);
     double reduced = 0, full = 0;
-    for (std::size_t i = 480; i < actual.size(); ++i) {
+    for (std::size_t i = 4320; i < actual.size(); ++i) {
         reduced += actual[i] * actual[i];
         full += expected[i] * expected[i];
     }
@@ -684,7 +686,7 @@ TEST(OutputController, unknownPresentationTimeKeepsProofBlockedForRefusedAndLarg
         c.registerTool(OutputTool::Drone);
         drainAll(c);
         ASSERT_TRUE(c.duck(0.3f, 91));
-        pull(device, 480);
+        pull(device, 4410);
         EXPECT_TRUE(drainAll(c).empty());
         EXPECT_FALSE(c.hasEvents()) << "an unknown deadline must also allow the event thread to wait";
         device.timestampValid = true;

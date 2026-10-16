@@ -41,6 +41,35 @@ class BleedPolicyTest {
     }
 
     @Test
+    fun `POL-24 the virtual fundamental of a sounding root and fifth is also probed`() {
+        val (drive, _) = drive(d4, d4 + 7)
+        val decisions = leak(drive, d4 - 12, 40)
+        assertTrue(decisions.all { it.hopClass == HopClass.SKIP && it.saved == null })
+        assertEquals(listOf(BleedPolicy.DUCK_FLOOR), decisions.mapNotNull { it.duck })
+        assertNull(drive.detector.shownNote)
+    }
+
+    @Test
+    fun `POL-27 a real player at the root fifth virtual fundamental can earn admission`() {
+        val (drive, _) = drive(d4, d4 + 7)
+        admit(drive, d4 - 12)
+        drive.note(d4 - 12, 30)
+        assertTrue(drive.saved.isNotEmpty())
+        assertTrue(drive.saved.all { it.midiSounding == d4 - 12 })
+        assertEquals(listOf(BleedPolicy.DUCK_FLOOR), drive.decisions.mapNotNull { it.duck })
+    }
+
+    @Test
+    fun `POL-24 a lone root and an unrelated pair do not exclude the octave below`() {
+        for (notes in listOf(intArrayOf(d4), intArrayOf(d4, d4 + 4))) {
+            val (drive, _) = drive(*notes)
+            drive.note(d4 - 12, 40)
+            assertTrue(drive.saved.isNotEmpty())
+            assertTrue(drive.decisions.none { it.duck != null })
+        }
+    }
+
+    @Test
     fun `POL-28 a new capture forgets an earlier unison admission and probes leakage again`() {
         val (drive, _) = drive(d4)
         admit(drive, d4)
