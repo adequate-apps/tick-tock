@@ -32,6 +32,7 @@ def write(name, data):
     path.touch(mode=0o600)
     path.write_text(''.join(k + '=' + v.replace('\\', '\\\\').replace(' ', '\\ ') + '\n' for k, v in data.items()))
 write('valid.properties', values)
+write('app-only.properties', {key: value for key, value in values.items() if not key.startswith('upload')})
 for name, field, value in [('partial', 'keyAlias', ''), ('password', 'storePassword', 'incorrect'),
                             ('alias', 'keyAlias', 'missing'), ('certificate', 'certificateSha256', '00'),
                             ('upload', 'uploadCertificateSha256', '00')]:
@@ -46,6 +47,10 @@ for case in partial password alias certificate upload; do
         || { echo "FAIL: unrelated failure in $case" >&2; exit 1; }
     echo "PASS: rejected $case fixture"
 done
+./gradlew --offline --no-configuration-cache "-Pticktock.signingProperties=$fixture/app-only.properties" \
+    :app:releaseArtifacts > "$fixture/app-only.log" 2>&1 \
+    || { tail -45 "$fixture/app-only.log"; exit 1; }
+echo "PASS: signed release artifacts validated with one temporary app key"
 ./gradlew --offline --no-configuration-cache "-Pticktock.signingProperties=$fixture/valid.properties" \
     :app:releaseArtifacts > "$fixture/build.log" 2>&1 \
     || { tail -45 "$fixture/build.log"; exit 1; }
