@@ -6,6 +6,7 @@ import importlib.util
 from pathlib import Path
 import re
 import shutil
+import struct
 import sys
 import tempfile
 import zipfile
@@ -54,21 +55,33 @@ for case in ['checksum', 'missing', 'extra', 'app-certificate', 'upload-certific
             expected_upload = app_cert
         elif case in ['apk-tamper', 'bundle-tamper']:
             path = apk if case == 'apk-tamper' else aab
-            replacement = Path(scratch) / 'tampered.zip'
-            with zipfile.ZipFile(path) as source, zipfile.ZipFile(replacement, 'w') as output:
-                for entry in source.infolist():
-                    contents = source.read(entry)
-                    if entry.filename.endswith('assets/THIRD_PARTY.md'):
-                        contents += b' altered'
-                    output.writestr(entry, contents)
-            replacement.replace(path)
+            if case == 'apk-tamper':
+                # Keep the complete signing block so the signature verifier must
+                # reject changed signed bytes, even with updated outer checksums.
+                with zipfile.ZipFile(path) as source:
+                    entry = source.getinfo('assets/THIRD_PARTY.md')
+                contents = bytearray(path.read_bytes())
+                name_size, extra_size = struct.unpack_from('<HH', contents, entry.header_offset + 26)
+                contents[entry.header_offset + 30 + name_size + extra_size] ^= 1
+                path.write_bytes(contents)
+            else:
+                replacement = Path(scratch) / 'tampered.zip'
+                with zipfile.ZipFile(path) as source, zipfile.ZipFile(replacement, 'w') as output:
+                    for entry in source.infolist():
+                        contents = source.read(entry)
+                        if entry.filename.endswith('assets/THIRD_PARTY.md'):
+                            contents += b' altered'
+                        output.writestr(entry, contents)
+                replacement.replace(path)
             (directory / 'SHA256SUMS').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n' for p in [apk, aab]))
         else:
             checked_manifest = Path(scratch) / 'manifest.xml'
             checked_manifest.write_text(manifest.read_text().replace('android.permission.RECORD_AUDIO', 'android.permission.INTERNET'))
         try:
             checks.verify(directory, version, code, expected_app, expected_upload, checked_manifest)
-        except ValueError:
+        except ValueError as failure:
+            if case == 'apk-tamper' and 'apksigner rejected' not in str(failure):
+                sys.exit('FAIL: changed signed APK failed before signature verification')
             print('PASS: rejected ' + case)
         else:
             sys.exit('FAIL: accepted ' + case)
