@@ -76,6 +76,7 @@ enum class GlIcon(val marks: List<IconMark>) {
     DRONE(listOf(IconMark.Line("M7 2v12h10V2M12 14v7M8 21h8"))),
     METRONOME(listOf(IconMark.Line("M8 3h8l4 18H4zM12 18l4-9"))),
     TABLE(listOf(IconMark.Line("M3 4h18v16H3zM3 10h18M3 15h18M10 4v16"))),
+    RANGE(listOf(IconMark.Line("M4 5H20M4 12H20"), IconMark.Fill("M12 15L17 22H7z"))),
     CUE_SHARP(listOf(IconMark.Fill("M12 6l8 12H4z"))),
     CUE_SHARP_2(listOf(IconMark.Fill("M12 2l8 9H4zM12 13l8 9H4z"))),
     CUE_FLAT(listOf(IconMark.Fill("M12 18L4 6h16z"))),

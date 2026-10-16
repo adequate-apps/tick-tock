@@ -15,6 +15,8 @@ import kotlinx.coroutines.launch
 import ticktock.app.audio.CaptureState
 import ticktock.app.audio.Level
 import ticktock.app.audio.LiveCapture
+import ticktock.app.audio.RangeHint
+import ticktock.app.audio.RangeHintProfile
 import ticktock.app.audio.TraceSnapshot
 import ticktock.core.contracts.AudioInput
 import ticktock.core.contracts.HistorySink
@@ -56,8 +58,7 @@ class TuneSession(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val capture = LiveCapture(mode = prefs.responseMode, a4Hz = prefs.a4Hz, history = history,
-        sounding = sounding, onDuck = onDuck, noiseFloorDb = prefs.noiseFloorDb, instrumentKey = prefs.instrumentKey,
-        instrumentRevision = initialPublication.instrumentRevision)
+        sounding = sounding, onDuck = onDuck, noiseFloorDb = prefs.noiseFloorDb, initialPublication = initialPublication)
     private val settingsLock = Any()
     private var acceptedPublication = initialPublication
     private var input: AudioInput? = null
@@ -68,6 +69,7 @@ class TuneSession(
     val diagnostics: StateFlow<ticktock.app.audio.CaptureDiagnostics> = capture.diagnostics
     val trace: StateFlow<TraceSnapshot> = capture.trace
     val lastNote: StateFlow<ticktock.app.audio.LastNote?> = capture.lastNote
+    val rangeHint: StateFlow<RangeHint?> = capture.rangeHint
 
     private val wantedFlow = MutableStateFlow(false)
 
@@ -106,13 +108,16 @@ class TuneSession(
         synchronized(settingsLock) {
             val old = acceptedPublication
             applySettings(PrefsPublication(prefs, old.revision + 1,
-                old.instrumentRevision + if (prefs.instrumentKey == old.prefs.instrumentKey) 0 else 1))
+                old.instrumentRevision + if (prefs.instrumentKey == old.prefs.instrumentKey) 0 else 1,
+                old.rangeRevision + if (RangeHintProfile.from(prefs).range == RangeHintProfile.from(old.prefs).range) 0 else 1))
         }
+        capture.invalidateRangeHint()
     }
 
     /** Submit one coherent publication; stale callbacks cannot roll any detector setting back. */
     fun settingsChanged(publication: PrefsPublication) {
         synchronized(settingsLock) { applySettings(publication) }
+        capture.invalidateRangeHint()
     }
 
     // Only atomic request submission while settingsLock is held: no output, history, disk or join.
@@ -120,9 +125,7 @@ class TuneSession(
         val previous = acceptedPublication
         if (publication.revision <= previous.revision) return
         val prefs = publication.prefs
-        if (publication.instrumentRevision > previous.instrumentRevision) {
-            capture.requestInstrument(prefs.instrumentKey, publication.instrumentRevision)
-        }
+        capture.requestInstrument(publication)
         if (prefs.noiseFloorDb != previous.prefs.noiseFloorDb) capture.requestNoiseFloor(prefs.noiseFloorDb)
         if (prefs.a4Hz != previous.prefs.a4Hz) capture.requestA4(prefs.a4Hz)
         if (prefs.responseMode != previous.prefs.responseMode) capture.requestMode(prefs.responseMode)

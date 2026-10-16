@@ -53,8 +53,8 @@ import ticktock.design.components.TitleBarAction
  * System Gray, and the status bar, which shows a microphone or output fact
  * while there is one and stays empty at idle.
  *
- * Navigation is two pieces of saved state: which tab is open and whether
- * Settings is over it. The system back gesture closes Settings and otherwise
+ * Navigation remembers the open tab, Settings page and the instrument picker's
+ * return destination. The system back gesture closes Settings and otherwise
  * returns to the Tune tab, so the player always lands somewhere familiar.
  */
 @Composable
@@ -72,11 +72,23 @@ fun AppFrame() {
     KeepScreenOn(keepAwake)
     SideEffect { FrameCompositions.count++ }
 
-    // Both survive rotation and process death: the enum saves as a Serializable.
+    // Navigation enums survive rotation and process death as Serializable values.
     var tab by rememberSaveable { mutableStateOf(Tab.Tune) }
     var settings by rememberSaveable { mutableStateOf<SettingsPage?>(null) }
+    var instrumentReturn by rememberSaveable { mutableStateOf(InstrumentReturn.SETTINGS) }
     val screenFailures = rememberScreenFailures()
     val settingsOpen = settings != null
+
+    fun returnFromInstrument() {
+        settings = when (instrumentReturn) {
+            InstrumentReturn.SETTINGS -> SettingsPage.MAIN
+            InstrumentReturn.TUNE -> {
+                tab = Tab.Tune
+                null
+            }
+        }
+        instrumentReturn = InstrumentReturn.SETTINGS
+    }
 
     val firstRun by remember { derivedStateOf { !prefs.value.firstRunComplete } }
     var firstStep by rememberSaveable(firstRun) { mutableStateOf(if (mic.state == MicState.ALLOWED) FirstRunStep.INSTRUMENT else FirstRunStep.MICROPHONE) }
@@ -85,10 +97,10 @@ fun AppFrame() {
     }
 
     BackHandler(enabled = !firstRun && (settingsOpen || tab != Tab.Tune)) {
-        settings = when (settings) {
-            SettingsPage.INSTRUMENT -> SettingsPage.MAIN
-            SettingsPage.MAIN -> null
-            null -> settings.also { tab = Tab.Tune }
+        when (settings) {
+            SettingsPage.INSTRUMENT -> returnFromInstrument()
+            SettingsPage.MAIN -> settings = null
+            null -> tab = Tab.Tune
         }
     }
 
@@ -101,7 +113,9 @@ fun AppFrame() {
                 )
             } else if (settingsOpen) {
                 TitleBar(title = stringResource(if (settings == SettingsPage.INSTRUMENT) R.string.pane_instrument else R.string.pane_settings)) {
-                    TitleBarAction(label = stringResource(R.string.action_back), onClick = { settings = if (settings == SettingsPage.INSTRUMENT) SettingsPage.MAIN else null }, tag = "back")
+                    TitleBarAction(label = stringResource(R.string.action_back), onClick = {
+                        if (settings == SettingsPage.INSTRUMENT) returnFromInstrument() else settings = null
+                    }, tag = "back")
                 }
             } else {
                 TitleBar(
@@ -149,9 +163,15 @@ fun AppFrame() {
             }) {
                 when {
                     firstRun -> FirstRun(graph, mic, firstStep) { firstStep = it }
-                    settings == SettingsPage.INSTRUMENT -> InstrumentPicker(graph) { settings = SettingsPage.MAIN }
-                    settingsOpen -> SettingsScreen(graph) { settings = SettingsPage.INSTRUMENT }
-                    tab == Tab.Tune -> TuneScreen(graph, mic)
+                    settings == SettingsPage.INSTRUMENT -> InstrumentPicker(graph, ::returnFromInstrument)
+                    settingsOpen -> SettingsScreen(graph) {
+                        instrumentReturn = InstrumentReturn.SETTINGS
+                        settings = SettingsPage.INSTRUMENT
+                    }
+                    tab == Tab.Tune -> TuneScreen(graph, mic) {
+                        instrumentReturn = InstrumentReturn.TUNE
+                        settings = SettingsPage.INSTRUMENT
+                    }
                     tab == Tab.Drone -> DroneScreen(showAction = !output.droneWanted)
                     tab == Tab.Metronome -> MetronomeScreen()
                     tab == Tab.Table -> TableScreen()
@@ -181,6 +201,8 @@ fun AppFrame() {
         )
     }
 }
+
+private enum class InstrumentReturn { SETTINGS, TUNE }
 
 /** Keeps the screen on while [active]: the player's hands are on the instrument (keep-awake, PLAN 3.3). */
 @Composable

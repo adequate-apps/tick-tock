@@ -5,6 +5,10 @@ import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
+import ticktock.core.catalogue.Catalogue
+import ticktock.core.ranges.BaseRanges
+import ticktock.core.ranges.OverlayRanges
+import ticktock.core.ranges.RangeResolver
 import ticktock.core.prefs.Prefs
 import ticktock.core.prefs.PrefsSchema
 import ticktock.core.prefs.ReadResult
@@ -12,7 +16,7 @@ import ticktock.data.StorageThread
 import java.util.concurrent.ScheduledFuture
 
 /** One visible prefs value and its process-local publication identities; revisions are never persisted. */
-data class PrefsPublication(val prefs: Prefs, val revision: Long, val instrumentRevision: Long)
+data class PrefsPublication(val prefs: Prefs, val revision: Long, val instrumentRevision: Long, val rangeRevision: Long = 0)
 
 /** How the last load went. */
 sealed class PrefsLoad {
@@ -54,6 +58,8 @@ class PrefsStore(
     private val prefsFlow = MutableStateFlow(Prefs())
     val prefs: StateFlow<Prefs> = prefsFlow
     private val publicationFlow = MutableStateFlow(PrefsPublication(prefsFlow.value, 0, 0))
+    // Load the bundled tables before updates enter the publication monitor.
+    private var selectedRange = selectedRangeOf(prefsFlow.value)
 
     /** Read prefs and their instrument epoch together when admitting capture readings. */
     val publication: StateFlow<PrefsPublication> = publicationFlow
@@ -156,12 +162,19 @@ class PrefsStore(
     private fun publishLocked(next: Prefs): PrefsPublication {
         val previous = publicationFlow.value
         if (next == previous.prefs) return previous
+        val nextRange = selectedRangeOf(next)
         val published = PrefsPublication(next, previous.revision + 1,
-            previous.instrumentRevision + if (next.instrumentKey == previous.prefs.instrumentKey) 0 else 1)
+            previous.instrumentRevision + if (next.instrumentKey == previous.prefs.instrumentKey) 0 else 1,
+            previous.rangeRevision + if (nextRange == selectedRange) 0 else 1)
+        selectedRange = nextRange
         publicationFlow.value = published
         prefsFlow.value = next
         return published
     }
+
+    private fun selectedRangeOf(prefs: Prefs) = RangeResolver.resolve(
+        Catalogue.get(prefs.instrumentKey), BaseRanges.bundled, OverlayRanges.bundled,
+        prefs.personalConfig.rangeOverrides[prefs.instrumentKey])
 
     private val listeners = java.util.concurrent.CopyOnWriteArrayList<(PrefsPublication) -> Unit>()
 
@@ -176,7 +189,7 @@ class PrefsStore(
     /**
      * Supplies one immutable publication now and after each update. Callbacks run on the publishing
      * thread outside prefs locks. Consumers that retain state reject revisions older than their own;
-     * an instrument round trip remains visible even if a newer callback overtakes an older one.
+     * instrument and range round trips remain visible even if a newer callback overtakes an older one.
      */
     fun addPublicationListener(listener: (PrefsPublication) -> Unit) {
         val current = synchronized(replay) {

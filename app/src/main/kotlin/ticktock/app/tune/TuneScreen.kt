@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -38,6 +39,8 @@ import ticktock.app.R
 import ticktock.app.audio.CaptureState
 import ticktock.app.audio.LastNote
 import ticktock.app.audio.Level
+import ticktock.app.audio.RangeHint
+import ticktock.app.audio.RangeHintDirection
 import ticktock.app.audio.TraceSnapshot
 import ticktock.core.catalogue.Catalogue
 import ticktock.core.catalogue.Instrument
@@ -96,13 +99,16 @@ fun gateOf(mic: MicState, capture: CaptureState): Gate? = when {
  * they are drawn, so a held note recomposes nothing at hop rate (POL-31).
  */
 @Composable
-fun TuneScreen(graph: AppGraph, mic: MicAccess) {
+fun TuneScreen(graph: AppGraph, mic: MicAccess, onInstrument: () -> Unit) {
     val capture by graph.tune.state.collectAsStateWithLifecycle()
-    val prefs by graph.prefs.prefs.collectAsStateWithLifecycle()
+    val publication by graph.prefs.publication.collectAsStateWithLifecycle()
+    val prefs = publication.prefs
+    val rangeHint by graph.tune.rangeHint.collectAsStateWithLifecycle()
     val level = graph.tune.level.collectAsStateWithLifecycle()
     val trace = graph.tune.trace.collectAsStateWithLifecycle()
     val gate = gateOf(mic.state, capture)
     val listening = gate == null && capture.isListening
+    val visibleHint = rangeHint?.takeIf { listening && it.matches(publication) }
     val instrument = Catalogue.find(prefs.instrumentKey) ?: Catalogue.get(Catalogue.DEFAULT_KEY)
     val stacked = LocalDensity.current.fontScale >= TWO_UP_LIMIT
 
@@ -153,6 +159,8 @@ fun TuneScreen(graph: AppGraph, mic: MicAccess) {
             readout.midi, readout.cents, readout.hz, prefs, instrument, hidden, gate, mic,
             onRetry = graph.tune::retry,
             countdown = if (shownReveal != null) ({ countdown.value }) else null,
+            rangeHint = visibleHint,
+            onInstrument = onInstrument,
         )
         Box(Modifier.fillMaxWidth()) {
             CentsScale(
@@ -259,6 +267,8 @@ private fun ReadoutField(
     mic: MicAccess,
     onRetry: () -> Unit,
     countdown: (() -> Float)?,
+    rangeHint: RangeHint?,
+    onInstrument: () -> Unit,
 ) {
     val accidentals = NoteSpelling.resolve(instrument, prefs.spelling.accidentals)
     val written = prefs.displayMode == DisplayMode.WRITTEN
@@ -342,6 +352,41 @@ private fun ReadoutField(
                         Button(stringResource(R.string.tune_try_again), onRetry, tone = ButtonTone.Primary, tag = "try-again")
                 }
             }
+        } else if (rangeHint != null) {
+            RangeHintNotice(rangeHint, onInstrument)
+        }
+    }
+}
+
+@Composable
+private fun RangeHintNotice(hint: RangeHint, onInstrument: () -> Unit) {
+    val name = stringResource(when (hint.instrumentKey) {
+        "eb_sopranino" -> R.string.range_hint_sopranino
+        "bb_soprano" -> R.string.range_hint_soprano
+        "eb_alto" -> R.string.range_hint_alto
+        "bb_tenor" -> R.string.range_hint_tenor
+        "eb_bari" -> R.string.range_hint_baritone
+        "bb_bass" -> R.string.range_hint_bass_sax
+        "eb_contrabass" -> R.string.range_hint_contrabass_sax
+        else -> R.string.range_hint_instrument
+    })
+    val cause = stringResource(when (hint.direction) {
+        RangeHintDirection.BELOW -> R.string.range_hint_below
+        RangeHintDirection.ABOVE -> R.string.range_hint_above
+        RangeHintDirection.OUTSIDE -> R.string.range_hint_outside
+    }, name)
+    Notice(
+        text = cause,
+        modifier = Modifier.padding(top = GridlineSpacing.sp3),
+        kind = NoticeKind.Attention,
+        icon = GlIcon.RANGE,
+        tag = "range-hint",
+    ) {
+        Box {
+            Button(stringResource(R.string.setting_instrument), onInstrument, tone = ButtonTone.Primary,
+                labelPadding = GridlineSpacing.sp8, tag = "range-hint-instrument")
+            Icon(GlIcon.CHEVRON, Modifier.align(Alignment.CenterEnd).padding(end = GridlineSpacing.sp2),
+                tint = GridlineColors.selectionFg)
         }
     }
 }
