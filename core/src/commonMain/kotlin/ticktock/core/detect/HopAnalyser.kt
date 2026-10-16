@@ -88,6 +88,9 @@ class HopAnalyser(
         }
     }
 
+    /** Excludes windows overlapping audio already delivered when the analysis context changes. */
+    fun discardPendingInput() = Unit
+
     /** Route resumes may grant a different platform input buffer. */
     fun inputBufferChanged(frames: Int) { inputBufferFrames = frames.coerceAtLeast(0) }
 

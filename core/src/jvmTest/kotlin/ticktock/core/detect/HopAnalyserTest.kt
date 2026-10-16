@@ -32,6 +32,33 @@ class HopAnalyserTest {
         HopAnalyser(Detector(ResponseMode.NORMAL), estimator, ringHops)
 
     @Test
+    fun `RNG-14 context boundary excludes queued and overlapping partial windows without dropping hop time`() {
+        val detector = Detector(ResponseMode.NORMAL)
+        val analyser = HopAnalyser(detector, ZeroCrossingEstimator())
+        val input = FakeAudioInput(sampleRate = rate)
+        analyser.attach(input).getOrThrow()
+        val sine = Sine(440.0, 0.1, rate)
+        try {
+            input.push(sine.next(8 * hopFrames + hopFrames / 2))
+            analyser.discardPendingInput()
+            detector.reset()
+            input.push(sine.next(hopFrames - hopFrames / 2 + 2 * hopFrames))
+            val crossed = analyser.drain()
+            assertEquals((0L..10L).toList(), crossed.map { it.hop })
+            assertTrue("no queued window supplies a vote for the new instrument",
+                crossed.filter { it.hop <= 9 }.all { it.hopClass == HopClass.SKIP &&
+                    it.saved == null && it.display == null && it.attack == null })
+            assertEquals(HopClass.VOTE, crossed.last().hopClass)
+            assertNull("one entirely fresh window cannot inherit the old vote", detector.shownNote)
+            assertEquals(0L, analyser.counters.droppedHops)
+            assertEquals(0L, analyser.counters.analysisErrors)
+            input.push(sine.next(12 * hopFrames))
+            assertTrue(analyser.drain().any { it.saved?.midiSounding == 69 })
+            assertEquals(23L, analyser.counters.hopsAnalysed)
+        } finally { analyser.detach() }
+    }
+
+    @Test
     fun `POL-28 a restored gain must present before fresh audio establishes the probe baseline`() {
         val detector = Detector(ResponseMode.FAST,
             sounding = ticktock.core.contracts.fakes.FakeSoundingNotes(69))
