@@ -23,6 +23,8 @@ import ticktock.core.ranges.UserRangeOverride
 import ticktock.core.ranges.WrittenRange
 import ticktock.data.history.Scope
 import ticktock.design.GridlineThemes
+import ticktock.design.GridlineSpacing
+import kotlin.math.roundToInt
 
 /** Retained rows have separate keyed-border, extended-chart and low-sample roles. */
 @RunWith(RobolectricTestRunner::class)
@@ -107,6 +109,79 @@ class RangeTableAcceptanceTest {
         assertTrue(ink(detail, colors.textDisabled) > 0)
         compose.onNode(hasTestTag("table-stats-selected") and hasAnyDescendant(hasText("Mean +4 cents · Spread 0 cents"))).assertExists()
         assertEquals(16L, runBlocking { graph.history.summaries(Scope.CurrentSession) }.sumOf { it.n })
+    }
+
+    @Test fun `RNG-12 TLK-03 row speech distinguishes historical keyed and extended boundaries`() {
+        launch(72 to 8, 82 to 8, 93 to 8)
+        // Ordinary rows keep the adopted summary byte for byte.
+        row(72).assertContentDescriptionEquals("A5, mean plus 4 cents, spread 0 cents, 1 attack, 8 readings")
+        row(82).assertContentDescriptionContains("Outside keyed range", substring = true)
+            .assert(!hasContentDescription("Outside extended range", substring = true))
+        row(93).assertContentDescriptionContains("Outside extended range", substring = true)
+            .assert(!hasContentDescription("Outside keyed range", substring = true))
+        compose.onNodeWithTag("open-settings").performClick()
+        compose.onNodeWithTag("setting-instrument").performScrollTo().performClick()
+        compose.onNodeWithTag("instrument-flute_c").performScrollTo().performClick()
+        compose.onNodeWithTag("back").performClick()
+        awaitRows(72, 82, 93)
+        row(82).assertContentDescriptionContains("Outside keyed range", substring = true)
+        row(93).assertContentDescriptionContains("Outside extended range", substring = true)
+        compose.runOnIdle {
+            graph.prefs.update { it.copy(personalConfig = PersonalConfig(rangeOverrides = mapOf(
+                "eb_alto" to UserRangeOverride(WrittenRange(58, 91)),
+            ))) }
+        }
+        row(82).assert(!hasContentDescription("Outside keyed range", substring = true))
+            .assert(!hasContentDescription("Outside extended range", substring = true))
+        row(93).assertContentDescriptionContains("Outside extended range", substring = true)
+        assertEquals(24L, runBlocking { graph.history.summaries(Scope.CurrentSession) }.sumOf { it.n })
+    }
+
+    @Test fun `RNG-02 detail identifies an extended exclusion independently of sample count`() {
+        launch(72 to 2, 82 to 8, 93 to 8, 94 to 2)
+        for (midi in listOf(93, 94)) {
+            row(midi).performScrollTo().performClick()
+            compose.onNodeWithText("Outside extended range").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("Dimmed <5 readings").assertDoesNotExist()
+            compose.onNodeWithTag("table-back").performScrollTo().performClick()
+        }
+        // Preserve the existing fact and geometry for keyed and extended-only details.
+        for (midi in listOf(72, 82)) {
+            row(midi).performScrollTo().performClick()
+            compose.onNodeWithText("Dimmed <5 readings").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("Outside extended range").assertDoesNotExist()
+            compose.onNodeWithTag("table-back").performScrollTo().performClick()
+        }
+        assertEquals(20L, runBlocking { graph.history.summaries(Scope.CurrentSession) }.sumOf { it.n })
+    }
+
+    @Test fun `RNG-02 detail legend swatch agrees with extended chart judgment and low counts`() {
+        launch(72 to 2, 82 to 8, 93 to 8)
+        for ((midi, expected) in listOf(93 to colors.textDisabled, 82 to colors.accentText, 72 to colors.textDisabled)) {
+            row(midi).performScrollTo().performClick()
+            assertDetailSwatch(expected)
+            val chart = compose.onNodeWithTag("histogram", useUnmergedTree = true).performScrollTo()
+            assertTrue("the matching chart ink remains visible", ink(chart, expected) > 0)
+            if (expected == colors.textDisabled) assertEquals(0, ink(chart, colors.accentText))
+            compose.onNodeWithTag("table-back").performScrollTo().performClick()
+        }
+    }
+
+    private fun assertDetailSwatch(expected: Color) {
+        // The Session text identifies the visible series key; the other Session is its stats heading.
+        val label = compose.onNode(hasText("Session") and !hasAnyAncestor(hasTestTag("table-stats-selected")),
+            useUnmergedTree = true).performScrollTo().assertIsDisplayed().fetchSemanticsNode().boundsInWindow
+        val frame = compose.onNodeWithTag("frame")
+        val frameBounds = frame.fetchSemanticsNode().boundsInWindow
+        val pixels = frame.captureToImage().toPixelMap()
+        assertEquals(frameBounds.width.roundToInt(), pixels.width)
+        assertEquals(frameBounds.height.roundToInt(), pixels.height)
+        val density = RuntimeEnvironment.getApplication().resources.displayMetrics.density
+        // Locate the center of the existing square swatch using its spacing tokens, not a new tag/UI.
+        val x = (label.left - (GridlineSpacing.sp2.value + GridlineSpacing.sp3.value / 2) * density - frameBounds.left).roundToInt()
+        val y = (label.center.y - frameBounds.top).roundToInt()
+        assertTrue("series swatch sample lies in the frame", x in 0 until pixels.width && y in 0 until pixels.height)
+        assertEquals("Session legend swatch must use its actual plotted ink", expected, pixels[x, y])
     }
 
     @Test fun `RNG-12 historical instrument and its imported override own the row border`() {
