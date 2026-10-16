@@ -52,7 +52,8 @@ class TuneSession(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val capture = LiveCapture(mode = prefs.responseMode, a4Hz = prefs.a4Hz, history = history,
-        sounding = sounding, onDuck = onDuck, noiseFloorDb = prefs.noiseFloorDb)
+        sounding = sounding, onDuck = onDuck, noiseFloorDb = prefs.noiseFloorDb, instrumentKey = prefs.instrumentKey)
+    private var requestedInstrument = prefs.instrumentKey
     private var requestedA4 = prefs.a4Hz
     private var requestedMode = prefs.responseMode
     private var requestedNoiseFloor = prefs.noiseFloorDb
@@ -98,6 +99,10 @@ class TuneSession(
     }
 
     fun settingsChanged(prefs: Prefs) {
+        if (prefs.instrumentKey != requestedInstrument) {
+            requestedInstrument = prefs.instrumentKey
+            capture.requestInstrument(prefs.instrumentKey)
+        }
         if (prefs.noiseFloorDb != requestedNoiseFloor) {
             requestedNoiseFloor = prefs.noiseFloorDb
             capture.requestNoiseFloor(prefs.noiseFloorDb)
@@ -111,6 +116,9 @@ class TuneSession(
             capture.requestMode(prefs.responseMode)
         }
     }
+
+    /** History labels can advance only after analysis consumes the same instrument epoch. */
+    internal fun acceptsInstrument(key: String): Boolean = capture.acceptsInstrument(key)
 
     fun outputContextChanged() = capture.outputContextChanged()
 

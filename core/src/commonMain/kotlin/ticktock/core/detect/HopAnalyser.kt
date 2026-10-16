@@ -66,6 +66,7 @@ class HopAnalyser(
     private var bleedEpoch = 0L
     @Volatile private var bleedFromFrame = Long.MIN_VALUE
     @Volatile private var inputBufferFrames = 0
+    @Volatile private var analysisFromFrame = Long.MIN_VALUE
 
     /**
      * Suspends probe baselines and unison proof immediately. Call the returned acknowledgement only
@@ -88,8 +89,15 @@ class HopAnalyser(
         }
     }
 
-    /** Excludes windows overlapping audio already delivered when the analysis context changes. */
-    fun discardPendingInput() = Unit
+    /**
+     * Fences windows overlapping audio already delivered at a context change. The analysis owner
+     * separately resets its detector. Excluded windows still report level and elapsed hop time,
+     * but cannot vote or release readings. The microphone and its ring remain open.
+     */
+    @Synchronized
+    fun discardPendingInput() {
+        ring?.let { analysisFromFrame = maxOf(analysisFromFrame, it.writePosition()) }
+    }
 
     /** Route resumes may grant a different platform input buffer. */
     fun inputBufferChanged(frames: Int) { inputBufferFrames = frames.coerceAtLeast(0) }
@@ -171,6 +179,7 @@ class HopAnalyser(
         nextHop = 0
         nextFrame = 0
         bleedFromFrame = Long.MIN_VALUE
+        analysisFromFrame = Long.MIN_VALUE
         contextOnly = false
     }
 
@@ -212,6 +221,16 @@ class HopAnalyser(
             previous.copyInto(window, 0, 0, hopFrames)
             current.copyInto(window, hopFrames, 0, hopFrames)
             val rms = HopEstimate.rms(window, window.size)
+            if (firstFrame < analysisFromFrame) {
+                // Context exclusions are neither lost PCM nor estimator failures. Keep the meter
+                // and hop clock moving without feeding old audio into a fresh detector vote.
+                hopsAnalysed++
+                val decision = Decision(hop, HopClass.SKIP, level = rms * micGain, incumbent = null)
+                decisions += decision
+                onDecision(decision)
+                swapHops()
+                continue
+            }
             val estimate = if (detector.belowFloor(rms, micGain)) {
                 // The gate rejects the window as silence before it reads any
                 // period, so the estimator's work could change nothing; its

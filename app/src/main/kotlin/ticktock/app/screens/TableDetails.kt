@@ -42,7 +42,7 @@ internal fun TableNoteDetail(note: NoteSummary, history: List<NoteSummary>, pref
             if (allHistory || previous != null) GlText(stringResource(R.string.table_history_context,
                 stringResource(if (prefs.includeDroneRuns) R.string.table_drone_included else R.string.table_drone_excluded)), style = GridlineType.small)
             GlText(stringResource(R.string.table_detail_extent), style = GridlineType.small)
-            TableHistogram(note, history, false, scopeLabel)
+            TableHistogram(note, history, false, scopeLabel, prefs)
             TableBandLegend()
             GlText(stringResource(R.string.table_dimmed), style = GridlineType.small)
             SummaryStats(note, scopeLabel, "table-stats-selected")
