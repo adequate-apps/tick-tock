@@ -151,7 +151,10 @@ jobs:
             || { tail -40 "$RUNNER_TEMP/release.log"; echo "assembleRelease failed for another reason than the guard" >&2; exit 1; }
 
       - name: Release guards and temporary signing fixtures
+        shell: bash
         run: |
+          python3 tools/test-stage-release-cache.py
+          python3 tools/stage-release-cache.py
           python3 tools/test-stage-signing.py
           python3 tools/test-release-source.py
           tools/test-signing-gate.sh
