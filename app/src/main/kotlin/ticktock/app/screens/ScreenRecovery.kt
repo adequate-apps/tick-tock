@@ -73,7 +73,6 @@ internal fun RecoverableScreen(screen: String, failures: ScreenFailures,
     var shareFailed by remember(screen) { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(GridlineSpacing.sp2),
         verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
-        header()
         Notice(stringResource(R.string.screen_failed), kind = NoticeKind.Danger, tag = "screen-failure-$screen") {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GridlineSpacing.sp2)) {
                 Button(stringResource(R.string.notice_share_log), {

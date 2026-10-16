@@ -226,7 +226,7 @@ ledgered under their own prefixes below.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| ERR-01 | error boundary per screen | H | 2.0 | ScreenRecoveryTest: 15 real-Activity cases cover composition, recomposition, measure, placement, drawing, effects, dialog failures, shared animation timing, retry, recreation, transient reattachment with saved draft, and crowded notices at 200% text. Sounding tools and navigation survive. | green |
+| ERR-01 | error boundary per screen | H | 2.0 | ScreenRecoveryTest: 17 real-Activity cases cover composition, recomposition, measure, placement, drawing, effects, header and dialog failures, shared animation timing, retry, recreation, transient reattachment with saved draft, and pending notices restored after recovery at 200% text. BluetoothDelayScreenTest covers the actual calibration dialog failure and state across navigation. Sounding tools and navigation survive. | green |
 | ERR-02 | fatal errors | H | 2.0 | CrashLogTest `ERR-02` and `the cap is the 256 KiB the storage names promise`; AppNoticesTest `ERR-02 a crash last time is offered once, and Dismiss puts it away for good` prove stored JVM crash offers and dismissal; native fatal-error capture remains unproved | open |
 | ERR-03 | no silent catches | H | 2.0 |  | open |
 | ERR-04 | corrupt prefs | H | 2.0 | PrefsStoreTest `ERR-04 a corrupt blob is copied before the first write and the player is told once` and `ERR-04 when the corrupt blob cannot be copied, nothing overwrites it and the player is not told it was kept`; AppNoticesTest `ERR-04 a corrupt settings file says so once, keeps the player out of first run, and Dismiss clears it` | green |

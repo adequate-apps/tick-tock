@@ -156,6 +156,7 @@ fun AppFrame() {
                     tab == Tab.Metronome -> MetronomeScreen()
                     tab == Tab.Table -> TableScreen()
                 }
+                DelayDialog(graph.output)
             }
         }
 
@@ -179,7 +180,6 @@ fun AppFrame() {
             modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
         )
     }
-    DelayDialog(graph.output)
 }
 
 /** Keeps the screen on while [active]: the player's hands are on the instrument (keep-awake, PLAN 3.3). */
