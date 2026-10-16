@@ -73,7 +73,9 @@ data class Graded(
  * reading must name the played note and match its pitch. A window that
  * straddles a change may name either note but no other.
  */
-class Scorecard(val performance: Performance, val rig: PlayRig, val title: String) {
+class Scorecard(val performance: Performance, private val decisions: List<Decision>, val title: String) {
+    constructor(performance: Performance, rig: PlayRig, title: String) : this(performance, rig.decisions, title)
+
     private val hopFrames = Hop.frames(performance.sampleRate)
     private val attackFrames = (0.08 * performance.sampleRate).toInt()
 
@@ -92,7 +94,7 @@ class Scorecard(val performance: Performance, val rig: PlayRig, val title: Strin
 
     init {
         val out = ArrayList<Graded>()
-        for ((index, decision) in rig.decisions.withIndex()) {
+        for ((index, decision) in decisions.withIndex()) {
             val reading = decision.saved ?: continue
             val first = ((reading.hop - 1) * hopFrames).toInt().coerceAtLeast(0)
             val last = ((reading.hop + 1) * hopFrames).toInt().coerceAtMost(performance.samples.size)
@@ -166,7 +168,7 @@ class Scorecard(val performance: Performance, val rig: PlayRig, val title: Strin
     /** Milliseconds from each note's onset to the end of the hop whose decision put it on the readout (its attack). */
     val readoutLatenciesMs: List<Double>
         get() {
-            val attacks = rig.decisions.filter { it.attack != null }
+            val attacks = decisions.filter { it.attack != null }
             // Notes too short to confirm have no attack of their own; an attack on the
             // same pitch later in the take belongs to a later note.
             return performance.notes.indices.filter { performance.notes[it].seconds >= READABLE_SECONDS }.mapNotNull { i ->
@@ -177,7 +179,7 @@ class Scorecard(val performance: Performance, val rig: PlayRig, val title: Strin
             }
         }
 
-    val attacks: Int get() = rig.decisions.count { it.attack != null }
+    val attacks: Int get() = decisions.count { it.attack != null }
 
     /** The worst clean readings, for the report. */
     fun worst(n: Int = 3): List<String> = graded.filter { it.clean }.sortedByDescending { abs(it.error) }.take(n).map {

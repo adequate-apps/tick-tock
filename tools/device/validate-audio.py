@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 
@@ -69,8 +70,8 @@ def main():
     run("native-corpus", ["./gradlew", "--offline", ":core:jvmTest", "--tests",
         "ticktock.core.detect.NativeBleedFixtureTest", f"-Pticktock.audioFixtureOutputDir={corpus}",
         f"-Pticktock.sourceCommit={commit}", f"-Pticktock.sourceSnapshotSha256={digest}"])
-    if len(list(corpus.glob("*/manifest.json"))) != 20:
-        raise RuntimeError("native corpus did not export all twenty passing cases")
+    if len(list(corpus.glob("*/manifest.json"))) != 68:
+        raise RuntimeError("native corpus did not export all sixty-eight passing cases")
     run("build", ["./gradlew", "--offline", ":app:assembleDebug", ":app:assembleDebugAndroidTest",
                   f"-Pticktock.audioAssetsDir={assets}"])
     unchanged()
@@ -79,12 +80,15 @@ def main():
     (evidence / "apks.json").write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
                                                   for p in apks}, indent=2) + "\n")
     for index, apk in enumerate(apks):
-        output = run(f"install-{index}", target + ["install", "-r", "-t", str(apk)])
+        retained = evidence / apk.name
+        shutil.copyfile(apk, retained)
+        output = run(f"install-{index}", target + ["install", "-r", "-t", str(retained)])
         if "Success" not in output:
             raise RuntimeError("Android did not confirm APK installation")
     tests = [
         ("pitch", "DeterministicAudioTest#pitchMatrix", ["pitch-matrix.csv", "pitch-failures.txt", "device.txt"]),
         ("native", "NativeAudioReplayTest#nativeCorpusReplay", ["native-replay.csv", "native-failures.txt"]),
+        ("passages", "PassageAudioTest#scoredPassages", ["passage-scorecard.md", "passage-corpus.csv", "passage-failures.txt"]),
         ("budget", "DeterministicAudioTest#perHopBudget", ["hop-timings.csv", "hop-budget.csv"]),
     ]
     for name, selection, files in tests:
@@ -103,7 +107,7 @@ def main():
         if any(not (evidence / file).is_file() for file in files):
             raise RuntimeError(f"{name} passed without required evidence")
     unchanged()
-    (evidence / "verdict.txt").write_text("PASS: 672 pitch cases, 20 native PCM cases, 3000 measured hops.\n"
+    (evidence / "verdict.txt").write_text("PASS: 672 pitch cases, 68 native PCM cases, 10 scored passages, 3000 measured hops.\n"
         "Android emulator/device software evidence; physical acoustic and reference-phone checks remain separate.\n")
     print((evidence / "verdict.txt").read_text(), flush=True)
 
