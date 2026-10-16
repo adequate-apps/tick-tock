@@ -123,12 +123,14 @@ callback re-classifies the route and re-measures latency without a disconnect.
   Play build and the GitHub APK share one signature and an install from either channel updates
   from the other.
 - A closed test with twelve testers over fourteen days precedes production. The fourteen days are
-  wall clock and start when M6 exits.
+  wall clock and start with eligible tester enrollment. The account-specific production-access
+  requirement applies to personal accounts created after 2023-11-13; the owner confirms account eligibility.
 - The Data safety form declares no data collected. The privacy policy lives at a stable URL under
   `docs/` and is linked from Settings › About. The target audience is 13 and up unless the owner
   opts into Families.
-- The GitHub APK channel needs the owner's developer-verification registration before it is
-  required for every app in 2027.
+- The GitHub APK channel needs the owner's developer-verification registration. Enforcement began
+  on 2026-09-30 in Brazil, Indonesia, Singapore and Thailand; broader rollout starts in 2027.
+  The owner checks the current country and account requirements before distribution.
 - The manifest allowlist is one file per release (`tools/manifest-allowlist-<major.minor>.txt`),
   and every 64-bit native library must be linked for 16 KB pages, both checked by the gate.
 
@@ -265,3 +267,18 @@ questions below.
   that fence. InputInfo reports the platform buffer plus one in-flight capture block.
 - Zero-gain voices retain their phase and requested settings while contributing no
   sounding notes to bleed exclusion or recording context.
+
+## 22. Signed release reproducibility
+
+- A release task builds the universal APK and AAB together, validates both and writes SHA256SUMS.
+  The APK uses the app-signing key; the AAB can use a separate upload key. Both expected public
+  certificates are required in private configuration. Missing signing material fails release builds.
+- Native debug paths and the compilation directory are normalized before linking. Otherwise the
+  build id changes with the checkout location, even when executable code is identical.
+- The direct APK omits AGP's randomized encrypted SDK dependency block. The AAB retains its stable
+  dependency inventory for Play. The pinned signer gives the AAB fixed archive timestamps.
+  The [dependency metadata API](https://developer.android.com/reference/tools/gradle-api/8.12/com/android/build/api/dsl/DependenciesInfo)
+  controls these two outputs independently.
+- Two fresh clones at the same commit and toolchain must produce byte-identical complete signed
+  APK and AAB files. Payload equality alone cannot satisfy the check. Production key custody and
+  public tag/release approval remain separate owner actions.

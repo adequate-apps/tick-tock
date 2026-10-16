@@ -381,9 +381,9 @@ revision document; the IDs are claimed here like any other.
 
 | ID | Criterion | Tier | Ships | Test | Status |
 |---|---|---|---|---|---|
-| DST-01 | AAB, universal APK and SHA256SUMS from one build | CI | 2.0 |  | open |
+| DST-01 | AAB, universal APK and SHA256SUMS from one build | CI | 2.0 | `test-release.sh`, `test-release-validation.py` and `reproduce-release.sh` exercise `:app:releaseArtifacts` with temporary keys; missing signing, invalid credentials, tampering and source/notes guards have observed-failure evidence. Public tag workflow and production certificates await owner approval. | open |
 | DST-02 | merged manifest equals `tools/manifest-allowlist-2.0.txt` | CI | 2.0 | `tools/check-manifest.sh` in `tools/verify.sh` (every push); `verify-selftest.sh` case `stray-permission` proves it goes red | green |
-| DST-03 | every `.so` passes the 16 KB alignment check | CI | 2.0 | `tools/check-alignment.sh` in `tools/verify.sh` on the debug APK (every push); `verify-selftest.sh` case `misaligned-library` was seen failing before the stage existed; the release job runs the same script on the release artifacts once `release.yml` lands (M7) | open |
+| DST-03 | every `.so` passes the 16 KB alignment check | CI | 2.0 | `tools/check-alignment.sh` checks debug APKs; `verify-selftest.sh` rejects a planted misaligned library. `verify-release.py` checks each signed release artifact separately, all native libraries and APK ZIP alignment. Temporary-key validation passes locally and is configured in main CI; the public tag run awaits approval. | open |
 | DST-04 | About shows version, licence, THIRD_PARTY and the privacy policy link | H | 2.0 | SettingsExtrasTest `DST-04 About has version bundled licences and the privacy link`; SettingsExtrasScreenshotTest covers all text sizes and themes; ReleaseNoticesTest verifies the full bundled font licence. | green |
 
 ### Entitlement seam

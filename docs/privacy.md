@@ -1,5 +1,7 @@
 # Privacy policy
 
+AdequateApps develops Adequate Metronome. Updated 2026-10-15.
+
 Adequate Metronome processes microphone audio on your phone to measure pitch and show tuning information.
 Microphone access is optional. The drone and metronome work with microphone access denied.
 
@@ -22,3 +24,9 @@ you previously exported remain at the destinations you chose.
 
 The Privacy policy button opens this page in your browser. The browser and its website connection
 operate under their own policies.
+
+For a privacy inquiry, open an issue in the
+[Adequate Metronome project](https://github.com/adequate-apps/tick-tock/issues).
+Issues are public. Keep microphone recordings, exported practice data and other personal information
+out of the issue; describe the question in general terms. GitHub handles account and website data
+under its own privacy policy.
