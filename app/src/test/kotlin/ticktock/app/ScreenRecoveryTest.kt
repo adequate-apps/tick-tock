@@ -7,6 +7,9 @@ import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.test.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.LaunchedEffect
@@ -59,6 +62,29 @@ class ScreenRecoveryTest {
         ScreenRenderProbe.content = null
         scenario?.close()
         RuntimeEnvironment.setFontScale(1f)
+    }
+
+    @Test fun `ERR-01 isolated pane animations follow the owning screen clock`() {
+        val (graph, link) = launchSounding()
+        val animation = Animatable(0f)
+        val run = mutableStateOf(false)
+        ScreenRenderProbe.content = { screen -> if (screen == "metronome") {
+            LaunchedEffect(run.value) {
+                if (run.value) animation.animateTo(1f, tween(1000, easing = LinearEasing))
+            }
+        } }
+        compose.onNodeWithTag("tabs-2").performClick()
+        val commands = link.sent.toList()
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { run.value = true }
+        compose.mainClock.advanceTimeByFrame()
+        compose.mainClock.advanceTimeByFrame()
+        compose.mainClock.advanceTimeBy(400)
+        assertTrue("animation at 400ms was ${animation.value}", animation.value in 0.35f..0.5f)
+        compose.mainClock.advanceTimeBy(1000)
+        assertEquals(1f, animation.value, 0.0001f)
+        assertEquals(commands, link.sent)
+        assertTrue(graph.output.state.value.droneSounding && graph.output.state.value.metroSounding)
     }
 
     @Test fun `ERR-01 a real screen composition failure leaves navigation and sounding tools intact`() {
