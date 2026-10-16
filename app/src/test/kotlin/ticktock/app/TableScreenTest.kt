@@ -21,6 +21,7 @@ import ticktock.core.prefs.Prefs
 import ticktock.data.history.Scope
 import ticktock.data.history.SessionPurpose
 import kotlin.math.pow
+import kotlin.math.roundToInt
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -173,8 +174,19 @@ class TableScreenTest {
             click("table-clear-note")
             compose.onNode(hasText(scope) and hasAnyAncestor(hasTestTag("table-confirmation"))).assertExists()
             compose.onNode(hasText("A4 442 Hz", substring = true) and hasAnyAncestor(hasTestTag("table-confirmation"))).assertExists()
-            val pixels = compose.onNodeWithTag("clear-cancel").performScrollTo().captureToImage().toPixelMap()
-            assertEquals(ticktock.design.GridlineThemes.gridline.selectionBg, pixels[pixels.width / 2, 8])
+            val cancel = compose.onNodeWithTag("clear-cancel").performScrollTo().fetchSemanticsNode().boundsInWindow
+            val dialog = compose.onNode(isDialog())
+            val dialogBounds = dialog.fetchSemanticsNode().boundsInWindow
+            // The button belongs to an isolated child composition. Capture from the
+            // dialog marker so Compose selects its Window, then locate the button
+            // in that image using shared window coordinates rather than root coordinates.
+            val pixels = dialog.captureToImage().toPixelMap()
+            assertEquals(dialogBounds.width.roundToInt(), pixels.width)
+            assertEquals(dialogBounds.height.roundToInt(), pixels.height)
+            val x = (cancel.center.x - dialogBounds.left).roundToInt()
+            val y = (cancel.top - dialogBounds.top).roundToInt() + 8
+            assertTrue("Cancel sample lies inside dialog canvas", x in 0 until pixels.width && y in 0 until pixels.height)
+            assertEquals(ticktock.design.GridlineThemes.gridline.selectionBg, pixels[x, y])
             click("clear-cancel")
             click("table-back")
         }

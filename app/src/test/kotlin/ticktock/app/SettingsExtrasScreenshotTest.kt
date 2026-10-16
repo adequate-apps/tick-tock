@@ -39,7 +39,7 @@ class SettingsExtrasScreenshotTest(private val scale: Float, private val theme: 
             // These goldens include the dimmed frame behind the dialog.
             "import", "diagnostics" -> captureScreenRoboImage(path)
             // About's golden is the dialog canvas, including its outer padding.
-            "about" -> compose.onNode(isRoot() and hasAnyDescendant(isDialog()))
+            "about" -> compose.onNode(isDialog())
                 .captureToImage().asAndroidBitmap().captureRoboImage(path)
             else -> compose.onNodeWithTag("frame").captureRoboImage(path)
         }
